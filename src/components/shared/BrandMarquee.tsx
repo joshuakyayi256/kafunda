@@ -30,7 +30,7 @@ const BrandMarquee = () => {
                             href={`/shop?brand=${brand.name}`}
                             className="mx-16 flex items-center justify-center min-w-[200px] group/item"
                         >
-                            <div className="relative h-12 w-48 grayscale opacity-50 group-hover/item:grayscale-0 group-hover/item:opacity-100 transition-all duration-500">
+                            <div className="relative h-12 w-48 grayscale opacity-80 group-hover/item:grayscale-0 group-hover/item:opacity-100 transition-all duration-500">
                                 <Image
                                     src={brand.logo}
                                     alt={brand.name}
@@ -50,7 +50,7 @@ const BrandMarquee = () => {
                             href={`/shop?brand=${brand.name}`}
                             className="mx-16 flex items-center justify-center min-w-[200px] group/item"
                         >
-                            <div className="relative h-12 w-48 grayscale opacity-50 group-hover/item:grayscale-0 group-hover/item:opacity-100 transition-all duration-500">
+                            <div className="relative h-12 w-48 grayscale opacity-80 group-hover/item:grayscale-0 group-hover/item:opacity-100 transition-all duration-500">
                                 <Image
                                     src={brand.logo}
                                     alt={brand.name}

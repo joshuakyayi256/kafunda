@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useLayoutEffect, useRef } from "react";
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { motion } from "framer-motion";
 import ProductCard from "@/components/shared/ProductCard";
 import TrustBadges from "@/components/shared/TrustBadges";
 import FAQSection from "@/components/shared/FAQSection";
@@ -14,143 +13,160 @@ import OffersToday from "@/components/shared/OffersToday";
 import products from "@/data/products.json";
 
 const Home = () => {
-  const containerRef = useRef(null);
-
-  useLayoutEffect(() => {
-    gsap.registerPlugin(ScrollTrigger);
-
-    const ctx = gsap.context(() => {
-      // Hero Animation
-      gsap.from(".hero-content > *", {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        stagger: 0.2,
-        ease: "power4.out",
-      });
-
-      // Section Reveals
-      const sections = gsap.utils.toArray(".reveal-section");
-      sections.forEach((section: any) => {
-        gsap.from(section, {
-          scrollTrigger: {
-            trigger: section,
-            start: "top 85%",
-            toggleActions: "play none none reverse",
-          },
-          y: 40,
-          opacity: 0,
-          duration: 1,
-          ease: "power2.out",
-        });
-      });
-
-      // Staggered reveals for grids
-      const grids = gsap.utils.toArray(".stagger-grid");
-      grids.forEach((grid: any) => {
-        gsap.from(grid.querySelectorAll(".stagger-item"), {
-          scrollTrigger: {
-            trigger: grid,
-            start: "top 80%",
-          },
-          y: 30,
-          opacity: 0,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power2.out",
-        });
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
   const categories = [
     { name: "Wines", image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=200" },
-    { name: "Whisky", image: "https://images.unsplash.com/photo-1527281405159-35d5b5d71842?q=80&w=200" },
+    { name: "Whisky", image: "/whisky.webp" },
     { name: "Gin", image: "https://images.unsplash.com/photo-1560512823-829485b8bf24?q=80&w=200" },
-    { name: "Beers", image: "https://images.unsplash.com/photo-1532634733-cae137662c11?q=80&w=200" },
-    { name: "Tequila", image: "https://images.unsplash.com/photo-1516535794938-102281610b48?q=80&w=200" },
-    { name: "Champagne", image: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?q=80&w=200" },
+    { name: "Beers", image: "/nilo.webp" },
+    { name: "Tequila", image: "/tequila.webp" },
+    { name: "Champagne", image: "/champagne.webp" },
   ];
 
   const popularPicks = products.slice(0, 8);
 
+  const fadeInUp = {
+    initial: { opacity: 0, y: 30 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true },
+    transition: { duration: 0.8 }
+  };
+
+  const staggerContainer = {
+    initial: { opacity: 0 },
+    whileInView: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    },
+    viewport: { once: true }
+  };
+
+  const staggerItem = {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 }
+  };
+
   return (
-    <main ref={containerRef} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative h-[90vh] flex items-center justify-center overflow-hidden bg-zinc-900">
+      <section className="relative min-h-screen py-20 flex items-center justify-center overflow-hidden bg-zinc-900">
         <Image
           src="https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea?q=80&w=2000"
           alt="Premium Spirits Cellar"
           fill
           priority
-          className="object-cover opacity-50 blur-[2px]"
+          className="object-cover opacity-40 shadow-2xl scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 via-transparent to-zinc-900/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-zinc-900/60" />
 
-        <div className="relative z-10 text-center px-4 max-w-4xl hero-content">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="relative z-10 text-center px-4 max-w-4xl"
+        >
           <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
-            Premium Spirits <br />
+            Premium <br />
+            <span className="text-success-green">Enjoyments</span><br />
             <span className="text-primary-red">Delivered</span> to Your <br />
             Doorstep.
           </h1>
-          <p className="text-sm md:text-base lg:text-xl text-gray-300 mb-10 max-w-2xl font-medium tracking-wide mx-auto">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 1 }}
+            className="text-sm md:text-base lg:text-xl text-gray-300 mb-10 max-w-2xl font-medium tracking-wide mx-auto"
+          >
             Experience the finest selection of curated wines, whiskies, and spirits.
             Ordered in seconds, delivered in minutes.
-          </p>
-          <Link
-            href="/shop?filter=offers"
-            className="inline-flex items-center bg-primary-red hover:bg-primary-red-hover text-white px-10 py-4 text-sm font-bold tracking-widest uppercase transition-all shadow-xl transform hover:scale-105 active:scale-95"
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
           >
-            <span>Shop Offers</span>
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
+            <Link
+              href="/shop?filter=offers"
+              className="inline-flex items-center bg-primary-red hover:bg-primary-red-hover text-white px-10 py-4 text-sm font-bold tracking-widest uppercase transition-all shadow-xl transform hover:scale-105 active:scale-95"
+            >
+              <span>Shop Offers</span>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* Offers for Today */}
-      <div className="reveal-section">
+      <motion.div {...fadeInUp}>
         <OffersToday />
-      </div>
+      </motion.div>
 
       {/* Brand Marquee */}
-      <div className="reveal-section">
+      <motion.div {...fadeInUp}>
         <BrandMarquee />
-      </div>
+      </motion.div>
 
-      {/* Category Row */}
-      <section className="py-20 bg-white reveal-section">
+      {/* Shop by Category Redesign */}
+      <motion.section
+        {...fadeInUp}
+        className="py-32 bg-white"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-black text-center mb-16 uppercase tracking-tighter">
-            Shop by Category
-          </h2>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-6 md:gap-10 stagger-grid">
+          <div className="flex flex-col md:flex-row justify-between items-baseline mb-16 px-4">
+            <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none mb-4 md:mb-0">
+              Selected <span className="text-primary-red italic">Collections</span>
+            </h2>
+            <p className="text-zinc-500 font-medium text-xs md:text-sm uppercase tracking-[0.2em]">
+              Explore our curated world of spirits
+            </p>
+          </div>
+
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="whileInView"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
             {categories.map((cat, idx) => (
-              <Link
-                key={idx}
-                href={`/shop?category=${cat.name}`}
-                className="group flex flex-col items-center stagger-item"
-              >
-                <div className="relative w-20 h-20 md:w-32 md:h-32 mb-4 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary-red transition-all duration-300 shadow-lg">
+              <motion.div key={idx} variants={staggerItem}>
+                <Link
+                  href={`/shop?category=${cat.name}`}
+                  className="group relative h-[450px] overflow-hidden rounded-2xl shadow-2xl hover:shadow-[#b91c1c1f] transition-all duration-700 block"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent group-hover:from-black group-hover:via-black/30 transition-all duration-700 z-10" />
                   <Image
-                    src={cat.image}
+                    src={cat.image.replace("w=200", "w=800")}
                     alt={cat.name}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="object-cover transition-transform duration-1000 group-hover:scale-110"
                   />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors">
-                  {cat.name}
-                </span>
-              </Link>
+                  <div className="absolute inset-0 z-20 p-10 flex flex-col justify-end">
+                    <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                      <p className="text-primary-red font-black text-[10px] uppercase tracking-[0.4em] mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        Discovery
+                      </p>
+                      <h3 className="text-3xl font-black text-white uppercase tracking-tighter leading-none mb-4">
+                        {cat.name}
+                      </h3>
+                      <div className="h-0.5 w-12 bg-primary-red scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                    </div>
+                    <div className="mt-8 flex items-center text-white/60 text-[10px] uppercase font-bold tracking-[0.2em] group-hover:text-white transition-colors duration-300">
+                      Explore Collection <ArrowRight className="ml-2 h-3 w-3 group-hover:translate-x-2 transition-transform duration-300" />
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Popular Picks */}
-      <section className="py-24 bg-gray-50 border-t border-gray-100 reveal-section">
+      <motion.section
+        {...fadeInUp}
+        className="py-24 bg-gray-50 border-t border-gray-100"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-16">
             <div>
@@ -163,18 +179,26 @@ const Home = () => {
               View All <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12 stagger-grid popular-picks-section">
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="whileInView"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12"
+          >
             {popularPicks.map((product: any) => (
-              <div key={product.id} className="stagger-item">
+              <motion.div key={product.id} variants={staggerItem}>
                 <ProductCard product={product} />
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* About Section */}
-      <section className="py-24 bg-white border-t border-gray-100 reveal-section">
+      <motion.section
+        {...fadeInUp}
+        className="py-24 bg-white border-t border-gray-100"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="relative h-[500px] rounded-2xl overflow-hidden shadow-2xl">
@@ -206,7 +230,7 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FAQs Section */}
       <FAQSection />
