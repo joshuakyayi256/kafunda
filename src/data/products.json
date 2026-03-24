@@ -1,0 +1,393 @@
+[
+  {
+    "id": "1",
+    "name": "Macallan 18 Year Old Double Cask",
+    "brand": "The Macallan",
+    "category": "Whisky",
+    "price_ugx": 1250000,
+    "original_price_ugx": 1400000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "A perfectly balanced single malt whisky matured for 18 years in both American and European oak casks seasoned with sherry. Expect rich notes of dried fruits, ginger, and toffee, with a warm oak finish.",
+    "abv": "43%",
+    "volume": "700ml"
+  },
+  {
+    "id": "2",
+    "name": "Don Julio 1942 Anejo Tequila",
+    "brand": "Don Julio",
+    "category": "Tequila",
+    "price_ugx": 950000,
+    "original_price_ugx": 1100000,
+    "image_url": "/don julio1.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "Handcrafted in tribute to the year Don Julio González began his tequila-making journey. Aged in small batches for at least two and a half years.",
+    "abv": "40%",
+    "volume": "750ml"
+  },
+  {
+    "id": "3",
+    "name": "Hendrick's Gin",
+    "brand": "Hendrick's",
+    "category": "Gin",
+    "price_ugx": 185000,
+    "original_price_ugx": 210000,
+    "image_url": "/don julio1.webp",
+    "gallery_urls": [
+      "/don julio.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "A delightfully curious gin, infused with cucumber and rose for a uniquely refreshing taste.",
+    "abv": "44%",
+    "volume": "700ml"
+  },
+  {
+    "id": "4",
+    "name": "Veuve Clicquot Yellow Label Brut",
+    "brand": "Veuve Clicquot",
+    "category": "Champagne",
+    "price_ugx": 320000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "The signature champagne of the House. Dominated by Pinot Noir, it offers a perfect balance of structure and finesse.",
+    "abv": "12.5%",
+    "volume": "750ml"
+  },
+  {
+    "id": "5",
+    "name": "Hennessy VSOP Privilège",
+    "brand": "Hennessy",
+    "category": "Cognac",
+    "price_ugx": 285000,
+    "original_price_ugx": 315000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "A balanced cognac, expressing 200 years of Hennessy's know-how. The fruit of a long maturation in oak casks.",
+    "abv": "40%",
+    "volume": "700ml"
+  },
+  {
+    "id": "6",
+    "name": "Grey Goose Vodka",
+    "brand": "Grey Goose",
+    "category": "Vodka",
+    "price_ugx": 165000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "Crafted using only two ingredients from France: single-origin Winter Wheat and Picardie Spring Water.",
+    "abv": "40%",
+    "volume": "750ml"
+  },
+  {
+    "id": "7",
+    "name": "Clouds & Air Sauvignon Blanc",
+    "brand": "Cloudy Bay",
+    "category": "Wines",
+    "price_ugx": 145000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "A vibrant and aromatic white wine with notes of lime, lemongrass, and stone fruit.",
+    "abv": "13%",
+    "volume": "750ml"
+  },
+  {
+    "id": "8",
+    "name": "Johnnie Walker Black Label",
+    "brand": "Johnnie Walker",
+    "category": "Whisky",
+    "price_ugx": 155000,
+    "original_price_ugx": 180000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "An award-winning blend of around 40 whiskies, each aged for at least 12 years.",
+    "abv": "40%",
+    "volume": "750ml"
+  },
+  {
+    "id": "9",
+    "name": "Captain Morgan Spiced Gold",
+    "brand": "Captain Morgan",
+    "category": "Rum",
+    "price_ugx": 65000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "Smooth and medium-bodied, this spiced rum is a secret blend of Caribbean rums.",
+    "abv": "35%",
+    "volume": "750ml"
+  },
+  {
+    "id": "10",
+    "name": "Baileys Irish Cream",
+    "brand": "Baileys",
+    "category": "Liqueur",
+    "price_ugx": 95000,
+    "original_price_ugx": 110000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "The perfect marriage of fresh Irish cream and fine Irish whiskey.",
+    "abv": "17%",
+    "volume": "1L"
+  },
+  {
+    "id": "11",
+    "name": "Jameson Irish Whiskey",
+    "brand": "Jameson",
+    "category": "Whisky",
+    "price_ugx": 115000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "A triple-distilled blend of pot still and grain whiskey, as versatile as it is smooth.",
+    "abv": "40%",
+    "volume": "750ml"
+  },
+  {
+    "id": "12",
+    "name": "Corona Extra (6-Pack)",
+    "brand": "Corona",
+    "category": "Beers",
+    "price_ugx": 48000,
+    "original_price_ugx": 55000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "The perfect beer for any occasion, served cold with a slice of lime.",
+    "abv": "4.5%",
+    "volume": "355ml x 6"
+  },
+  {
+    "id": "13",
+    "name": "Belvedere Vodka",
+    "brand": "Belvedere",
+    "category": "Vodka",
+    "price_ugx": 175000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "Made from only Polski Dankowskie Rye and pristine water from its own artesian well.",
+    "abv": "40%",
+    "volume": "700ml"
+  },
+  {
+    "id": "14",
+    "name": "Wild Turkey 101 Bourbon",
+    "brand": "Wild Turkey",
+    "category": "Whisky",
+    "price_ugx": 145000,
+    "original_price_ugx": null,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "High-rye bourbon aged in heavily charred American White Oak barrels for a big, bold flavor.",
+    "abv": "50.5%",
+    "volume": "750ml"
+  },
+  {
+    "id": "15",
+    "name": "Martell VS Single Distillery",
+    "brand": "Martell",
+    "category": "Cognac",
+    "price_ugx": 195000,
+    "original_price_ugx": 220000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "description": "A fine cognac distilled from a single source for a smoother, richer taste experience.",
+    "abv": "40%",
+    "volume": "700ml"
+  },
+  {
+    "id": "offer-1",
+    "name": "Robertson Sweet Wine Combo",
+    "brand": "Robertson",
+    "category": "Wines",
+    "price_ugx": 40000,
+    "original_price_ugx": 45000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Robertson sweet wine 750mls + Cadbury Dairy Milk Chocolate.",
+    "volume": "750ml"
+  },
+  {
+    "id": "offer-2",
+    "name": "Ballantine's 1L Chocolate Combo",
+    "brand": "Ballantine's",
+    "category": "Whisky",
+    "price_ugx": 82000,
+    "original_price_ugx": 95000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Ballantine's 1L + Cadbury Chocolate bar.",
+    "volume": "1L"
+  },
+  {
+    "id": "offer-3",
+    "name": "Black Label 750ml Combo",
+    "brand": "Johnnie Walker",
+    "category": "Whisky",
+    "price_ugx": 120000,
+    "original_price_ugx": 140000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Black Label- 750 ml + Cadbury Dairy Milk.",
+    "volume": "750ml"
+  },
+  {
+    "id": "offer-4",
+    "name": "Gibson's Gin Sparkling Combo",
+    "brand": "Gibson's",
+    "category": "Gin",
+    "price_ugx": 46000,
+    "original_price_ugx": 55000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Gibson London Dry Gin-1L + Wavah Sparkling.",
+    "volume": "1L"
+  },
+  {
+    "id": "offer-5",
+    "name": "Uganda Waragi Lemon Combo",
+    "brand": "Uganda Waragi",
+    "category": "Gin",
+    "price_ugx": 35000,
+    "original_price_ugx": 40000,
+    "image_url": "/nilo.webp",
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Uganda Waragi Lemon-750ml + Wavah.",
+    "volume": "750ml"
+  },
+  {
+    "id": "offer-6",
+    "name": "Captain Morgan Muck Pit Combo",
+    "brand": "Captain Morgan",
+    "category": "Rum",
+    "price_ugx": 33000,
+    "original_price_ugx": 38000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Captain Morgan Muck Pit -750ml + coca cola.",
+    "volume": "750ml"
+  },
+  {
+    "id": "offer-7",
+    "name": "Captain Morgan Soda Combo",
+    "brand": "Captain Morgan",
+    "category": "Rum",
+    "price_ugx": 27000,
+    "original_price_ugx": 32000,
+    "image_url": "/don julio.webp",
+    "gallery_urls": [
+      "/don julio.webp",
+      "/don julio1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": true,
+    "is_today_offer": true,
+    "description": "Captain Morgan -750ml + coca cola soda -330ml.",
+    "volume": "750ml"
+  }
+]
