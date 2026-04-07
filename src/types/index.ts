@@ -13,6 +13,10 @@ export interface Product {
     abv: string;
     volume: string;
     is_today_offer?: boolean;
+    // New fields for high-conversion UI
+    stock_count?: number;
+    rating?: number;
+    reviews?: number;
 }
 
 export interface CartItem extends Product {

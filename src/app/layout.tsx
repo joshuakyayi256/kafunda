@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import AgeVerification from "@/components/shared/AgeVerification"; // 1. Import the component
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,8 +32,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <CartProvider>
+          <AgeVerification /> {/* 2. Render it before the Navbar */}
           <Navbar />
-          <main className="flex-grow">
+          <main className="grow">
             {children}
           </main>
           <Footer />

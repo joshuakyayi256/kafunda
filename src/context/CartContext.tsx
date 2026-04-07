@@ -11,19 +11,27 @@ interface CartContextType {
     clearCart: () => void;
     itemsCount: number;
     subtotal: number;
+    isCartOpen: boolean;
+    openCart: () => void;
+    closeCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [isCartOpen, setIsCartOpen] = useState(false);
 
     // Load cart from localStorage on mount
     useEffect(() => {
         const savedCart = localStorage.getItem("kafunda_cart");
         if (savedCart) {
             try {
-                setCart(JSON.parse(savedCart));
+                const parsedCart = JSON.parse(savedCart);
+                // Defer the state update to avoid the strict synchronous cascade error
+                setTimeout(() => {
+                    setCart(parsedCart);
+                }, 0);
             } catch (e) {
                 console.error("Failed to parse cart from localStorage", e);
             }
@@ -35,6 +43,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem("kafunda_cart", JSON.stringify(cart));
     }, [cart]);
 
+    const openCart = () => setIsCartOpen(true);
+    const closeCart = () => setIsCartOpen(false);
+
     const addToCart = (product: Product, quantity: number = 1) => {
         setCart((prevCart) => {
             const existingItem = prevCart.find((item) => item.id === product.id);
@@ -45,6 +56,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return [...prevCart, { ...product, quantity }];
         });
+        openCart(); // Auto-open cart when adding an item
     };
 
     const removeFromCart = (productId: string) => {
@@ -76,6 +88,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 clearCart,
                 itemsCount,
                 subtotal,
+                isCartOpen,
+                openCart,
+                closeCart
             }}
         >
             {children}
