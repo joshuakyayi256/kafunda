@@ -16,8 +16,10 @@ export async function fetchGraphQL(query: string, variables?: Record<string, unk
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // THE DISGUISE: Tells the firewall we are a normal human browser, not a Vercel bot
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        // THE ULTIMATE DISGUISE: Tells Nginx we are a normal Windows user on Google Chrome
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
       next: { revalidate: 60 },
       body: JSON.stringify(payload),
@@ -271,8 +273,10 @@ export async function createOrder(customerData: CheckoutFormData, cartItems: Car
   async function fetchWithSession(query: string, variables?: Record<string, unknown>) {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      // THE DISGUISE: Applying it here too so checkout doesn't get blocked!
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      // Adding the disguise here too so checkout doesn't get blocked by Nginx!
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
     // Attach the session token if we have one
@@ -313,7 +317,7 @@ export async function createOrder(customerData: CheckoutFormData, cartItems: Car
     await fetchWithSession(addQuery, { productId: databaseId, quantity: item.quantity });
   }
 
-  // STEP 2: Execute Checkout using the established session (Notice: NO lineItems!)
+  // STEP 2: Execute Checkout using the established session
   const checkoutMutation = `
     mutation Checkout($input: CheckoutInput!) {
       checkout(input: $input) {
