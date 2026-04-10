@@ -1,104 +1,110 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Search,
   ShoppingCart,
   User,
-  Menu,
   X,
   MessageCircle,
   Flame,
   Sparkles,
+  Home,
+  Store,
+  Menu,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 const categories = [
-  { label: "Wines", href: "/shop?category=Wines", emoji: "🍷" },
-  { label: "Whisky", href: "/shop?category=Whisky", emoji: "🥃" },
-  { label: "Gin", href: "/shop?category=Gin", emoji: "🍸" },
-  { label: "Tequila", href: "/shop?category=Tequila", emoji: "🌵" },
-  { label: "Beer", href: "/shop?category=Beers", emoji: "🍺" },
+  { label: "Wines",     href: "/shop?category=Wines",     emoji: "🍷" },
+  { label: "Whisky",    href: "/shop?category=Whisky",    emoji: "🥃" },
+  { label: "Gin",       href: "/shop?category=Gin",       emoji: "🍸" },
+  { label: "Tequila",   href: "/shop?category=Tequila",   emoji: "🌵" },
+  { label: "Beer",      href: "/shop?category=Beers",     emoji: "🍺" },
   { label: "Champagne", href: "/shop?category=Champagne", emoji: "🥂" },
 ];
 
 const Navbar = () => {
   const { itemsCount } = useCart();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
-  const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
 
-  // Scroll shadow effect
+  const [isScrolled,   setIsScrolled]   = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMoreOpen,   setIsMoreOpen]   = useState(false);
+  const [searchValue,  setSearchValue]  = useState("");
+
+  const desktopSearchRef = useRef<HTMLInputElement>(null);
+  const overlaySearchRef = useRef<HTMLInputElement>(null);
+
+  // Scroll shadow
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 8);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setIsScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Focus search input when opened
+  // Focus overlay search when opened
   useEffect(() => {
-    if (isSearchOpen) searchRef.current?.focus();
+    if (isSearchOpen) setTimeout(() => overlaySearchRef.current?.focus(), 50);
   }, [isSearchOpen]);
 
-  // Close menu on resize to desktop
+  // Lock body scroll when an overlay is open
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMenuOpen(false);
-        setIsSearchOpen(false);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? "hidden" : "";
+    document.body.style.overflow = (isSearchOpen || isMoreOpen) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [isMenuOpen]);
+  }, [isSearchOpen, isMoreOpen]);
+
+  // Close everything on route change
+  useEffect(() => {
+    return () => {
+      setIsSearchOpen(false);
+      setIsMoreOpen(false);
+    };
+  }, [pathname]);
+
+  const closeAll = () => { setIsSearchOpen(false); setIsMoreOpen(false); };
 
   return (
     <>
-      {/* ── Top announcement bar ── */}
-      <div className="w-full bg-zinc-900 text-white text-[11px] font-medium tracking-wide py-2 px-4 text-center hidden sm:block">
-        ⚡ <span className="text-yellow-400 font-bold">1-2 Hour Delivery</span>
-        {" within Kampala · Free shipping on orders over UGX 500,000 · "}
-        <a href="https://wa.me/256700000000" className="underline underline-offset-2 opacity-80 hover:opacity-100">
+      {/* ── Announcement bar ── */}
+      <div className="w-full bg-zinc-900 text-white text-[11px] font-medium tracking-wide py-1.5 px-4 text-center">
+        ⚡{" "}
+        <span className="text-yellow-400 font-bold">1-2 Hour Delivery</span>
+        <span className="hidden sm:inline"> · Free shipping over UGX 500,000 · </span>
+        <a
+          href="https://wa.me/256700000000"
+          className="underline underline-offset-2 opacity-80 hover:opacity-100 ml-1 sm:ml-0"
+        >
           Order via WhatsApp
         </a>
       </div>
 
       {/* ── Main navbar ── */}
       <nav
-        className={`sticky top-0 z-50 w-full bg-white transition-shadow duration-300 ${
+        className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${
           isScrolled ? "shadow-[0_2px_20px_rgba(0,0,0,0.08)]" : "border-b border-gray-100"
         }`}
       >
-        {/* ── Primary row ── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16 gap-4">
+          <div className="flex items-center h-14 md:h-16 gap-4">
 
             {/* Logo */}
             <Link
               href="/"
               className="shrink-0 text-[22px] font-black tracking-[-0.04em] text-zinc-900 hover:text-primary-red transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
             >
               Ka<span className="text-primary-red">funda</span>
             </Link>
 
-            {/* Desktop search — center */}
+            {/* Desktop search — centred */}
             <div className="hidden md:flex flex-1 max-w-xl mx-auto relative group">
               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-gray-400 group-focus-within:text-primary-red transition-colors" />
               </div>
               <input
-                ref={searchRef}
+                ref={desktopSearchRef}
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
@@ -118,35 +124,29 @@ const Navbar = () => {
             {/* Right actions */}
             <div className="flex items-center gap-1 ml-auto md:ml-0">
 
-              {/* Mobile: search toggle */}
+              {/* Desktop: Account */}
               <button
-                className="md:hidden p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
-                onClick={() => { setIsSearchOpen(!isSearchOpen); setIsMenuOpen(false); }}
-                aria-label="Toggle search"
+                className="hidden md:flex p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
+                aria-label="Account"
               >
-                {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-              </button>
-
-              {/* User */}
-              <button className="hidden md:flex p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors" aria-label="Account">
                 <User className="h-5 w-5" />
               </button>
 
-              {/* Cart */}
+              {/* Desktop: Cart */}
               <Link
                 href="/cart"
-                className="relative p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
+                className="hidden md:flex relative p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
                 aria-label={`Cart, ${itemsCount} items`}
               >
                 <ShoppingCart className="h-5 w-5" />
                 {itemsCount > 0 && (
-                  <span className="absolute top-1 right-1 translate-x-1/2 -translate-y-1/2 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[10px] font-bold text-white bg-primary-red rounded-full shadow-sm ring-2 ring-white leading-none">
+                  <span className="absolute top-1 right-1 translate-x-1/2 -translate-y-1/2 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[10px] font-bold text-white bg-primary-red rounded-full ring-2 ring-white leading-none">
                     {itemsCount > 99 ? "99+" : itemsCount}
                   </span>
                 )}
               </Link>
 
-              {/* WhatsApp CTA — desktop */}
+              {/* Desktop: WhatsApp CTA */}
               <a
                 href="https://wa.me/256700000000"
                 target="_blank"
@@ -157,26 +157,30 @@ const Navbar = () => {
                 <span>Chat to Order</span>
               </a>
 
-              {/* Mobile: hamburger */}
-              <button
-                className="md:hidden p-2 rounded-lg text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
-                onClick={() => { setIsMenuOpen(!isMenuOpen); setIsSearchOpen(false); }}
-                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                aria-expanded={isMenuOpen}
+              {/* Mobile: Cart badge in top bar */}
+              <Link
+                href="/cart"
+                className="md:hidden relative p-2 rounded-lg text-zinc-600 hover:bg-gray-50 transition-colors"
+                aria-label={`Cart, ${itemsCount} items`}
               >
-                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
+                <ShoppingCart className="h-5 w-5" />
+                {itemsCount > 0 && (
+                  <span className="absolute top-1 right-1 translate-x-1/2 -translate-y-1/2 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[10px] font-bold text-white bg-primary-red rounded-full ring-2 ring-white leading-none">
+                    {itemsCount > 99 ? "99+" : itemsCount}
+                  </span>
+                )}
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* ── Category nav row — desktop ── */}
+        {/* ── Category sub-nav — desktop only ── */}
         <div className="hidden md:block border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-0 h-10">
+            <div className="flex items-center h-10">
               <Link
                 href="/shop"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-white bg-primary-red hover:bg-primary-red-hover transition-colors"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-white bg-primary-red hover:bg-primary-red-hover transition-colors shrink-0"
               >
                 <Flame className="h-3 w-3" />
                 All Products
@@ -185,7 +189,7 @@ const Navbar = () => {
                 <Link
                   key={cat.label}
                   href={cat.href}
-                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-900 hover:bg-gray-50 transition-colors border-b-2 border-transparent hover:border-primary-red"
+                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-zinc-500 hover:text-zinc-900 hover:bg-gray-50 transition-colors border-b-2 border-transparent hover:border-primary-red shrink-0"
                 >
                   <span className="text-sm leading-none">{cat.emoji}</span>
                   {cat.label}
@@ -193,7 +197,7 @@ const Navbar = () => {
               ))}
               <Link
                 href="/shop?filter=offers"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors ml-auto border-b-2 border-transparent hover:border-amber-500"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors ml-auto border-b-2 border-transparent hover:border-amber-500 shrink-0"
               >
                 <Sparkles className="h-3 w-3" />
                 Today&apos;s Offers
@@ -201,138 +205,176 @@ const Navbar = () => {
             </div>
           </div>
         </div>
+      </nav>
 
-        {/* ── Mobile search bar (slides in) ── */}
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-            isSearchOpen ? "max-h-20 border-t border-gray-100" : "max-h-0"
-          }`}
-        >
-          <div className="px-4 py-3">
+      {/* ════════════════════════════════════
+          MOBILE ONLY — bottom tab bar
+      ════════════════════════════════════ */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100">
+        <div className="flex items-stretch h-16">
+          <Link
+            href="/"
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              pathname === "/" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
+            <Home className="h-5 w-5" />
+            <span>Home</span>
+          </Link>
+
+          <Link
+            href="/shop"
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              pathname === "/shop" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
+            <Store className="h-5 w-5" />
+            <span>Shop</span>
+          </Link>
+
+          <button
+            onClick={() => { setIsSearchOpen(true); setIsMoreOpen(false); }}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              isSearchOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
+            <Search className="h-5 w-5" />
+            <span>Search</span>
+          </button>
+
+          <Link
+            href="/cart"
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider relative transition-colors ${
+              pathname === "/cart" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                ref={mobileSearchRef}
-                type="text"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full h-10 pl-9 pr-4 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red/20 focus:border-primary-red transition-all duration-200"
-                placeholder="Search wines, whisky, gin…"
-              />
+              <ShoppingCart className="h-5 w-5" />
+              {itemsCount > 0 && (
+                <span className="absolute -top-1 -right-2.5 min-w-4 h-4 px-0.5 flex items-center justify-center text-[9px] font-bold text-white bg-primary-red rounded-full leading-none">
+                  {itemsCount > 99 ? "99+" : itemsCount}
+                </span>
+              )}
             </div>
-          </div>
+            <span>Cart</span>
+          </Link>
+
+          <button
+            onClick={() => { setIsMoreOpen(!isMoreOpen); setIsSearchOpen(false); }}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              isMoreOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
+            <Menu className="h-5 w-5" />
+            <span>More</span>
+          </button>
         </div>
       </nav>
 
-      {/* ── Mobile menu overlay ── */}
-      {/* Backdrop */}
+      {/* ════════════════════════════════════
+          Search overlay (mobile + desktop)
+      ════════════════════════════════════ */}
       <div
-        className={`fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity duration-300 ${
-          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-70 transition-all duration-300 ${
+          isSearchOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
-        onClick={() => setIsMenuOpen(false)}
-        aria-hidden="true"
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed top-0 right-0 h-full w-[85vw] max-w-xs bg-white z-50 md:hidden
-                    flex flex-col shadow-2xl
-                    transition-transform duration-300 ease-in-out
-                    ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        {/* Drawer header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <Link
-            href="/"
-            onClick={() => setIsMenuOpen(false)}
-            className="text-xl font-black tracking-tight text-zinc-900"
-          >
-            Ka<span className="text-primary-red">funda</span>
-          </Link>
-          <button
-            onClick={() => setIsMenuOpen(false)}
-            className="p-2 rounded-lg text-zinc-500 hover:bg-gray-50"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Drawer body — scrollable */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-
-          {/* Quick actions */}
-          <div className="px-5 pt-5 pb-4 flex gap-3">
-            <Link
-              href="/cart"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex-1 flex items-center justify-center gap-2 bg-primary-red text-white rounded-xl py-3 text-[11px] font-bold uppercase tracking-widest"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Cart {itemsCount > 0 && `(${itemsCount})`}
-            </Link>
-            <a
-              href="https://wa.me/256700000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white rounded-xl py-3 text-[11px] font-bold uppercase tracking-widest"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </a>
-          </div>
-
-          {/* Category list */}
-          <div className="px-5 pb-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Browse</p>
-            <div className="space-y-1">
-              <Link
-                href="/shop"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-zinc-900 bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-lg leading-none">🛒</span>
-                All Products
-                <span className="ml-auto text-[10px] font-semibold text-white bg-primary-red px-2 py-0.5 rounded-full">Hot</span>
-              </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.label}
-                  href={cat.href}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-zinc-700 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
-                >
-                  <span className="text-lg leading-none">{cat.emoji}</span>
-                  {cat.label}
-                </Link>
-              ))}
-              <Link
-                href="/shop?filter=offers"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-amber-600 hover:bg-amber-50 transition-colors"
-              >
-                <span className="text-lg leading-none">✨</span>
-                Today&apos;s Offers
-              </Link>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        />
+        {/* Panel */}
+        <div
+          className={`relative bg-white w-full shadow-xl transition-transform duration-300 ${
+            isSearchOpen ? "translate-y-0" : "-translate-y-full"
+          }`}
+        >
+          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                ref={overlaySearchRef}
+                type="text"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="w-full h-12 pl-12 pr-4 text-base bg-gray-50 border border-gray-200 rounded-2xl placeholder:text-gray-400 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-primary-red/20 focus:border-primary-red transition-all"
+                placeholder="Search wines, whisky, gin…"
+              />
             </div>
-          </div>
-
-          {/* Account section */}
-          <div className="px-5 py-4 mt-2 border-t border-gray-100">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Account</p>
-            <button className="flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm font-semibold text-zinc-700 hover:bg-gray-50 transition-colors">
-              <User className="h-5 w-5" />
-              Sign In / Register
+            <button
+              onClick={() => setIsSearchOpen(false)}
+              className="shrink-0 p-2 rounded-xl text-zinc-500 hover:bg-gray-100 hover:text-zinc-900 transition-colors"
+              aria-label="Close search"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Drawer footer (Updated Text) */}
-        <div className="px-5 py-4 border-t border-gray-100">
-          <p className="text-[11px] text-center text-gray-400">
-            ⚡ 1-2 hour delivery · Kampala
+      {/* ════════════════════════════════════
+          "More" bottom sheet — mobile only
+      ════════════════════════════════════ */}
+      <div
+        className={`fixed inset-0 z-60 md:hidden transition-opacity duration-300 ${
+          isMoreOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsMoreOpen(false)}
+      />
+      <div
+        className={`fixed bottom-16 left-0 right-0 z-61 md:hidden bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+          isMoreOpen ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+
+        <div className="px-5 pt-1 pb-8">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-4">
+            Browse Categories
           </p>
+
+          {/* 3-column category grid */}
+          <div className="grid grid-cols-3 gap-2.5 mb-5">
+            {categories.map((cat) => (
+              <Link
+                key={cat.label}
+                href={cat.href}
+                onClick={closeAll}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 active:scale-95 transition-all text-center"
+              >
+                <span className="text-2xl leading-none">{cat.emoji}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 leading-tight">
+                  {cat.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Offers strip */}
+          <Link
+            href="/shop?filter=offers"
+            onClick={closeAll}
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-50 text-amber-600 text-sm font-bold uppercase tracking-widest mb-3 hover:bg-amber-100 active:scale-[0.98] transition-all"
+          >
+            <Sparkles className="h-4 w-4" />
+            Today&apos;s Offers
+          </Link>
+
+          {/* WhatsApp CTA */}
+          <a
+            href="https://wa.me/256700000000"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeAll}
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white text-sm font-bold uppercase tracking-widest transition-all"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Order via WhatsApp
+          </a>
         </div>
       </div>
     </>

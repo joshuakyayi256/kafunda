@@ -17,22 +17,30 @@ export async function fetchGraphQL(query: string, variables?: Record<string, unk
       headers: {
         'Content-Type': 'application/json',
       },
-      next: { revalidate: 60 }, 
+      next: { revalidate: 60 },
       body: JSON.stringify(payload),
     });
+
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      console.error(
+        `WordPress API returned a non-JSON response (HTTP ${res.status}). ` +
+        `Check that NEXT_PUBLIC_WORDPRESS_API_URL points to the GraphQL endpoint (e.g. /graphql).`
+      );
+      return null;
+    }
 
     const json = await res.json();
 
     if (json.errors) {
-      const errorMessage = json.errors.map((e: { message: string }) => e.message).join(', ');
       console.error('GraphQL Errors:', JSON.stringify(json.errors, null, 2));
-      throw new Error(errorMessage || 'Failed to fetch API');
+      return null;
     }
 
     return json.data;
   } catch (error: unknown) {
     console.error("Error fetching from WordPress:", error);
-    throw error;
+    return null;
   }
 }
 
@@ -41,20 +49,33 @@ function parseWooPrice(priceStr?: string): number {
   return Number(priceStr.replace(/[^0-9]/g, ""));
 }
 
-export async function getCategories() {
+export interface WPCategory {
+  id: string;
+  name: string;
+  slug: string;
+  image: { sourceUrl: string } | null;
+}
+
+export async function getCategories(): Promise<WPCategory[]> {
   const query = `
     query GetCategories {
       productCategories(first: 100, where: { hideEmpty: true }) {
         nodes {
+          id
           name
           slug
+          image {
+            sourceUrl
+          }
         }
       }
     }
   `;
 
   const data = await fetchGraphQL(query);
-  return data?.productCategories?.nodes || [];
+  const nodes: WPCategory[] = data?.productCategories?.nodes || [];
+  // Filter out the default "Uncategorized" category
+  return nodes.filter((c) => c.slug !== "uncategorized");
 }
 
 export async function getAllProducts(): Promise<Product[]> {

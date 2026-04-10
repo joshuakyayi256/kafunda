@@ -34,7 +34,7 @@ export default function RootLayout({
         <CartProvider>
           <AgeVerification /> {/* 2. Render it before the Navbar */}
           <Navbar />
-          <main className="grow">
+          <main className="grow pb-16 md:pb-0">
             {children}
           </main>
           <Footer />
