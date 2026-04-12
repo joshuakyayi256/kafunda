@@ -61,10 +61,13 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 </div>
 
                 <Link href={`/product/${product.id}`} className="hover:text-primary-red transition-colors mb-3">
-                    <h3 className="text-base font-black leading-tight text-zinc-900 group-hover:underline underline-offset-4 decoration-current decoration-2 min-h-12 line-clamp-2">
+                    {/* REMOVED line-clamp-2 and min-h-12 here so the text can breathe! */}
+                    <h3 className="text-base font-black leading-tight text-zinc-900 group-hover:underline underline-offset-4 decoration-current decoration-2">
                         {product.is_today_offer && product.description ? product.description : product.name}
                     </h3>
                 </Link>
+                
+                {/* mt-auto ensures the price always sits at the bottom, even if the title above it is 4 lines long */}
                 <div className="mt-auto pt-2 flex items-baseline space-x-2">
                     <span className="text-lg font-black text-black">
                         {formatUGX(product.price_ugx)}

@@ -1,56 +1,55 @@
 // src/lib/api.ts
 import { Product } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL;
+// We extract just the base domain (e.g., https://kafundawines.com) 
+const RAW_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com";
+const BASE_URL = RAW_URL.replace(/\/graphql\/?$/, ""); // Removes /graphql if it's there
 
-export async function fetchGraphQL(query: string, variables?: Record<string, unknown>) {
-  if (!API_URL) {
-    console.warn("NEXT_PUBLIC_WORDPRESS_API_URL is not defined in .env.local");
-    return null;
+const WC_KEY = process.env.WC_CONSUMER_KEY;
+const WC_SECRET = process.env.WC_CONSUMER_SECRET;
+
+/**
+ * MASTER FETCH FUNCTION - Uses Badru's Keys to bypass firewalls
+ */
+async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unknown) {
+  const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}`;
+  
+  // Encode Badru's keys into a secure Basic Auth token
+  const authString = typeof window === 'undefined' && WC_KEY && WC_SECRET 
+    ? Buffer.from(`${WC_KEY}:${WC_SECRET}`).toString('base64') 
+    : '';
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+
+  // Attach the VIP Keycard
+  if (authString) {
+    headers['Authorization'] = `Basic ${authString}`;
+  } else {
+    console.warn("WC_CONSUMER_KEY or SECRET is missing. Fetching without auth.");
   }
-
-  const payload = variables ? { query, variables } : { query };
 
   try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        // THE ULTIMATE DISGUISE: Tells Nginx we are a normal Windows user on Google Chrome
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      },
-      next: { revalidate: 60 },
-      body: JSON.stringify(payload),
+    const res = await fetch(url, {
+      method,
+      headers,
+      next: { revalidate: 60 }, // Cache pages for 60 seconds
+      body: body ? JSON.stringify(body) : undefined,
     });
 
-    const contentType = res.headers.get('content-type') ?? '';
-    if (!contentType.includes('application/json')) {
-      console.error(
-        `WordPress API returned a non-JSON response (HTTP ${res.status}). ` +
-        `Check that NEXT_PUBLIC_WORDPRESS_API_URL points to the GraphQL endpoint (e.g. /graphql).`
-      );
+    if (!res.ok) {
+      console.error(`WooCommerce API Error (HTTP ${res.status}) on ${url}`);
       return null;
     }
 
-    const json = await res.json();
-
-    if (json.errors) {
-      console.error('GraphQL Errors:', JSON.stringify(json.errors, null, 2));
-      return null;
-    }
-
-    return json.data;
-  } catch (error: unknown) {
-    console.error("Error fetching from WordPress:", error);
+    return await res.json();
+  } catch (error) {
+    console.error("Fetch Error:", error);
     return null;
   }
-}
-
-function parseWooPrice(priceStr?: string): number {
-  if (!priceStr) return 0;
-  return Number(priceStr.replace(/[^0-9]/g, ""));
 }
 
 export interface WPCategory {
@@ -60,183 +59,110 @@ export interface WPCategory {
   image: { sourceUrl: string } | null;
 }
 
+// 1. FETCH CATEGORIES
 export async function getCategories(): Promise<WPCategory[]> {
-  const query = `
-    query GetCategories {
-      productCategories(first: 100, where: { hideEmpty: true }) {
-        nodes {
-          id
-          name
-          slug
-          image {
-            sourceUrl
-          }
-        }
-      }
-    }
-  `;
-
-  const data = await fetchGraphQL(query);
-  const nodes: WPCategory[] = data?.productCategories?.nodes || [];
-  // Filter out the default "Uncategorized" category
-  return nodes.filter((c) => c.slug !== "uncategorized");
+  const data = await fetchWooREST('products/categories?hide_empty=true&per_page=100');
+  if (!data || !Array.isArray(data)) return [];
+  
+  return data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((c: any) => c.slug !== 'uncategorized')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((c: any) => ({
+      id: c.id.toString(),
+      name: c.name,
+      slug: c.slug,
+      image: c.image ? { sourceUrl: c.image.src } : null
+    }));
 }
 
+// 2. FETCH ALL PRODUCTS (Now with Pagination for 500+ products!)
 export async function getAllProducts(): Promise<Product[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let allNodes: any[] = [];
-  let hasNextPage = true;
-  let afterCursor = null;
+  let allRawProducts: unknown[] = [];
+  let page = 1;
+  let hasMorePages = true;
 
-  while (hasNextPage) {
-    const query = `
-      query GetProducts($after: String) {
-        products(first: 100, after: $after, where: { status: "publish" }) {
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-          nodes {
-            id
-            databaseId
-            name
-            slug
-            description
-            shortDescription
-            productCategories {
-              nodes {
-                name
-              }
-            }
-            image {
-              sourceUrl
-              altText
-            }
-            ... on SimpleProduct {
-              price
-              regularPrice
-              salePrice
-              stockStatus
-              stockQuantity
-            }
-          }
-        }
-      }
-    `;
+  // Keep turning the pages until we run out of products
+  while (hasMorePages) {
+    const data = await fetchWooREST(`products?status=publish&per_page=100&page=${page}`);
+    
+    // If the API fails or returns an empty array, stop the loop
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      hasMorePages = false;
+      break;
+    }
 
-    const data = await fetchGraphQL(query, { after: afterCursor });
-    const productsData = data?.products;
+    // Add this page's products to our massive master list
+    allRawProducts = [...allRawProducts, ...data];
 
-    if (!productsData) break;
-
-    allNodes = [...allNodes, ...(productsData.nodes || [])];
-    hasNextPage = productsData.pageInfo?.hasNextPage || false;
-    afterCursor = productsData.pageInfo?.endCursor || null;
+    // If the API gave us exactly 100 products, there is probably a next page.
+    // If it gave us less than 100 (e.g., 42 products), we know we hit the very end!
+    if (data.length === 100) {
+      page++; // Go to the next page for the next loop
+    } else {
+      hasMorePages = false; // Stop the loop
+    }
   }
 
+  // Now map all 500+ products into our beautiful Next.js Product format
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mappedProducts: Product[] = allNodes.map((node: any) => {
-    const currentPrice = parseWooPrice(node.price);
-    const regularPrice = parseWooPrice(node.regularPrice);
-    
+  return allRawProducts.map((node: any) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const categoryNames = node.productCategories?.nodes?.map((c: any) => c.name).join(", ") || "Uncategorized";
-
-    const rawDescription = node.shortDescription || node.description || "";
+    const categoryNames = node.categories?.map((c: any) => c.name).join(", ") || "Uncategorized";
+    const rawDescription = node.short_description || node.description || "";
     const cleanDescription = rawDescription.replace(/<[^>]*>?/gm, '').trim() || "No description available.";
 
     return {
-      id: node.id || node.databaseId?.toString(),
+      id: node.id.toString(),
       name: node.name || "Unknown Product",
-      brand: "Kafunda Selection", 
+      brand: "Kafunda Selection",
       category: categoryNames,
-      price_ugx: currentPrice,
-      original_price_ugx: regularPrice > currentPrice ? regularPrice : null,
-      image_url: node.image?.sourceUrl || "/don julio.webp",
-      gallery_urls: node.image?.sourceUrl ? [node.image.sourceUrl] : [],
-      in_stock: node.stockStatus === "IN_STOCK",
-      is_sale: !!node.salePrice,
+      price_ugx: Number(node.price || 0),
+      original_price_ugx: node.regular_price && Number(node.regular_price) > Number(node.price) ? Number(node.regular_price) : null,
+      image_url: node.images?.[0]?.src || "/don julio.webp",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      gallery_urls: node.images?.map((img: any) => img.src) || [],
+      in_stock: node.stock_status === "instock",
+      is_sale: node.on_sale,
       description: cleanDescription,
       abv: "N/A",
       volume: "750ml",
-      stock_count: node.stockQuantity || 5,
+      stock_count: node.stock_quantity || 5,
     };
   });
-
-  const uniqueProducts = Array.from(
-    new Map(mappedProducts.map((p) => [p.id, p])).values()
-  );
-
-  return uniqueProducts;
 }
 
-export async function getProductBySlug(id: string): Promise<Product | null> {
-  const query = `
-    query GetProductById($id: ID!) {
-      product(id: $id, idType: ID) {
-        id
-        databaseId
-        name
-        slug
-        description
-        shortDescription
-        productCategories {
-          nodes {
-            name
-          }
-        }
-        image {
-          sourceUrl
-        }
-        galleryImages {
-          nodes {
-            sourceUrl
-          }
-        }
-        ... on SimpleProduct {
-          price
-          regularPrice
-          stockStatus
-          stockQuantity
-        }
-      }
-    }
-  `;
+// 3. FETCH SINGLE PRODUCT BY SLUG
+export async function getProductBySlug(idOrSlug: string): Promise<Product | null> {
+  const data = await fetchWooREST(`products?slug=${idOrSlug}`);
+  if (!data || !Array.isArray(data) || data.length === 0) return null;
 
-  const data = await fetchGraphQL(query, { id });
-  
-  if (!data?.product) return null;
-  
-  const node = data.product;
-  const currentPrice = parseWooPrice(node.price);
-  const regularPrice = parseWooPrice(node.regularPrice);
-  
+  const node = data[0];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const gallery = node.galleryImages?.nodes?.map((img: any) => img.sourceUrl) || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const categoryNames = node.productCategories?.nodes?.map((c: any) => c.name).join(", ") || "Uncategorized";
-  
-  const rawDescription = node.shortDescription || node.description || "";
+  const categoryNames = node.categories?.map((c: any) => c.name).join(", ") || "Uncategorized";
+  const rawDescription = node.short_description || node.description || "";
   const cleanDescription = rawDescription.replace(/<[^>]*>?/gm, '').trim() || "No description available.";
 
   return {
-    id: node.id || node.databaseId?.toString(),
+    id: node.id.toString(),
     name: node.name || "Unknown Product",
     brand: "Kafunda Selection",
     category: categoryNames,
-    price_ugx: currentPrice,
-    original_price_ugx: regularPrice > currentPrice ? regularPrice : null,
-    image_url: node.image?.sourceUrl || "/don julio.webp",
-    gallery_urls: gallery.length > 0 ? gallery : (node.image?.sourceUrl ? [node.image.sourceUrl] : []),
-    in_stock: node.stockStatus === "IN_STOCK",
-    is_sale: !!node.regularPrice && currentPrice < regularPrice,
+    price_ugx: Number(node.price || 0),
+    original_price_ugx: node.regular_price && Number(node.regular_price) > Number(node.price) ? Number(node.regular_price) : null,
+    image_url: node.images?.[0]?.src || "/don julio.webp",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gallery_urls: node.images?.map((img: any) => img.src) || [],
+    in_stock: node.stock_status === "instock",
+    is_sale: node.on_sale,
     description: cleanDescription,
     abv: "N/A",
     volume: "750ml",
-    stock_count: node.stockQuantity || 5,
+    stock_count: node.stock_quantity || 5,
   };
 }
 
+// 4. SECURE CHECKOUT PROCESSING
 export interface CheckoutFormData {
   firstName: string;
   lastName: string;
@@ -251,114 +177,40 @@ export interface CartItem {
   quantity: number;
 }
 
-function getDatabaseId(globalId: string): number {
-  if (!isNaN(Number(globalId))) return Number(globalId);
-  try {
-    const decoded = typeof window !== 'undefined' ? atob(globalId) : Buffer.from(globalId, 'base64').toString('utf-8');
-    const match = decoded.match(/\d+$/);
-    if (match) return parseInt(match[0], 10);
-  } catch (e) {
-    console.error("Failed to decode ID:", globalId, e);
-  }
-  return 0;
-}
-
-// THE UPDATED CHECKOUT FUNCTION WITH SESSION HANDSHAKE
 export async function createOrder(customerData: CheckoutFormData, cartItems: CartItem[]) {
-  if (!API_URL) throw new Error("API URL is not defined");
-
-  let sessionToken = "";
-
-  // Helper function to maintain a WordPress cart session
-  async function fetchWithSession(query: string, variables?: Record<string, unknown>) {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      // Adding the disguise here too so checkout doesn't get blocked by Nginx!
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    };
-
-    // Attach the session token if we have one
-    if (sessionToken) {
-      headers['woocommerce-session'] = `Session ${sessionToken}`;
-    }
-
-    const res = await fetch(API_URL as string, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ query, variables }),
-    });
-
-    // Capture the session token WordPress gives us on the very first request
-    const returnedSession = res.headers.get('woocommerce-session');
-    if (returnedSession) {
-      sessionToken = returnedSession;
-    }
-
-    const json = await res.json();
-    if (json.errors) {
-      const errorMessage = json.errors.map((e: { message: string }) => e.message).join(', ');
-      throw new Error(errorMessage);
-    }
-    return json.data;
-  }
-
-  // STEP 1: Add every item in the cart to the WordPress Session
-  for (const item of cartItems) {
-    const databaseId = getDatabaseId(item.product.id);
-    const addQuery = `
-      mutation AddToCart($productId: Int!, $quantity: Int!) {
-        addToCart(input: { productId: $productId, quantity: $quantity }) {
-          clientMutationId
-        }
-      }
-    `;
-    await fetchWithSession(addQuery, { productId: databaseId, quantity: item.quantity });
-  }
-
-  // STEP 2: Execute Checkout using the established session
-  const checkoutMutation = `
-    mutation Checkout($input: CheckoutInput!) {
-      checkout(input: $input) {
-        order {
-          databaseId
-          status
-          total
-        }
-      }
-    }
-  `;
-
-  const variables = {
-    input: {
-      clientMutationId: "kafunda_checkout",
-      billing: {
-        firstName: customerData.firstName,
-        lastName: customerData.lastName,
-        phone: customerData.phone,
-        email: customerData.email,
-        address1: customerData.address,
-        city: customerData.city,
-        country: "UG", 
-      },
-      shipping: {
-        firstName: customerData.firstName,
-        lastName: customerData.lastName,
-        address1: customerData.address,
-        city: customerData.city,
-        country: "UG",
-      },
-      paymentMethod: "cod", 
-      isPaid: false,
-    }
+  // Format the order exactly how WooCommerce expects it via REST
+  const orderData = {
+    payment_method: "cod",
+    payment_method_title: "Cash on Delivery",
+    set_paid: false,
+    billing: {
+      first_name: customerData.firstName,
+      last_name: customerData.lastName,
+      address_1: customerData.address,
+      city: customerData.city,
+      country: "UG",
+      email: customerData.email,
+      phone: customerData.phone
+    },
+    shipping: {
+      first_name: customerData.firstName,
+      last_name: customerData.lastName,
+      address_1: customerData.address,
+      city: customerData.city,
+      country: "UG"
+    },
+    line_items: cartItems.map(item => ({
+      product_id: parseInt(item.product.id, 10),
+      quantity: item.quantity
+    }))
   };
 
-  const data = await fetchWithSession(checkoutMutation, variables);
-  
-  if (!data?.checkout) {
-    throw new Error("Failed to process checkout. No data returned.");
+  // Post the order directly to Badru's POS database
+  const data = await fetchWooREST('orders', 'POST', orderData);
+
+  if (!data || data.code) {
+    throw new Error(data?.message || "Failed to process checkout. Ensure items are in stock.");
   }
-  
-  return data.checkout.order;
+
+  return data;
 }
