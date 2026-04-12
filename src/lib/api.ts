@@ -9,15 +9,14 @@ const WC_KEY = process.env.WC_CONSUMER_KEY;
 const WC_SECRET = process.env.WC_CONSUMER_SECRET;
 
 /**
- * MASTER FETCH FUNCTION - Uses Badru's Keys to bypass firewalls
+ * MASTER FETCH FUNCTION - Uses URL-based API Keys to bypass stripped headers
  */
 async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unknown) {
-  const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}`;
+  // Check if the endpoint already has a ? in it so we know whether to use ? or &
+  const separator = endpoint.includes('?') ? '&' : '?';
   
-  // Encode Badru's keys into a secure Basic Auth token
-  const authString = typeof window === 'undefined' && WC_KEY && WC_SECRET 
-    ? Buffer.from(`${WC_KEY}:${WC_SECRET}`).toString('base64') 
-    : '';
+  // Attach the keys directly to the URL instead of the headers
+  const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}${separator}consumer_key=${WC_KEY}&consumer_secret=${WC_SECRET}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -25,18 +24,11 @@ async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unk
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
-  // Attach the VIP Keycard
-  if (authString) {
-    headers['Authorization'] = `Basic ${authString}`;
-  } else {
-    console.warn("WC_CONSUMER_KEY or SECRET is missing. Fetching without auth.");
-  }
-
   try {
     const res = await fetch(url, {
       method,
       headers,
-      next: { revalidate: 60 }, // Cache pages for 60 seconds
+      next: { revalidate: 60 }, 
       body: body ? JSON.stringify(body) : undefined,
     });
 
