@@ -14,11 +14,11 @@ interface Props {
 }
 
 const PRICE_RANGES = [
-  { label: "Under 50,000", min: 0,      max: 50000  },
-  { label: "50k – 100k",  min: 50000,   max: 100000 },
-  { label: "100k – 250k", min: 100000,  max: 250000 },
-  { label: "250k – 500k", min: 250000,  max: 500000 },
-  { label: "Over 500k",   min: 500000,  max: Infinity },
+  { label: "Under 50,000", min: 0, max: 50000 },
+  { label: "50k – 100k", min: 50000, max: 100000 },
+  { label: "100k – 250k", min: 100000, max: 250000 },
+  { label: "250k – 500k", min: 250000, max: 500000 },
+  { label: "Over 500k", min: 500000, max: Infinity },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -85,7 +85,7 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
 
   const currentMinPrice = searchParams.get("minPrice");
   const currentMaxPrice = searchParams.get("maxPrice");
-  const currentInStock  = searchParams.get("inStock") === "true";
+  const currentInStock = searchParams.get("inStock") === "true";
 
   const FilterContent = () => (
     <div className="space-y-0">
@@ -111,11 +111,10 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
               <li key={cat}>
                 <button
                   onClick={() => navigate({ category: cat === "All" ? null : cat })}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    active
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${active
                       ? "bg-zinc-900 text-white"
                       : "text-zinc-600 hover:bg-gray-50 hover:text-zinc-900"
-                  }`}
+                    }`}
                 >
                   <span>{cat}</span>
                   {active && <Check className="h-3.5 w-3.5" />}
@@ -142,11 +141,10 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
                       maxPrice: active || range.max === Infinity ? null : String(range.max),
                     })
                   }
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    active
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${active
                       ? "bg-zinc-900 text-white"
                       : "text-zinc-600 hover:bg-gray-50 hover:text-zinc-900"
-                  }`}
+                    }`}
                 >
                   <span>{range.label}</span>
                   {active && <Check className="h-3.5 w-3.5" />}
@@ -163,9 +161,8 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
           onClick={() => navigate({ inStock: currentInStock ? null : "true" })}
           className="flex items-center gap-3 w-full"
         >
-          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-            currentInStock ? "bg-zinc-900 border-zinc-900" : "border-gray-300"
-          }`}>
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${currentInStock ? "bg-zinc-900 border-zinc-900" : "border-gray-300"
+            }`}>
             {currentInStock && <Check className="h-3 w-3 text-white" />}
           </div>
           <span className="text-xs font-semibold text-zinc-600">In Stock Only</span>
@@ -178,9 +175,8 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
           onClick={() => navigate({ filter: currentFilter === "offers" ? null : "offers" })}
           className="flex items-center gap-3 w-full"
         >
-          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-            currentFilter === "offers" ? "bg-zinc-900 border-zinc-900" : "border-gray-300"
-          }`}>
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${currentFilter === "offers" ? "bg-zinc-900 border-zinc-900" : "border-gray-300"
+            }`}>
             {currentFilter === "offers" && <Check className="h-3 w-3 text-white" />}
           </div>
           <span className="text-xs font-semibold text-zinc-600">On Sale</span>
@@ -253,13 +249,13 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="px-5 py-4">
+              <div className="px-6 py-6 space-y-2">
                 <FilterContent />
               </div>
-              <div className="sticky bottom-0 px-5 py-4 bg-white border-t border-gray-100">
+              <div className="sticky bottom-0 px-6 py-6 bg-white border-t border-gray-100">
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="w-full bg-zinc-900 hover:bg-black text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
+                  className="w-full bg-zinc-950 hover:bg-black text-white h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95"
                 >
                   Show {totalProducts} Results
                 </button>

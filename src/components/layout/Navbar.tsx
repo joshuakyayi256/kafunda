@@ -22,11 +22,11 @@ const TICKER = [
 ];
 
 const CATEGORIES = [
-  { label: "Wines",     href: "/shop?category=Wines",     emoji: "🍷" },
-  { label: "Whisky",    href: "/shop?category=Whisky",    emoji: "🥃" },
-  { label: "Gin",       href: "/shop?category=Gin",       emoji: "🍸" },
-  { label: "Tequila",   href: "/shop?category=Tequila",   emoji: "🌵" },
-  { label: "Beer",      href: "/shop?category=Beers",     emoji: "🍺" },
+  { label: "Wines", href: "/shop?category=Wines", emoji: "🍷" },
+  { label: "Whisky", href: "/shop?category=Whisky", emoji: "🥃" },
+  { label: "Gin", href: "/shop?category=Gin", emoji: "🍸" },
+  { label: "Tequila", href: "/shop?category=Tequila", emoji: "🌵" },
+  { label: "Beer", href: "/shop?category=Beers", emoji: "🍺" },
   { label: "Champagne", href: "/shop?category=Champagne", emoji: "🥂" },
 ];
 
@@ -130,13 +130,13 @@ function AnnouncementBar() {
 
 const Navbar = () => {
   const { itemsCount } = useCart();
-  const pathname  = usePathname();
-  const router    = useRouter();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const [isScrolled,   setIsScrolled]   = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isMoreOpen,   setIsMoreOpen]   = useState(false);
-  const [searchValue,  setSearchValue]  = useState("");
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const overlaySearchRef = useRef<HTMLInputElement>(null);
 
@@ -178,11 +178,10 @@ const Navbar = () => {
 
       {/* ═══════════════════════════ STICKY HEADER ════════════════════════════ */}
       <header
-        className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${
-          isScrolled
+        className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${isScrolled
             ? "shadow-[0_4px_24px_rgba(0,0,0,0.1)]"
             : "border-b border-gray-100"
-        }`}
+          }`}
       >
         {/* ── Main row ── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -335,17 +334,16 @@ const Navbar = () => {
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 safe-area-inset-bottom">
         <div className="flex items-stretch h-16">
           {[
-            { href: "/",      label: "Home",  Icon: Home,         exact: true  },
-            { href: "/shop",  label: "Shop",  Icon: Store,        exact: true  },
+            { href: "/", label: "Home", Icon: Home, exact: true },
+            { href: "/shop", label: "Shop", Icon: Store, exact: true },
           ].map(({ href, label, Icon, exact }) => {
             const active = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                  active ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-                }`}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${active ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+                  }`}
               >
                 <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
                 {label}
@@ -356,9 +354,8 @@ const Navbar = () => {
           {/* Search */}
           <button
             onClick={() => { setIsSearchOpen(true); setIsMoreOpen(false); }}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              isSearchOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${isSearchOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+              }`}
           >
             <Search className={`h-5 w-5 ${isSearchOpen ? "stroke-[2.5]" : ""}`} />
             Search
@@ -367,9 +364,8 @@ const Navbar = () => {
           {/* Cart */}
           <Link
             href="/cart"
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide relative transition-colors ${
-              pathname === "/cart" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide relative transition-colors ${pathname === "/cart" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+              }`}
           >
             <div className="relative">
               <ShoppingCart className={`h-5 w-5 ${pathname === "/cart" ? "stroke-[2.5]" : ""}`} />
@@ -385,9 +381,8 @@ const Navbar = () => {
           {/* More */}
           <button
             onClick={() => { setIsMoreOpen(!isMoreOpen); setIsSearchOpen(false); }}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              isMoreOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${isMoreOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
+              }`}
           >
             <Menu className={`h-5 w-5 ${isMoreOpen ? "stroke-[2.5]" : ""}`} />
             More
@@ -474,29 +469,45 @@ const Navbar = () => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              className="fixed bottom-16 left-0 right-0 z-51 md:hidden bg-white rounded-t-3xl shadow-2xl max-h-[80vh] overflow-y-auto"
+              className="fixed bottom-16 left-0 right-0 z-51 md:hidden bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] max-h-[85vh] overflow-y-auto"
             >
               {/* Handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 bg-gray-200 rounded-full" />
+              <div className="flex justify-center pt-4 pb-2">
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
               </div>
 
-              <div className="px-5 pt-2 pb-8 space-y-5">
-                {/* Categories */}
+              <div className="px-6 pt-4 pb-12 space-y-8">
+                {/* Brand Header In Sheet */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black tracking-tighter uppercase italic leading-none">Kafunda</h3>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Wine Store & Spirits</p>
+                  </div>
+                  <button onClick={() => setIsMoreOpen(false)} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+                    <X className="w-4 h-4 text-zinc-500" />
+                  </button>
+                </div>
+
+                {/* Categories Grid */}
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">
-                    Browse Categories
-                  </p>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {CATEGORIES.map((cat) => (
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                      Product Catalog
+                    </p>
+                    <Link href="/shop" onClick={closeAll} className="text-[10px] font-bold text-primary-red uppercase tracking-widest">
+                      View All
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {CATEGORIES.slice(0, 9).map((cat) => (
                       <Link
                         key={cat.label}
                         href={cat.href}
                         onClick={closeAll}
-                        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gray-50 hover:bg-gray-100 active:scale-95 transition-all text-center border border-gray-100"
+                        className="flex flex-col items-center gap-2 py-5 px-2 rounded-2xl bg-zinc-50 border border-zinc-100 active:scale-95 transition-all text-center"
                       >
                         <span className="text-2xl leading-none">{cat.emoji}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-700 leading-tight">
+                        <span className="text-[9px] font-black uppercase tracking-tight text-zinc-600 leading-tight">
                           {cat.label}
                         </span>
                       </Link>
@@ -504,59 +515,53 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                {/* Quick links */}
-                <div className="space-y-2">
+                {/* Quick actions */}
+                <div className="grid grid-cols-1 gap-3">
                   <Link
                     href="/shop?filter=offers"
                     onClick={closeAll}
-                    className="flex items-center justify-between w-full py-3.5 px-4 rounded-2xl bg-amber-50 text-amber-700 hover:bg-amber-100 active:scale-[0.98] transition-all border border-amber-100"
+                    className="flex items-center justify-between w-full p-5 rounded-2xl bg-amber-50 text-amber-900 border border-amber-100"
                   >
-                    <div className="flex items-center gap-2 font-bold text-sm uppercase tracking-widest">
-                      <Sparkles className="h-4 w-4" />
-                      Today&apos;s Offers
+                    <div className="flex items-center gap-3 font-black text-xs uppercase tracking-widest">
+                      <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center text-white">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      Today&apos;s Highlights
                     </div>
-                    <span className="text-xs text-amber-500">→</span>
+                    <ArrowRight className="h-4 w-4 text-amber-400" />
                   </Link>
 
-                  <Link
-                    href="/about"
+                  <a
+                    href="https://wa.me/256785498279"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={closeAll}
-                    className="flex items-center justify-between w-full py-3.5 px-4 rounded-2xl bg-gray-50 text-zinc-700 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-100"
+                    className="flex items-center justify-between w-full p-5 rounded-2xl bg-emerald-50 text-emerald-900 border border-emerald-100"
                   >
-                    <span className="font-semibold text-sm">About Us</span>
-                    <span className="text-xs text-zinc-400">→</span>
-                  </Link>
-
-                  <Link
-                    href="/delivery"
-                    onClick={closeAll}
-                    className="flex items-center justify-between w-full py-3.5 px-4 rounded-2xl bg-gray-50 text-zinc-700 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-100"
-                  >
-                    <span className="font-semibold text-sm">Delivery Policy</span>
-                    <span className="text-xs text-zinc-400">→</span>
-                  </Link>
-
-                  <Link
-                    href="/contact"
-                    onClick={closeAll}
-                    className="flex items-center justify-between w-full py-3.5 px-4 rounded-2xl bg-gray-50 text-zinc-700 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-100"
-                  >
-                    <span className="font-semibold text-sm">Contact Us</span>
-                    <span className="text-xs text-zinc-400">→</span>
-                  </Link>
+                    <div className="flex items-center gap-3 font-black text-xs uppercase tracking-widest">
+                      <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
+                        <MessageCircle className="h-4 w-4" />
+                      </div>
+                      Chat with a Sommelier
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-emerald-400" />
+                  </a>
                 </div>
 
-                {/* WhatsApp CTA */}
-                <a
-                  href="https://wa.me/256785498279"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={closeAll}
-                  className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-bold uppercase tracking-widest text-sm transition-all shadow-md"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Order via WhatsApp
-                </a>
+                {/* Policy Links */}
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-8">
+                  {["About Us", "Delivery Info", "Contact Us", "Privacy Policy"].map((link) => (
+                    <Link
+                      key={link}
+                      href={`/${link.toLowerCase().replace(" ", "-")}`}
+                      onClick={closeAll}
+                      className="text-zinc-500 hover:text-zinc-900 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+                    >
+                      <div className="w-1 h-1 bg-zinc-200 rounded-full" />
+                      {link}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </motion.div>
           </>

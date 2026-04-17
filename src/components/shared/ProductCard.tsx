@@ -45,14 +45,23 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         sizes="(max-width: 768px) 50vw, 250px"
                     />
 
-                    {/* Quick View button — appears on hover */}
+                    {/* Quick View — Desktop (Full button) */}
                     <button
                         onClick={() => setQuickViewOpen(true)}
-                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-200 text-zinc-700 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 shadow-md whitespace-nowrap z-10"
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-200 text-zinc-700 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 shadow-md whitespace-nowrap z-10"
                         aria-label={`Quick view ${product.name}`}
                     >
                         <Eye className="h-3.5 w-3.5" />
                         Quick View
+                    </button>
+
+                    {/* Quick View — Mobile (Floating icon) */}
+                    <button
+                        onClick={() => setQuickViewOpen(true)}
+                        className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-zinc-700 shadow-md border border-gray-100 active:scale-90 transition-transform"
+                        aria-label={`Quick view ${product.name}`}
+                    >
+                        <Eye className="h-4 w-4" />
                     </button>
                 </div>
 
