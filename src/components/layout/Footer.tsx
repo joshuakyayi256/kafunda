@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { MapPin, Phone, Mail, MessageCircle, Clock, ExternalLink, ShieldCheck, Truck, ShoppingBag } from "lucide-react";
+import { MapPin, Phone, MessageCircle, ExternalLink, ShieldCheck, ShoppingBag, ChevronDown } from "lucide-react";
 import { CONTACT, SOCIAL, SITE, DELIVERY, CATEGORIES } from "@/lib/constants";
+import { motion, AnimatePresence } from "framer-motion";
 
 const InstagramIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -29,6 +30,52 @@ const TikTokIcon = () => (
   </svg>
 );
 
+// Helper for mobile accordion sections
+function FooterLinkSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-b border-zinc-900/50 lg:border-none py-6 lg:py-0">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full lg:hidden group"
+      >
+        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 group-hover:text-zinc-400 transition-colors flex items-center gap-2">
+          <div className="w-4 h-px bg-zinc-800 group-hover:bg-primary-red transition-colors" /> {title}
+        </h4>
+        <div className={`w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center transition-all ${isOpen ? "rotate-180 border-primary-red" : ""}`}>
+          <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 ${isOpen ? "text-primary-red" : ""}`} />
+        </div>
+      </button>
+
+      {/* Desktop Heading */}
+      <h4 className="hidden lg:flex text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+        <div className="w-4 h-px bg-zinc-800" /> {title}
+      </h4>
+
+      <div className="hidden lg:block">
+        {children}
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="lg:hidden overflow-hidden"
+          >
+            <div className="pt-6">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -43,16 +90,14 @@ export default function Footer() {
 
   return (
     <footer className="bg-zinc-950 text-white pt-24 pb-12 relative overflow-hidden">
-
       {/* Background elements */}
       <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-zinc-800 to-transparent" />
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary-red/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-
         {/* Top Section: Newsletter & Brand */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-20">
-          <div className="lg:col-span-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 mb-20">
+          <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left">
             <Link href="/" className="flex items-center gap-3 mb-8 group">
               <div className="w-12 h-12 bg-primary-red flex items-center justify-center rounded-xl rotate-0 group-hover:rotate-12 transition-transform duration-500">
                 <span className="text-white font-black text-2xl italic">K</span>
@@ -62,56 +107,56 @@ export default function Footer() {
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">Wine Store & Spirits</span>
               </div>
             </Link>
-            <p className="text-zinc-400 text-lg leading-relaxed mb-8 max-w-md">
+            <p className="text-zinc-400 text-base md:text-lg leading-relaxed mb-8 max-w-md">
               Elevating Uganda&apos;s drinking culture with curated spirits, expert selection, and <span className="text-white font-bold">lightning-fast delivery</span>.
             </p>
 
-            <div className="flex flex-wrap gap-4">
-              <a href={SOCIAL.instagram} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+            <div className="flex flex-wrap justify-center lg:justify-start gap-4">
+              <a href={SOCIAL.instagram} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
                 <InstagramIcon />
               </a>
-              <a href={SOCIAL.facebook} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+              <a href={SOCIAL.facebook} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
                 <FacebookIcon />
               </a>
-              <a href={SOCIAL.twitter} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+              <a href={SOCIAL.twitter} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
                 <TwitterXIcon />
               </a>
-              <a href={SOCIAL.tiktok} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+              <a href={SOCIAL.tiktok} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
                 <TikTokIcon />
               </a>
             </div>
           </div>
 
           <div className="lg:col-span-7">
-            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-8 md:p-10 relative overflow-hidden group">
+            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 md:p-10 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary-red/10 blur-3xl transform translate-x-10 -translate-y-10 group-hover:bg-primary-red/20 transition-colors" />
 
               <div className="relative z-10">
-                <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-4">
+                <h3 className="text-xl md:text-3xl font-black uppercase tracking-tighter mb-4">
                   Join the <span className="text-primary-red">Connoisseur&apos;s</span> List
                 </h3>
-                <p className="text-zinc-500 text-sm md:text-base font-medium mb-8 max-w-md">
+                <p className="text-zinc-500 text-xs sm:text-sm md:text-base font-medium mb-8 max-w-md">
                   Get exclusive access to vintage drops, limited editions, and invitation-only tasting events.
                 </p>
 
                 {subscribed ? (
-                  <div className="h-16 flex items-center gap-3 text-emerald-400 font-bold uppercase tracking-widest bg-emerald-400/10 border border-emerald-400/20 px-6 rounded-2xl animate-in fade-in zoom-in duration-500">
-                    <ShieldCheck className="w-6 h-6" />
+                  <div className="h-16 flex items-center gap-3 text-emerald-400 font-bold uppercase tracking-widest bg-emerald-400/10 border border-emerald-400/20 px-6 rounded-2xl animate-in fade-in zoom-in duration-500 text-sm">
+                    <ShieldCheck className="w-5 h-5 shrink-0" />
                     <span>Welcome to the club</span>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4">
+                  <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
                       required
-                      className="flex-1 h-16 px-6 bg-zinc-950 border border-zinc-800 rounded-2xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary-red focus:ring-4 focus:ring-primary-red/10 transition-all font-medium"
+                      className="flex-1 h-14 md:h-16 px-6 bg-zinc-950 border border-zinc-800 rounded-2xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary-red focus:ring-4 focus:ring-primary-red/10 transition-all font-medium text-sm"
                     />
                     <button
                       type="submit"
-                      className="h-16 px-8 bg-white hover:bg-primary-red text-black hover:text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 group shadow-lg shadow-white/5 active:scale-95 shrink-0"
+                      className="h-14 md:h-16 px-8 bg-white hover:bg-primary-red text-black hover:text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 group shadow-lg shadow-white/5 active:scale-95 shrink-0"
                     >
                       Subscribe
                     </button>
@@ -123,74 +168,70 @@ export default function Footer() {
         </div>
 
         {/* Middle Section: Links Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-y-12 gap-x-8 mb-20">
-
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-2 lg:gap-y-12 gap-x-8 mb-20 lg:border-t lg:border-zinc-900/50 lg:pt-20">
           {/* Shop Categories */}
           <div className="lg:col-span-4">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
-              <div className="w-4 h-px bg-zinc-800" /> Catalog
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-              {CATEGORIES.map((cat) => (
-                <Link key={cat} href={`/shop?category=${cat}`} className="text-zinc-400 hover:text-white transition-colors text-sm font-medium flex items-center group">
-                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
-                  {cat}
-                </Link>
-              ))}
-            </div>
+            <FooterLinkSection title="Catalog">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                {CATEGORIES.map((cat) => (
+                  <Link key={cat} href={`/shop?category=${cat}`} className="text-zinc-400 hover:text-white transition-colors text-sm font-medium flex items-center group">
+                    <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                    {cat}
+                  </Link>
+                ))}
+              </div>
+            </FooterLinkSection>
           </div>
 
           {/* Quick Links */}
           <div className="lg:col-span-2">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
-              <div className="w-4 h-px bg-zinc-800" /> Explore
-            </h4>
-            <div className="flex flex-col gap-4">
-              {["Home", "Shop", "About Us", "Delivery Info", "Contact Us"].map((link) => (
-                <Link
-                  key={link}
-                  href={link === "Home" ? "/" : `/${link.toLowerCase().replace(" ", "-")}`}
-                  className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
-                >
-                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
-                  {link}
-                </Link>
-              ))}
-            </div>
+            <FooterLinkSection title="Explore">
+              <div className="flex flex-col gap-4">
+                {["Home", "Shop", "About Us", "Delivery Info", "Contact Us"].map((link) => (
+                  <Link
+                    key={link}
+                    href={link === "Home" ? "/" : `/${link.toLowerCase().replace(" ", "-")}`}
+                    className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
+                  >
+                    <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                    {link}
+                  </Link>
+                ))}
+              </div>
+            </FooterLinkSection>
           </div>
 
           {/* Support */}
           <div className="lg:col-span-2">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
-              <div className="w-4 h-px bg-zinc-800" /> Support
-            </h4>
-            <div className="flex flex-col gap-4">
-              {["Privacy Policy", "Terms & Conditions", "FAQs", "Return Policy"].map((link) => (
-                <Link
-                  key={link}
-                  href={`/${link.toLowerCase().replace(" & ", "-").replace(" ", "-").replace("policy", "")}`}
-                  className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
-                >
-                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
-                  {link}
-                </Link>
-              ))}
-            </div>
+            <FooterLinkSection title="Support">
+              <div className="flex flex-col gap-4">
+                {["Privacy Policy", "Terms & Conditions", "FAQs", "Return Policy"].map((link) => (
+                  <Link
+                    key={link}
+                    href={`/${link.toLowerCase().replace(" & ", "-").replace(" ", "-").replace("policy", "")}`}
+                    className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
+                  >
+                    <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                    {link}
+                  </Link>
+                ))}
+              </div>
+            </FooterLinkSection>
           </div>
 
           {/* Contact Details */}
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 pt-10 lg:pt-0">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
               <div className="w-4 h-px bg-zinc-800" /> HQ Location
             </h4>
-            <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-8">
               <div className="flex gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
                   <MapPin className="w-5 h-5 text-primary-red" />
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm mb-1">{CONTACT.address}</p>
-                  <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest">{CONTACT.city}</p>
+                  <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">{CONTACT.city}</p>
                 </div>
               </div>
 
@@ -200,31 +241,36 @@ export default function Footer() {
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm mb-1">{CONTACT.phone}</p>
-                  <a href={CONTACT.whatsapp} target="_blank" className="text-emerald-500 text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                  <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" className="text-emerald-500 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-1">
                     <MessageCircle className="w-3 h-3" /> WhatsApp Now
                   </a>
                 </div>
               </div>
-
-              <div className="bg-zinc-900/40 rounded-2xl p-5 border border-zinc-900/60 flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#FF6B00]/10 flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4 text-[#FF6B00]" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Order on Glovo</p>
-                    <p className="text-[11px] font-black text-white uppercase">{DELIVERY.recommendation}</p>
-                  </div>
-                </div>
-                <ExternalLink className="w-4 h-4 text-zinc-700 group-hover:text-white transition-colors" />
-              </div>
             </div>
+
+            <a
+              href="https://glovoapp.com/ug/en/kampala/kafunda-wine-spirits-kla/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-8 bg-zinc-900/40 rounded-3xl p-6 border border-zinc-900/60 flex items-center justify-between group cursor-pointer hover:bg-zinc-900/60 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FF6B00]/10 flex items-center justify-center">
+                  <ShoppingBag className="w-5 h-5 text-[#FF6B00]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Order on Glovo</p>
+                  <p className="text-xs font-black text-white uppercase italic">{DELIVERY.recommendation}</p>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-zinc-700 group-hover:text-white transition-colors" />
+            </a>
           </div>
         </div>
 
         {/* Bottom Section: Copyright & Info */}
         <div className="pt-12 border-t border-zinc-900 flex flex-col lg:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col items-center lg:items-start gap-2">
+          <div className="flex flex-col items-center lg:items-start gap-2 text-center lg:text-left">
             <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
               © {new Date().getFullYear()} {SITE.name}. Crafted for the bold.
             </p>

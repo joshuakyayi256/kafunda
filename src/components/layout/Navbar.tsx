@@ -18,7 +18,7 @@ const SALE_END = new Date("2026-04-30T23:59:59");
 const TICKER = [
   { emoji: "⚡", text: "1–2 Hour Delivery across Kampala" },
   { emoji: "🚚", text: "Free Delivery on orders over UGX 500,000" },
-  { emoji: "💬", text: "Order directly via WhatsApp: +256 700 000 000" },
+  { emoji: "💬", text: "Order directly via WhatsApp: +256 785 498 279" },
 ];
 
 const CATEGORIES = [
@@ -179,8 +179,8 @@ const Navbar = () => {
       {/* ═══════════════════════════ STICKY HEADER ════════════════════════════ */}
       <header
         className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${isScrolled
-            ? "shadow-[0_4px_24px_rgba(0,0,0,0.1)]"
-            : "border-b border-gray-100"
+          ? "shadow-[0_4px_24px_rgba(0,0,0,0.1)]"
+          : "border-b border-gray-100"
           }`}
       >
         {/* ── Main row ── */}

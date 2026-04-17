@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     q: "Can I change my delivery address after ordering?",
-    a: "Contact us immediately on WhatsApp (+256 700 000 000) before your order is dispatched and we'll update it.",
+    a: "Contact us immediately on WhatsApp (+256 785 498 279) before your order is dispatched and we'll update it.",
   },
   {
     q: "What if I'm not available at delivery time?",

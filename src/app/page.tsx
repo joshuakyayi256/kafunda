@@ -103,16 +103,16 @@ export default async function Home() {
                     ) : (
                       <div className="w-full h-full bg-zinc-800" />
                     )}
-                    
+
                     {/* Modern Gradient Overlay */}
                     <div className="absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/20 to-transparent transition-opacity duration-500 group-hover:opacity-70" />
-                    
+
                     {/* Floating Action Circle (Appears on hover) */}
                     <div className="absolute bottom-4 w-8 h-8 rounded-full bg-primary-red text-white flex items-center justify-center opacity-0 translate-y-4 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:translate-y-0">
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
-                  
+
                   {/* Typography */}
                   <p className="text-white font-black uppercase text-[11px] md:text-sm tracking-widest text-center leading-tight transition-colors duration-300 w-full px-2 truncate group-hover:text-primary-red">
                     {cat.name}

@@ -26,7 +26,7 @@ const sections = [
   },
   {
     title: "5. Returns & Refunds",
-    body: `Returns are accepted within 24 hours of delivery for products with unbroken seals and in their original condition. If you receive a damaged, incorrect, or substandard product, contact us immediately via WhatsApp (+256 700 000 000) with a photograph. We will replace or refund the item at our discretion. Once a bottle has been opened, no return or refund will be processed.`,
+    body: `Returns are accepted within 24 hours of delivery for products with unbroken seals and in their original condition. If you receive a damaged, incorrect, or substandard product, contact us immediately via WhatsApp (+256 785 498 279) with a photograph. We will replace or refund the item at our discretion. Once a bottle has been opened, no return or refund will be processed.`,
   },
   {
     title: "6. Responsible Consumption",
