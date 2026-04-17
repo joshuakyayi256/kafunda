@@ -1,126 +1,252 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import {
-    Camera,
-    Send,
-    Globe,
-    MessageCircle,
-    MapPin,
-    Phone,
-    Mail
-} from "lucide-react";
+import { MapPin, Phone, Mail, MessageCircle, Clock, ExternalLink, ShieldCheck, Truck, ShoppingBag } from "lucide-react";
+import { CONTACT, SOCIAL, SITE, DELIVERY, CATEGORIES } from "@/lib/constants";
 
-const Footer = () => {
-    const socialIcons = [
-        { Icon: MessageCircle, label: "Facebook" },
-        { Icon: Send, label: "Twitter" },
-        { Icon: Camera, label: "Instagram" },
-        { Icon: Globe, label: "LinkedIn" }
-    ];
-    return (
-        <footer className="bg-black text-white pt-24 pb-12 px-4 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-24">
-                    {/* Brand & Socials Section */}
-                    <div>
-                        <div className="flex items-center space-x-2 mb-6">
-                            <div className="bg-primary-red p-1.5 rounded-lg">
-                                <span className="text-white font-black">K</span>
-                            </div>
-                            <span className="text-2xl font-black tracking-tighter uppercase italic">Kafunda</span>
-                        </div>
-                        <p className="text-zinc-500 text-sm leading-relaxed mb-8 max-w-sm">
-                            Uganda&apos;s premier destination for curated wines and spirits.
-                            Delivered in seconds, enjoyed for hours. Experience the art
-                            of fine drinking.
-                        </p>
-                        <div className="flex space-x-4">
-                            {socialIcons.map(({ Icon, label }, idx) => (
-                                <a
-                                    key={idx}
-                                    href="#"
-                                    aria-label={label}
-                                    className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white transition-all duration-300 transform hover:-translate-y-1 shadow-lg"
-                                >
-                                    <Icon className="h-4 w-4" />
-                                </a>
-                            ))}
-                        </div>
-                    </div>
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+  </svg>
+);
 
-                    {/* Shop Section */}
-                    <div>
-                        <h4 className="text-sm font-black uppercase tracking-widest mb-8 border-b border-zinc-900 pb-4 inline-block">
-                            Shop
-                        </h4>
-                        <ul className="space-y-4">
-                            {["Wines", "Whiskies", "Gins", "Champagnes", "How it Works", "Our Story"].map((item) => (
-                                <li key={item}>
-                                    <Link
-                                        href="/shop"
-                                        className="text-zinc-500 hover:text-white text-sm transition-colors duration-200 block border-l-2 border-transparent hover:border-primary-red hover:pl-4"
-                                    >
-                                        {item}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+const FacebookIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
 
-                    {/* Contact Section */}
-                    <div>
-                        <h4 className="text-sm font-black uppercase tracking-widest mb-8 border-b border-zinc-900 pb-4 inline-block">
-                            Contact
-                        </h4>
-                        <ul className="space-y-6">
-                            <li className="flex items-start group">
-                                <div className="h-8 w-8 bg-zinc-900 rounded-lg flex items-center justify-center mr-4 group-hover:bg-primary-red/10 transition-colors">
-                                    <MapPin className="h-4 w-4 text-primary-red" />
-                                </div>
-                                <div>
-                                    <p className="text-zinc-500 text-sm">Kampala, Uganda</p>
-                                    <p className="text-zinc-600 text-[10px] uppercase font-bold mt-1">Plot 45, Acacia Avenue</p>
-                                </div>
-                            </li>
-                            <li className="flex items-center group">
-                                <div className="h-8 w-8 bg-zinc-900 rounded-lg flex items-center justify-center mr-4 group-hover:bg-primary-red/10 transition-colors">
-                                    <Phone className="h-4 w-4 text-primary-red" />
-                                </div>
-                                <p className="text-zinc-500 text-sm hover:text-white transition-colors cursor-pointer tracking-wider">
-                                    +256 700 000 000
-                                </p>
-                            </li>
-                            <li className="flex items-center group">
-                                <div className="h-8 w-8 bg-zinc-900 rounded-lg flex items-center justify-center mr-4 group-hover:bg-primary-red/10 transition-colors">
-                                    <Mail className="h-4 w-4 text-primary-red" />
-                                </div>
-                                <p className="text-zinc-500 text-sm hover:text-white transition-colors cursor-pointer">
-                                    info@kafunda.com
-                                </p>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+const TwitterXIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
-                {/* Bottom Bar */}
-                <div className="pt-12 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
-                    <p>© {new Date().getFullYear()} Kafunda Spirits. All rights reserved.</p>
-                    <div className="flex space-x-8 mt-6 md:mt-0">
-                        <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Terms</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Sitemap</Link>
-                    </div>
-                </div>
+const TikTokIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.93a8.16 8.16 0 004.77 1.52V7.01a4.85 4.85 0 01-1-.32z" />
+  </svg>
+);
+
+export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      setSubscribed(true);
+      setEmail("");
+    }
+  };
+
+  return (
+    <footer className="bg-zinc-950 text-white pt-24 pb-12 relative overflow-hidden">
+
+      {/* Background elements */}
+      <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-zinc-800 to-transparent" />
+      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary-red/5 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        {/* Top Section: Newsletter & Brand */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-20">
+          <div className="lg:col-span-5">
+            <Link href="/" className="flex items-center gap-3 mb-8 group">
+              <div className="w-12 h-12 bg-primary-red flex items-center justify-center rounded-xl rotate-0 group-hover:rotate-12 transition-transform duration-500">
+                <span className="text-white font-black text-2xl italic">K</span>
+              </div>
+              <div>
+                <span className="text-2xl font-black tracking-tighter uppercase italic block leading-none">Kafunda</span>
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">Wine Store & Spirits</span>
+              </div>
+            </Link>
+            <p className="text-zinc-400 text-lg leading-relaxed mb-8 max-w-md">
+              Elevating Uganda&apos;s drinking culture with curated spirits, expert selection, and <span className="text-white font-bold">lightning-fast delivery</span>.
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <a href={SOCIAL.instagram} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+                <InstagramIcon />
+              </a>
+              <a href={SOCIAL.facebook} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+                <FacebookIcon />
+              </a>
+              <a href={SOCIAL.twitter} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+                <TwitterXIcon />
+              </a>
+              <a href={SOCIAL.tiktok} target="_blank" className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-primary-red hover:text-white hover:border-primary-red transition-all duration-300">
+                <TikTokIcon />
+              </a>
             </div>
+          </div>
 
-            {/* Giant Background Watermark Text */}
-            <div className="absolute -bottom-10 left-0 w-full flex justify-center translate-y-1/2 select-none pointer-events-none opacity-5">
-                <span className="text-[15vw] md:text-[20vw] font-black text-white leading-none tracking-tighter uppercase italic">
-                    Kafunda
-                </span>
+          <div className="lg:col-span-7">
+            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-8 md:p-10 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-red/10 blur-3xl transform translate-x-10 -translate-y-10 group-hover:bg-primary-red/20 transition-colors" />
+
+              <div className="relative z-10">
+                <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-4">
+                  Join the <span className="text-primary-red">Connoisseur&apos;s</span> List
+                </h3>
+                <p className="text-zinc-500 text-sm md:text-base font-medium mb-8 max-w-md">
+                  Get exclusive access to vintage drops, limited editions, and invitation-only tasting events.
+                </p>
+
+                {subscribed ? (
+                  <div className="h-16 flex items-center gap-3 text-emerald-400 font-bold uppercase tracking-widest bg-emerald-400/10 border border-emerald-400/20 px-6 rounded-2xl animate-in fade-in zoom-in duration-500">
+                    <ShieldCheck className="w-6 h-6" />
+                    <span>Welcome to the club</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                      className="flex-1 h-16 px-6 bg-zinc-950 border border-zinc-800 rounded-2xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary-red focus:ring-4 focus:ring-primary-red/10 transition-all font-medium"
+                    />
+                    <button
+                      type="submit"
+                      className="h-16 px-8 bg-white hover:bg-primary-red text-black hover:text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 group shadow-lg shadow-white/5 active:scale-95 shrink-0"
+                    >
+                      Subscribe
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
-        </footer>
-    );
-};
+          </div>
+        </div>
 
-export default Footer;
+        {/* Middle Section: Links Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-y-12 gap-x-8 mb-20">
+
+          {/* Shop Categories */}
+          <div className="lg:col-span-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+              <div className="w-4 h-px bg-zinc-800" /> Catalog
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+              {CATEGORIES.map((cat) => (
+                <Link key={cat} href={`/shop?category=${cat}`} className="text-zinc-400 hover:text-white transition-colors text-sm font-medium flex items-center group">
+                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                  {cat}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div className="lg:col-span-2">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+              <div className="w-4 h-px bg-zinc-800" /> Explore
+            </h4>
+            <div className="flex flex-col gap-4">
+              {["Home", "Shop", "About Us", "Delivery Info", "Contact Us"].map((link) => (
+                <Link
+                  key={link}
+                  href={link === "Home" ? "/" : `/${link.toLowerCase().replace(" ", "-")}`}
+                  className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
+                >
+                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                  {link}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Support */}
+          <div className="lg:col-span-2">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+              <div className="w-4 h-px bg-zinc-800" /> Support
+            </h4>
+            <div className="flex flex-col gap-4">
+              {["Privacy Policy", "Terms & Conditions", "FAQs", "Return Policy"].map((link) => (
+                <Link
+                  key={link}
+                  href={`/${link.toLowerCase().replace(" & ", "-").replace(" ", "-").replace("policy", "")}`}
+                  className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
+                >
+                  <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
+                  {link}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact Details */}
+          <div className="lg:col-span-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+              <div className="w-4 h-px bg-zinc-800" /> HQ Location
+            </h4>
+            <div className="space-y-8">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5 text-primary-red" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm mb-1">{CONTACT.address}</p>
+                  <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest">{CONTACT.city}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 text-primary-red" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm mb-1">{CONTACT.phone}</p>
+                  <a href={CONTACT.whatsapp} target="_blank" className="text-emerald-500 text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                    <MessageCircle className="w-3 h-3" /> WhatsApp Now
+                  </a>
+                </div>
+              </div>
+
+              <div className="bg-zinc-900/40 rounded-2xl p-5 border border-zinc-900/60 flex items-center justify-between group">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#FF6B00]/10 flex items-center justify-center">
+                    <ShoppingBag className="w-4 h-4 text-[#FF6B00]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Order on Glovo</p>
+                    <p className="text-[11px] font-black text-white uppercase">{DELIVERY.recommendation}</p>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-zinc-700 group-hover:text-white transition-colors" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section: Copyright & Info */}
+        <div className="pt-12 border-t border-zinc-900 flex flex-col lg:flex-row justify-between items-center gap-8">
+          <div className="flex flex-col items-center lg:items-start gap-2">
+            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+              © {new Date().getFullYear()} {SITE.name}. Crafted for the bold.
+            </p>
+            <p className="text-[9px] text-zinc-700 font-medium uppercase tracking-widest flex items-center gap-2">
+              <ShieldCheck className="w-3 h-3" /> Alcohol consumption is injurious to health. Not for sale to minors under 18.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {["Cash on Delivery", "MTN MoMo", "Airtel Money", "Visa / Card"].map((method) => (
+              <span key={method} className="px-4 py-2 bg-zinc-900 border border-zinc-800/50 rounded-lg text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                {method}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Watermark */}
+      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-full text-center select-none pointer-events-none opacity-[0.02]">
+        <span className="text-[25vw] font-black text-white italic tracking-tighter uppercase">Kafunda</span>
+      </div>
+    </footer>
+  );
+}

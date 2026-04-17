@@ -33,7 +33,8 @@ async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unk
     });
 
     if (!res.ok) {
-      console.error(`WooCommerce API Error (HTTP ${res.status}) on ${url}`);
+      // Log endpoint only — never log the full URL as it contains credentials
+      console.error(`WooCommerce API Error (HTTP ${res.status}) on endpoint: ${endpoint}`);
       return null;
     }
 

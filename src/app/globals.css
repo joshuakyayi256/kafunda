@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
   --color-primary-red: #b91c1c;
   --color-primary-red-hover: #991b1b;
@@ -44,13 +45,13 @@ body {
 }
 
 @layer base {
-
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
+    font-family: var(--font-heading);
     @apply font-bold;
   }
 }

@@ -1,13 +1,14 @@
 // src/components/shared/ProductDetailsClient.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Minus, Plus, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronRight, ChevronLeft, Minus, Plus, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
 import ProductCard from "@/components/shared/ProductCard";
+import StickyAddToCart from "@/components/shared/StickyAddToCart";
 import { Product } from "@/types";
 
 interface ProductDetailsProps {
@@ -20,6 +21,7 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState(product.image_url);
     const [openAccordion, setOpenAccordion] = useState<string | null>("description");
+    const addToCartBtnRef = useRef<HTMLButtonElement>(null);
 
     const toggleAccordion = (id: string) => {
         setOpenAccordion(openAccordion === id ? null : id);
@@ -118,6 +120,7 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
 
                         {/* Add to Cart Button */}
                         <button
+                            ref={addToCartBtnRef}
                             onClick={() => addToCart(product, quantity)}
                             className="grow bg-primary-red hover:bg-primary-red-hover text-white py-4 px-8 font-bold text-sm tracking-widest uppercase transition-all flex items-center justify-center space-x-3 shadow-lg transform hover:scale-[1.02]"
                         >
@@ -170,20 +173,60 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
                 </div>
             </div>
 
-            {/* Recommended Section */}
+            <StickyAddToCart product={product} quantity={quantity} triggerRef={addToCartBtnRef} />
+
+            {/* Recommended — horizontal scroll carousel */}
             {relatedProducts.length > 0 && (
-                <section className="mt-20 pt-20 border-t border-gray-100">
-                    <h2 className="text-3xl font-black uppercase tracking-tighter mb-12">
-                        Perfect Mixers for this
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {relatedProducts.map((p) => (
-                            <ProductCard key={p.id} product={p} />
-                        ))}
-                    </div>
-                </section>
+                <RelatedCarousel products={relatedProducts} />
             )}
         </div>
+    );
+}
+
+function RelatedCarousel({ products }: { products: Product[] }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const scroll = (dir: "left" | "right") => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollBy({ left: dir === "left" ? -300 : 300, behavior: "smooth" });
+    };
+
+    return (
+        <section className="mt-20 pt-20 border-t border-gray-100">
+            <div className="flex items-end justify-between mb-8">
+                <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">
+                    You May Also Like
+                </h2>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => scroll("left")}
+                        className="p-2.5 rounded-full border-2 border-gray-200 hover:border-zinc-900 text-zinc-500 hover:text-zinc-900 transition-all"
+                        aria-label="Scroll left"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => scroll("right")}
+                        className="p-2.5 rounded-full border-2 border-gray-200 hover:border-zinc-900 text-zinc-500 hover:text-zinc-900 transition-all"
+                        aria-label="Scroll right"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            <div
+                ref={scrollRef}
+                className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+            >
+                {products.map((p) => (
+                    <div key={p.id} className="shrink-0 w-56 sm:w-64 snap-start">
+                        <ProductCard product={p} />
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }
 

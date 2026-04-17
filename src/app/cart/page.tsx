@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, itemsCount, subtotal } =
     useCart();
+  const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -32,37 +34,9 @@ const CartPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // --- The Headless Checkout Handshake ---
-  const handleHeadlessCheckout = () => {
+  const handleCheckout = () => {
     setIsRedirecting(true);
-
-    const cartPayload = cart
-      .map((item) => {
-        let databaseId = item.id;
-
-        if (isNaN(Number(item.id))) {
-          try {
-            const decoded =
-              typeof window !== "undefined"
-                ? atob(item.id)
-                : Buffer.from(item.id, "base64").toString("utf-8");
-
-            const match = decoded.match(/\d+$/);
-            if (match) databaseId = match[0];
-          } catch (e) {
-            console.error("ID decode failed", e);
-          }
-        }
-        return `${databaseId}:${item.quantity}`;
-      })
-      .join(",");
-
-    const encodedPayload = btoa(cartPayload);
-
-    // Use a slight delay so the UI shows the spinner before jumping
-    setTimeout(() => {
-      window.location.href = `https://kafundawines.com/?headless_cart=${encodedPayload}`;
-    }, 500);
+    router.push("/checkout");
   };
 
   if (!isMounted) {
@@ -260,18 +234,18 @@ const CartPage = () => {
             </div>
 
             <button
-              onClick={handleHeadlessCheckout}
+              onClick={handleCheckout}
               disabled={isRedirecting}
               className="w-full bg-black hover:bg-zinc-800 text-white py-5 font-bold text-sm tracking-widest uppercase transition-all flex items-center justify-center rounded-xl shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isRedirecting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>Connecting...</span>
+                  <span>Loading...</span>
                 </>
               ) : (
                 <>
-                  <span>Secure Checkout</span>
+                  <span>Proceed to Checkout</span>
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}

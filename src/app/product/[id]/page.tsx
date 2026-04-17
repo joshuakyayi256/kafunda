@@ -1,8 +1,36 @@
 // src/app/product/[id]/page.tsx
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getProductBySlug, getAllProducts } from "@/lib/api";
 import ProductDetailsClient from "@/components/shared/ProductDetailsClient";
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProductBySlug(id);
+
+  if (!product) {
+    return { title: "Product Not Found" };
+  }
+
+  return {
+    title: product.name,
+    description: product.description || `Buy ${product.name} from Kafunda Wines & Spirits. Fast delivery in Kampala.`,
+    openGraph: {
+      title: `${product.name} | Kafunda Wines & Spirits`,
+      description: product.description || `Buy ${product.name} from Kafunda Wines & Spirits.`,
+      images: product.image_url ? [{ url: product.image_url, width: 800, height: 800, alt: product.name }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.name} | Kafunda Wines & Spirits`,
+      description: product.description || `Buy ${product.name} from Kafunda Wines & Spirits.`,
+      images: product.image_url ? [product.image_url] : [],
+    },
+  };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
     // Await the params to get the product slug/id
