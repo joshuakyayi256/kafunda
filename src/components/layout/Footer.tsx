@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { MapPin, Phone, MessageCircle, ExternalLink, ShieldCheck, ShoppingBag, ChevronDown } from "lucide-react";
+import { Phone, MessageCircle, ExternalLink, ShieldCheck, ShoppingBag, ChevronDown } from "lucide-react";
 import { CONTACT, SOCIAL, SITE, DELIVERY, CATEGORIES } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -49,7 +49,7 @@ function FooterLinkSection({ title, children }: { title: string; children: React
       </button>
 
       {/* Desktop Heading */}
-      <h4 className="hidden lg:flex text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
+      <h4 className="hidden lg:flex text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 items-center gap-2">
         <div className="w-4 h-px bg-zinc-800" /> {title}
       </h4>
 
@@ -92,7 +92,7 @@ export default function Footer() {
     <footer className="bg-zinc-950 text-white pt-24 pb-12 relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-zinc-800 to-transparent" />
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary-red/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-125 h-125 bg-primary-red/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Top Section: Newsletter & Brand */}
@@ -128,7 +128,7 @@ export default function Footer() {
           </div>
 
           <div className="lg:col-span-7">
-            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 md:p-10 relative overflow-hidden group">
+            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-4xl p-6 sm:p-8 md:p-10 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary-red/10 blur-3xl transform translate-x-10 -translate-y-10 group-hover:bg-primary-red/20 transition-colors" />
 
               <div className="relative z-10">
@@ -222,28 +222,29 @@ export default function Footer() {
           {/* Contact Details */}
           <div className="lg:col-span-4 pt-10 lg:pt-0">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 flex items-center gap-2">
-              <div className="w-4 h-px bg-zinc-800" /> HQ Location
+              <div className="w-4 h-px bg-zinc-800" /> Get In Touch
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-8">
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-                  <MapPin className="w-5 h-5 text-primary-red" />
-                </div>
-                <div>
-                  <p className="text-white font-bold text-sm mb-1">{CONTACT.address}</p>
-                  <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">{CONTACT.city}</p>
-                </div>
-              </div>
-
+            <div className="flex flex-col gap-8">
               <div className="flex gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
                   <Phone className="w-5 h-5 text-primary-red" />
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm mb-1">{CONTACT.phone}</p>
-                  <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" className="text-emerald-500 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-1">
-                    <MessageCircle className="w-3 h-3" /> WhatsApp Now
+                  <p className="text-zinc-500 text-[10px] font-medium">{CONTACT.hours.weekday}</p>
+                  <p className="text-zinc-500 text-[10px] font-medium">{CONTACT.hours.weekend}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-900/40 border border-emerald-800/40 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" className="text-white font-bold text-sm hover:text-emerald-400 transition-colors block mb-1">
+                    WhatsApp Us
                   </a>
+                  <p className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Fastest reply · Usually within minutes</p>
                 </div>
               </div>
             </div>

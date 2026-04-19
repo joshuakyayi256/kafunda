@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
+import { DELIVERY_ZONES } from "@/lib/constants";
 
 interface FormData {
   firstName: string;
@@ -22,7 +23,7 @@ interface FormData {
   phone: string;
   email: string;
   address: string;
-  city: string;
+  deliveryZone: string;
   notes: string;
   paymentMethod: "cod" | "mobile_money";
 }
@@ -33,11 +34,10 @@ interface FormErrors {
   phone?: string;
   email?: string;
   address?: string;
-  city?: string;
+  deliveryZone?: string;
 }
 
-const DELIVERY_FEE = 5000;
-const FREE_DELIVERY_THRESHOLD = 500000;
+const FREE_DELIVERY_THRESHOLD = 500_000;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function CheckoutPage() {
     phone: "",
     email: "",
     address: "",
-    city: "",
+    deliveryZone: "",
     notes: "",
     paymentMethod: "cod",
   });
@@ -64,7 +64,8 @@ export default function CheckoutPage() {
     setIsMounted(true);
   }, []);
 
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const selectedZone = DELIVERY_ZONES.find((z) => z.id === form.deliveryZone);
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (selectedZone?.fee ?? 0);
   const total = subtotal + deliveryFee;
 
   const validate = (): boolean => {
@@ -84,7 +85,7 @@ export default function CheckoutPage() {
     }
 
     if (!form.address.trim()) newErrors.address = "Delivery address is required.";
-    if (!form.city.trim()) newErrors.city = "City / area is required.";
+    if (!form.deliveryZone) newErrors.deliveryZone = "Please select your delivery zone.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -264,7 +265,54 @@ export default function CheckoutPage() {
                   placeholder="Plot 14, Acacia Ave, Kololo"
                   required
                 />
-                <Field label="City / Area" name="city" placeholder="Kampala" required />
+
+                {/* Delivery Zone Selector */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-600 mb-1.5">
+                    Delivery Zone <span className="text-primary-red">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    {DELIVERY_ZONES.map((zone) => (
+                      <label
+                        key={zone.id}
+                        className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                          form.deliveryZone === zone.id
+                            ? "border-primary-red bg-red-50/40"
+                            : "border-gray-100 hover:border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="deliveryZone"
+                            value={zone.id}
+                            checked={form.deliveryZone === zone.id}
+                            onChange={handleChange}
+                            className="accent-primary-red"
+                          />
+                          <div>
+                            <p className="text-sm font-bold text-zinc-900">{zone.name}</p>
+                            <p className="text-xs text-zinc-500">{zone.areas}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-black shrink-0 ml-3 ${
+                          subtotal >= FREE_DELIVERY_THRESHOLD ? "text-success-green line-through" : "text-zinc-900"
+                        }`}>
+                          {subtotal >= FREE_DELIVERY_THRESHOLD ? "Free" : formatUGX(zone.fee)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {errors.deliveryZone && (
+                    <p className="mt-1 text-xs text-primary-red font-medium">{errors.deliveryZone}</p>
+                  )}
+                  {subtotal >= FREE_DELIVERY_THRESHOLD && (
+                    <p className="mt-2 text-xs text-success-green font-bold">
+                      🎉 Free delivery on your order!
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-600 mb-1.5">
                     Delivery Notes <span className="text-gray-400 font-normal normal-case tracking-normal">(optional)</span>
@@ -357,8 +405,10 @@ export default function CheckoutPage() {
                   <span className="font-bold text-zinc-900">{formatUGX(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-zinc-600 font-medium">
-                  <span>Delivery</span>
-                  {deliveryFee === 0 ? (
+                  <span>Delivery{selectedZone ? ` · ${selectedZone.name}` : ""}</span>
+                  {!form.deliveryZone ? (
+                    <span className="text-zinc-400 italic text-xs">Select zone</span>
+                  ) : deliveryFee === 0 ? (
                     <span className="text-success-green font-bold">Free</span>
                   ) : (
                     <span className="font-bold text-zinc-900">{formatUGX(deliveryFee)}</span>

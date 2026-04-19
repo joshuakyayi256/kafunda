@@ -4,8 +4,11 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
-  --color-primary-red: #b91c1c;
-  --color-primary-red-hover: #991b1b;
+  --color-primary-red: #c62828;
+  --color-primary-red-hover: #b71c1c;
+  --color-brand-green: #43a047;
+  --color-brand-green-hover: #388e3c;
+  --color-brand-gold: #c5b358;
   --color-success-green: #10b981;
   --color-footer-zinc: #18181b;
   --color-secondary-gray: #f9fafb;

@@ -23,11 +23,13 @@ const TICKER = [
 
 const CATEGORIES = [
   { label: "Wines", href: "/shop?category=Wines", emoji: "🍷" },
-  { label: "Whisky", href: "/shop?category=Whisky", emoji: "🥃" },
-  { label: "Gin", href: "/shop?category=Gin", emoji: "🍸" },
-  { label: "Tequila", href: "/shop?category=Tequila", emoji: "🌵" },
-  { label: "Beer", href: "/shop?category=Beers", emoji: "🍺" },
-  { label: "Champagne", href: "/shop?category=Champagne", emoji: "🥂" },
+  { label: "Whiskies", href: "/shop?category=Whisky", emoji: "🥃" },
+  { label: "Creams", href: "/shop?category=Creams", emoji: "🍶" },
+  { label: "Cognacs", href: "/shop?category=Cognacs", emoji: "🥃" },
+  { label: "Vodkas", href: "/shop?category=Vodkas", emoji: "🍸" },
+  { label: "Champagnes", href: "/shop?category=Champagne", emoji: "🥂" },
+  { label: "Beers", href: "/shop?category=Beers", emoji: "🍺" },
+  { label: "Soft Drinks", href: "/shop?category=Soft-Drinks", emoji: "🥤" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -266,7 +268,7 @@ const Navbar = () => {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0 }}
-                      className="absolute top-1.5 right-1.5 translate-x-1/2 -translate-y-1/2 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[9px] font-black text-white bg-primary-red rounded-full ring-2 ring-white leading-none"
+                      className="absolute top-1.5 right-1.5 translate-x-1/2 -translate-y-1/2 min-w-4.5 h-4.5 px-1 flex items-center justify-center text-[9px] font-black text-white bg-primary-red rounded-full ring-2 ring-white leading-none"
                     >
                       {itemsCount > 99 ? "99+" : itemsCount}
                     </motion.span>
@@ -289,14 +291,14 @@ const Navbar = () => {
         </div>
 
         {/* ── Category sub-nav strip ── */}
-        <div className="bg-zinc-900 border-t border-zinc-800">
+        <div className="bg-brand-green border-t border-brand-green-hover">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-11 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
 
               {/* All Products */}
               <Link
                 href="/shop"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest text-white bg-primary-red hover:bg-primary-red-hover transition-colors shrink-0"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest text-white bg-black/25 hover:bg-black/40 transition-colors shrink-0"
               >
                 <Flame className="h-3 w-3" />
                 All Products
@@ -307,7 +309,7 @@ const Navbar = () => {
                 <Link
                   key={cat.label}
                   href={cat.href}
-                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border-b-2 border-transparent hover:border-primary-red shrink-0"
+                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-green-100 hover:text-white hover:bg-black/20 transition-colors border-b-2 border-transparent hover:border-white shrink-0"
                 >
                   <span className="text-sm leading-none">{cat.emoji}</span>
                   {cat.label}
@@ -317,7 +319,7 @@ const Navbar = () => {
               {/* Offers */}
               <Link
                 href="/shop?filter=offers"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-amber-400 hover:text-amber-300 hover:bg-zinc-800 transition-colors border-b-2 border-transparent hover:border-amber-400 shrink-0"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-yellow-200 hover:text-white hover:bg-black/20 transition-colors border-b-2 border-transparent hover:border-yellow-300 shrink-0"
               >
                 <Sparkles className="h-3 w-3" />
                 Today&apos;s Offers
@@ -370,7 +372,7 @@ const Navbar = () => {
             <div className="relative">
               <ShoppingCart className={`h-5 w-5 ${pathname === "/cart" ? "stroke-[2.5]" : ""}`} />
               {itemsCount > 0 && (
-                <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center text-[9px] font-black text-white bg-primary-red rounded-full leading-none">
+                <span className="absolute -top-1 -right-2.5 min-w-4 h-4 px-0.5 flex items-center justify-center text-[9px] font-black text-white bg-primary-red rounded-full leading-none">
                   {itemsCount > 99 ? "99+" : itemsCount}
                 </span>
               )}

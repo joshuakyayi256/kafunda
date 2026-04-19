@@ -45,13 +45,41 @@ export const DELIVERY = {
 export const CATEGORIES = [
   "Wines",
   "Whiskies",
-  "Gins",
-  "Vodkas",
-  "Rums",
+  "Creams",
   "Cognacs",
-  "Tequilas",
+  "Vodkas",
+  "Champagnes",
   "Beers",
-  "Bitters",
   "Soft Drinks",
-  "Disposables"
+  "Gins",
+  "Rums",
+  "Tequilas",
+  "Bitters",
+] as const;
+
+export const DELIVERY_ZONES = [
+  {
+    id: "zone1",
+    name: "Kampala Central",
+    areas: "CBD, Nakasero, Kololo, Kamwokya",
+    fee: 3_000,
+  },
+  {
+    id: "zone2",
+    name: "Inner Suburbs",
+    areas: "Ntinda, Bukoto, Bugolobi, Kisementi, Naguru",
+    fee: 5_000,
+  },
+  {
+    id: "zone3",
+    name: "Outer Suburbs",
+    areas: "Kireka, Namugongo, Makindye, Nsambya, Munyonyo",
+    fee: 8_000,
+  },
+  {
+    id: "zone4",
+    name: "Greater Kampala",
+    areas: "Gayaza, Wakiso, Nansana, Kyengera, Mukono area",
+    fee: 12_000,
+  },
 ] as const;

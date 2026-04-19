@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, Eye } from "lucide-react";
@@ -9,9 +9,25 @@ import { formatUGX } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import QuickViewModal from "@/components/shared/QuickViewModal";
 
+const KEY = "kafunda_recently_viewed";
+
+function trackView(product: Product) {
+    try {
+        const raw = localStorage.getItem(KEY);
+        const prev: Product[] = raw ? JSON.parse(raw) : [];
+        const next = [product, ...prev.filter((p) => p.id !== product.id)].slice(0, 12);
+        localStorage.setItem(KEY, JSON.stringify(next));
+    } catch { /* ignore */ }
+}
+
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const { addToCart } = useCart();
     const [quickViewOpen, setQuickViewOpen] = useState(false);
+
+    const handleQuickView = useCallback(() => {
+        trackView(product);
+        setQuickViewOpen(true);
+    }, [product]);
 
     // Generate a stable "random" review count based on the product ID
     const reviewCount = product.reviews ||
@@ -47,7 +63,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
                     {/* Quick View — Desktop (Full button) */}
                     <button
-                        onClick={() => setQuickViewOpen(true)}
+                        onClick={handleQuickView}
                         className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-200 text-zinc-700 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 shadow-md whitespace-nowrap z-10"
                         aria-label={`Quick view ${product.name}`}
                     >
@@ -57,7 +73,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
                     {/* Quick View — Mobile (Floating icon) */}
                     <button
-                        onClick={() => setQuickViewOpen(true)}
+                        onClick={handleQuickView}
                         className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-zinc-700 shadow-md border border-gray-100 active:scale-90 transition-transform"
                         aria-label={`Quick view ${product.name}`}
                     >
