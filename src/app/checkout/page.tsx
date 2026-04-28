@@ -12,8 +12,10 @@ import {
   Truck,
   MessageCircle,
   CreditCard,
+  ExternalLink,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { createOrder } from "@/lib/api";
 import { formatUGX } from "@/lib/utils";
 import { DELIVERY_ZONES } from "@/lib/constants";
 
@@ -25,7 +27,7 @@ interface FormData {
   address: string;
   deliveryZone: string;
   notes: string;
-  paymentMethod: "cod" | "mobile_money";
+  paymentMethod: "cod" | "pesapal";
 }
 
 interface FormErrors {
@@ -46,6 +48,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+  const [serverError, setServerError] = useState("");
 
   const [form, setForm] = useState<FormData>({
     firstName: "",
@@ -55,7 +58,7 @@ export default function CheckoutPage() {
     address: "",
     deliveryZone: "",
     notes: "",
-    paymentMethod: "cod",
+    paymentMethod: "pesapal",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -94,27 +97,88 @@ export default function CheckoutPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Clear the error for this field as the user types
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+    if (serverError) setServerError("");
   };
+
+  // ── COD: create WooCommerce order directly ──────────────────────────────────
+  async function handleCOD() {
+    const orderData = await createOrder(
+      {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
+        city: selectedZone?.name || form.deliveryZone,
+      },
+      cart.map((item) => ({ product: item, quantity: item.quantity }))
+    );
+    const num = `KAF-${orderData.id || Date.now().toString().slice(-6)}`;
+    setOrderNumber(num);
+    clearCart();
+    setIsSuccess(true);
+  }
+
+  // ── Pesapal: call our secure API route, then redirect  ──────────────────────
+  async function handlePesapal() {
+    const res = await fetch("/api/checkout/pesapal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phone: form.phone,
+          email: form.email,
+          address: form.address,
+          deliveryZone: selectedZone?.name || form.deliveryZone,
+          notes: form.notes,
+        },
+        cart: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price_ugx: item.price_ugx,
+          quantity: item.quantity,
+        })),
+        subtotal,
+        deliveryFee,
+        total,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.redirect_url) {
+      throw new Error(data.error || "Could not initialize Pesapal payment. Please try again.");
+    }
+
+    // Redirect the user to Pesapal's hosted payment page
+    window.location.href = data.redirect_url;
+  }
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
+    setServerError("");
 
-    // TODO: Replace this with Firebase order submission once keys are received.
-    // For now we simulate a 1.5s network call and generate an order number.
-    await new Promise((res) => setTimeout(res, 1500));
-
-    const generatedOrderNumber = `KAF-${Date.now().toString().slice(-6)}`;
-    setOrderNumber(generatedOrderNumber);
-    clearCart();
-    setIsSuccess(true);
-    setIsSubmitting(false);
+    try {
+      if (form.paymentMethod === "pesapal") {
+        await handlePesapal();
+        // No further client-side action — browser will navigate away
+      } else {
+        await handleCOD();
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setServerError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isMounted) {
@@ -125,7 +189,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  // ── COD Success screen ───────────────────────────────────────────────────────
   if (isSuccess) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4">
@@ -165,7 +229,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // ── Empty cart guard ────────────────────────────────────────────────────────
+  // ── Empty cart guard ─────────────────────────────────────────────────────────
   if (itemsCount === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-24 text-center">
@@ -186,7 +250,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // ── Field helper ────────────────────────────────────────────────────────────
+  // ── Field helper ─────────────────────────────────────────────────────────────
   const Field = ({
     label,
     name,
@@ -222,7 +286,9 @@ export default function CheckoutPage() {
     </div>
   );
 
-  // ── Main checkout layout ────────────────────────────────────────────────────
+  const isPesapal = form.paymentMethod === "pesapal";
+
+  // ── Main checkout layout ─────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Back link */}
@@ -335,35 +401,68 @@ export default function CheckoutPage() {
                 Payment Method
               </h2>
               <div className="space-y-3">
-                {[
-                  { value: "cod", label: "Cash on Delivery", sub: "Pay when your order arrives at your door.", icon: <Truck className="h-5 w-5" /> },
-                  { value: "mobile_money", label: "Mobile Money", sub: "MTN MoMo or Airtel Money — our agent will send you a payment prompt.", icon: <CreditCard className="h-5 w-5" /> },
-                ].map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      form.paymentMethod === opt.value
-                        ? "border-primary-red bg-red-50/40"
-                        : "border-gray-100 hover:border-gray-200"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={opt.value}
-                      checked={form.paymentMethod === opt.value}
-                      onChange={handleChange}
-                      className="mt-0.5 accent-primary-red"
-                    />
-                    <div className={`mt-0.5 ${form.paymentMethod === opt.value ? "text-primary-red" : "text-gray-400"}`}>
-                      {opt.icon}
+                {/* Pesapal option */}
+                <label
+                  className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    form.paymentMethod === "pesapal"
+                      ? "border-primary-red bg-red-50/40"
+                      : "border-gray-100 hover:border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="pesapal"
+                    checked={form.paymentMethod === "pesapal"}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-primary-red"
+                  />
+                  <div className={`mt-0.5 ${form.paymentMethod === "pesapal" ? "text-primary-red" : "text-gray-400"}`}>
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-zinc-900">Pay Online via Pesapal</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      MTN MoMo, Airtel Money, Visa & Mastercard — instant, secure payment.
+                    </p>
+                    {/* Trust logos */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      {["MTN MoMo", "Airtel Money", "Visa", "Mastercard"].map((brand) => (
+                        <span
+                          key={brand}
+                          className="text-[9px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded"
+                        >
+                          {brand}
+                        </span>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900">{opt.label}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">{opt.sub}</p>
-                    </div>
-                  </label>
-                ))}
+                  </div>
+                </label>
+
+                {/* COD option */}
+                <label
+                  className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    form.paymentMethod === "cod"
+                      ? "border-primary-red bg-red-50/40"
+                      : "border-gray-100 hover:border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={form.paymentMethod === "cod"}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-primary-red"
+                  />
+                  <div className={`mt-0.5 ${form.paymentMethod === "cod" ? "text-primary-red" : "text-gray-400"}`}>
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">Cash on Delivery</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">Pay when your order arrives at your door.</p>
+                  </div>
+                </label>
               </div>
             </section>
           </div>
@@ -420,21 +519,39 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* Server error */}
+              {serverError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-primary-red font-medium leading-relaxed">
+                  {serverError}
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-primary-red hover:bg-primary-red-hover disabled:opacity-70 disabled:cursor-not-allowed text-white py-4 font-bold text-sm tracking-widest uppercase transition-all flex items-center justify-center rounded-xl shadow-md"
+                className="w-full bg-primary-red hover:bg-primary-red-hover disabled:opacity-70 disabled:cursor-not-allowed text-white py-4 font-bold text-sm tracking-widest uppercase transition-all flex items-center justify-center rounded-xl shadow-md gap-2"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Placing Order…
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    {isPesapal ? "Redirecting to Pesapal…" : "Placing Order…"}
+                  </>
+                ) : isPesapal ? (
+                  <>
+                    <ExternalLink className="h-4 w-4" />
+                    Pay {formatUGX(total)} via Pesapal
                   </>
                 ) : (
                   `Place Order · ${formatUGX(total)}`
                 )}
               </button>
+
+              {isPesapal && (
+                <p className="mt-3 text-center text-[10px] text-zinc-400 font-medium">
+                  You will be securely redirected to Pesapal to complete payment.
+                </p>
+              )}
 
               <div className="mt-5 flex items-center justify-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                 <ShieldCheck className="h-4 w-4 mr-1.5 text-success-green" />

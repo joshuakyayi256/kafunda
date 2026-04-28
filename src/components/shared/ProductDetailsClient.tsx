@@ -1,7 +1,7 @@
 // src/components/shared/ProductDetailsClient.tsx
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ChevronLeft, Minus, Plus, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
@@ -10,6 +10,17 @@ import { formatUGX } from "@/lib/utils";
 import ProductCard from "@/components/shared/ProductCard";
 import StickyAddToCart from "@/components/shared/StickyAddToCart";
 import { Product } from "@/types";
+
+const RV_KEY = "kafunda_recently_viewed";
+
+function trackPageView(product: Product) {
+  try {
+    const raw = localStorage.getItem(RV_KEY);
+    const prev: Product[] = raw ? JSON.parse(raw) : [];
+    const next = [product, ...prev.filter((p) => p.id !== product.id)].slice(0, 12);
+    localStorage.setItem(RV_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
+}
 
 interface ProductDetailsProps {
     product: Product;
@@ -22,6 +33,12 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
     const [activeImage, setActiveImage] = useState(product.image_url);
     const [openAccordion, setOpenAccordion] = useState<string | null>("description");
     const addToCartBtnRef = useRef<HTMLButtonElement>(null);
+
+    // Track this product in Recently Viewed on full page load
+    useEffect(() => {
+        trackPageView(product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product.id]);
 
     const toggleAccordion = (id: string) => {
         setOpenAccordion(openAccordion === id ? null : id);

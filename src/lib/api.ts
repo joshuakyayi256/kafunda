@@ -12,10 +12,18 @@ const WC_SECRET = process.env.WC_CONSUMER_SECRET;
  * MASTER FETCH FUNCTION - Uses URL-based API Keys to bypass stripped headers
  */
 async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unknown) {
+  // Guard: crash loudly at build time if keys are missing rather than silently 403-ing
+  if (!WC_KEY || !WC_SECRET) {
+    throw new Error(
+      "WooCommerce API keys are not configured. " +
+      "Set WC_CONSUMER_KEY and WC_CONSUMER_SECRET in your environment variables (Vercel dashboard or .env.local)."
+    );
+  }
+
   // Check if the endpoint already has a ? in it so we know whether to use ? or &
   const separator = endpoint.includes('?') ? '&' : '?';
   
-  // Attach the keys directly to the URL instead of the headers
+  // Attach the keys directly to the URL — avoids Authorization header stripping on shared hosts
   const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}${separator}consumer_key=${WC_KEY}&consumer_secret=${WC_SECRET}`;
 
   const headers: Record<string, string> = {
@@ -33,14 +41,14 @@ async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unk
     });
 
     if (!res.ok) {
-      // Log endpoint only — never log the full URL as it contains credentials
+      // Log the status and endpoint only — never log the full URL as it contains credentials
       console.error(`WooCommerce API Error (HTTP ${res.status}) on endpoint: ${endpoint}`);
       return null;
     }
 
     return await res.json();
   } catch (error) {
-    console.error("Fetch Error:", error);
+    console.error("WooCommerce Fetch Error:", error);
     return null;
   }
 }
