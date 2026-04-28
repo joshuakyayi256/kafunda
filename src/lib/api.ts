@@ -5,31 +5,33 @@ import { Product } from "@/types";
 const RAW_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com";
 const BASE_URL = RAW_URL.replace(/\/graphql\/?$/, ""); // Removes /graphql if it's there
 
-const WC_KEY = process.env.WC_CONSUMER_KEY;
-const WC_SECRET = process.env.WC_CONSUMER_SECRET;
+// Use WP Application Passwords if provided, otherwise fallback to Woo keys
+const AUTH_USER = process.env.WP_APP_USER || process.env.WC_CONSUMER_KEY;
+const AUTH_PASS = process.env.WP_APP_PASS || process.env.WC_CONSUMER_SECRET;
 
 /**
- * MASTER FETCH FUNCTION - Uses URL-based API Keys to bypass stripped headers
+ * MASTER FETCH FUNCTION - Uses Basic Auth via standard Authorization headers
  */
 async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unknown) {
-  // Guard: crash loudly at build time if keys are missing rather than silently 403-ing
-  if (!WC_KEY || !WC_SECRET) {
+  if (!AUTH_USER || !AUTH_PASS) {
     throw new Error(
-      "WooCommerce API keys are not configured. " +
-      "Set WC_CONSUMER_KEY and WC_CONSUMER_SECRET in your environment variables (Vercel dashboard or .env.local)."
+      "Authentication credentials not found. " +
+      "Please set WP_APP_USER and WP_APP_PASS (or WC_CONSUMER_KEY and WC_CONSUMER_SECRET) in Vercel."
     );
   }
 
-  // Check if the endpoint already has a ? in it so we know whether to use ? or &
-  const separator = endpoint.includes('?') ? '&' : '?';
-  
-  // Attach the keys directly to the URL — avoids Authorization header stripping on shared hosts
-  const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}${separator}consumer_key=${WC_KEY}&consumer_secret=${WC_SECRET}`;
+  // Create standard Basic Auth token
+  const base64Auth = Buffer.from(`${AUTH_USER}:${AUTH_PASS}`).toString('base64');
+
+  // No longer appending keys directly to the URL to prevent Firewall flagging
+  const url = `${BASE_URL}/wp-json/wc/v3/${endpoint}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'Authorization': `Basic ${base64Auth}`,
+    // Sending a clean, honest User-Agent instead of faking Chrome which triggers anti-bot WAF rules
+    'User-Agent': 'KafundaVercelBuild/1.0'
   };
 
   try {
@@ -41,7 +43,6 @@ async function fetchWooREST(endpoint: string, method: string = 'GET', body?: unk
     });
 
     if (!res.ok) {
-      // Log the status and endpoint only — never log the full URL as it contains credentials
       console.error(`WooCommerce API Error (HTTP ${res.status}) on endpoint: ${endpoint}`);
       return null;
     }
