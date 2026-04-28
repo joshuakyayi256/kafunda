@@ -5,9 +5,9 @@ import { Product } from "@/types";
 const RAW_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com";
 const BASE_URL = RAW_URL.replace(/\/graphql\/?$/, ""); // Removes /graphql if it's there
 
-// Use WP Application Passwords if provided, otherwise fallback to Woo keys
-const AUTH_USER = process.env.WP_APP_USER || process.env.WC_CONSUMER_KEY;
-const AUTH_PASS = process.env.WP_APP_PASS || process.env.WC_CONSUMER_SECRET;
+// WooCommerce REST API uses consumer key/secret. WP App Password is fallback only.
+const AUTH_USER = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
+const AUTH_PASS = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
 
 /**
  * MASTER FETCH FUNCTION - Uses Basic Auth via standard Authorization headers
