@@ -143,10 +143,15 @@ async function createWooOrder(payload: CheckoutPayload): Promise<number> {
     customer_note: payload.customer.notes || "",
   };
 
-  const url = `${WC_BASE}/wp-json/wc/v3/orders?consumer_key=${wcKey}&consumer_secret=${wcSecret}`;
+  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
+  const url = `${WC_BASE}/wp-json/wc/v3/orders`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Basic ${base64Auth}`,
+    },
     body: JSON.stringify(orderBody),
   });
 

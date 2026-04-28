@@ -56,11 +56,16 @@ async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string
   const wcSecret = process.env.WC_CONSUMER_SECRET;
   if (!wcKey || !wcSecret) throw new Error("Missing WooCommerce env vars.");
 
-  const url = `${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}?consumer_key=${wcKey}&consumer_secret=${wcSecret}`;
+  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
+  const url = `${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}`;
 
   await fetch(url, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Basic ${base64Auth}`,
+    },
     body: JSON.stringify({
       status: wcStatus,
       transaction_id: txnId,

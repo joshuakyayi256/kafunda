@@ -134,12 +134,21 @@ export async function getAllProducts(): Promise<Product[]> {
   });
 }
 
-// 3. FETCH SINGLE PRODUCT BY SLUG
+// 3. FETCH SINGLE PRODUCT BY ID OR SLUG
 export async function getProductBySlug(idOrSlug: string): Promise<Product | null> {
-  const data = await fetchWooREST(`products?slug=${idOrSlug}`);
-  if (!data || !Array.isArray(data) || data.length === 0) return null;
+  const isNumericId = /^\d+$/.test(idOrSlug);
 
-  const node = data[0];
+  // Numeric IDs use the direct endpoint (returns object); slugs use query param (returns array)
+  const data = isNumericId
+    ? await fetchWooREST(`products/${idOrSlug}`)
+    : await fetchWooREST(`products?slug=${idOrSlug}`);
+
+  if (!data) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const node: any = isNumericId ? data : (Array.isArray(data) && data.length > 0 ? data[0] : null);
+  if (!node) return null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const categoryNames = node.categories?.map((c: any) => c.name).join(", ") || "Uncategorized";
   const rawDescription = node.short_description || node.description || "";
