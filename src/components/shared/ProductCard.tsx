@@ -24,110 +24,107 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const { addToCart } = useCart();
     const [quickViewOpen, setQuickViewOpen] = useState(false);
 
-    const handleQuickView = useCallback(() => {
+    const handleQuickView = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         trackView(product);
         setQuickViewOpen(true);
     }, [product]);
 
-    // Generate a stable "random" review count based on the product ID
-    const reviewCount = product.reviews ||
-        ((product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1)) * 13) % 80 + 20;
-
     return (
         <>
-            <div className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col h-full relative border border-gray-100 hover:border-gray-200">
-                {/* Badges */}
-                <div className="absolute top-3 left-3 z-10 font-bold text-[10px] tracking-widest uppercase flex flex-col gap-1">
-                    {product.is_sale && (
-                        <span className="bg-primary-red text-white px-2.5 py-1 rounded-md shadow-sm">
-                            Sale
-                        </span>
-                    )}
-                    {product.in_stock && !product.is_sale && (
-                        <span className="bg-success-green text-white px-2.5 py-1 rounded-md shadow-sm">
-                            In Stock
-                        </span>
-                    )}
-                </div>
+            <div className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 flex flex-col">
 
-                {/* Image Container */}
-                <div className="relative aspect-3/4 overflow-hidden bg-gray-50 flex items-center justify-center p-8">
-                    <Link href={`/product/${product.id}`} className="absolute inset-0" aria-label={product.name} />
+                {/* Image */}
+                <div className="relative aspect-square bg-gray-50 overflow-hidden">
+                    <Link
+                        href={`/product/${product.id}`}
+                        className="absolute inset-0 z-10"
+                        aria-label={product.name}
+                        onClick={() => trackView(product)}
+                    />
+
                     <Image
                         src={product.image_url}
                         alt={product.name}
                         fill
-                        className="object-contain transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 768px) 50vw, 250px"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className={`object-contain p-3 transition-transform duration-500 group-hover:scale-105 ${!product.in_stock ? "opacity-40 grayscale" : ""}`}
                     />
 
-                    {/* Quick View — Desktop (Full button) */}
+                    {/* Sale badge */}
+                    {product.is_sale && (
+                        <span className="absolute top-2.5 left-2.5 z-20 bg-primary-red text-white text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-md shadow-sm">
+                            Sale
+                        </span>
+                    )}
+
+                    {/* Out of stock label */}
+                    {!product.in_stock && (
+                        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-3">
+                            <span className="bg-white/90 backdrop-blur-sm text-[9px] font-black uppercase tracking-widest text-zinc-500 px-3 py-1 rounded-full border border-gray-200">
+                                Out of Stock
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Quick View — always visible on mobile, hover-only on desktop */}
                     <button
                         onClick={handleQuickView}
-                        className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-200 text-zinc-700 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 shadow-md whitespace-nowrap z-10"
+                        className="absolute top-2.5 right-2.5 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-zinc-500 hover:text-zinc-900 active:scale-90 transition-all md:opacity-0 md:scale-90 md:group-hover:opacity-100 md:group-hover:scale-100"
                         aria-label={`Quick view ${product.name}`}
                     >
                         <Eye className="h-3.5 w-3.5" />
-                        Quick View
-                    </button>
-
-                    {/* Quick View — Mobile (Floating icon) */}
-                    <button
-                        onClick={handleQuickView}
-                        className="md:hidden absolute top-3 right-3 z-10 w-9 h-9 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-zinc-700 shadow-md border border-gray-100 active:scale-90 transition-transform"
-                        aria-label={`Quick view ${product.name}`}
-                    >
-                        <Eye className="h-4 w-4" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-4 flex flex-col grow">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">
-                        {product.brand}
-                    </span>
+                {/* Info */}
+                <div className="px-3 pt-2.5 pb-2 flex flex-col grow">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">
+                        {product.category.split(",")[0].trim()}
+                    </p>
 
-                    {/* Rating */}
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center text-[10px] text-yellow-500 font-bold gap-1">
-                            ★ {product.rating || "4.9"}
-                            <span className="text-gray-400">({reviewCount})</span>
-                        </div>
-                        {product.stock_count && product.stock_count < 10 && (
-                            <span className="text-[10px] font-bold text-primary-red uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded">
-                                Only {product.stock_count} left!
-                            </span>
-                        )}
-                    </div>
-
-                    <Link href={`/product/${product.id}`} className="hover:text-primary-red transition-colors mb-3">
-                        <h3 className="text-sm font-black leading-tight text-zinc-900 group-hover:underline underline-offset-4 decoration-current decoration-2">
-                            {product.is_today_offer && product.description ? product.description : product.name}
+                    <Link
+                        href={`/product/${product.id}`}
+                        onClick={() => trackView(product)}
+                        className="mb-2"
+                    >
+                        <h3 className="text-xs font-black text-zinc-900 leading-snug line-clamp-2 hover:text-primary-red transition-colors">
+                            {product.name}
                         </h3>
                     </Link>
 
-                    {/* Price */}
-                    <div className="mt-auto pt-2 flex items-baseline gap-2">
-                        <span className="text-base font-black text-zinc-900">
-                            {formatUGX(product.price_ugx)}
-                        </span>
-                        {product.original_price_ugx && (
-                            <span className="text-xs text-gray-400 line-through font-medium">
-                                {formatUGX(product.original_price_ugx)}
+                    <div className="mt-auto flex items-end justify-between gap-1">
+                        <div>
+                            <p className="text-sm font-black text-zinc-900 leading-none">
+                                {formatUGX(product.price_ugx)}
+                            </p>
+                            {product.original_price_ugx && (
+                                <p className="text-[10px] text-gray-400 line-through mt-0.5">
+                                    {formatUGX(product.original_price_ugx)}
+                                </p>
+                            )}
+                        </div>
+                        {product.in_stock && product.stock_count != null && product.stock_count < 10 && (
+                            <span className="shrink-0 text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full">
+                                {product.stock_count} left
                             </span>
                         )}
                     </div>
                 </div>
 
-                {/* Quick Add */}
-                <button
-                    onClick={() => addToCart(product)}
-                    className="w-full bg-zinc-900 hover:bg-primary-red text-white py-3 font-bold text-xs tracking-widest uppercase transition-colors flex items-center justify-center gap-2"
-                    aria-label={`Add ${product.name} to cart`}
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    Quick Add
-                </button>
+                {/* Add to Cart */}
+                <div className="px-3 pb-3">
+                    <button
+                        onClick={() => { if (product.in_stock) addToCart(product); }}
+                        disabled={!product.in_stock}
+                        className="w-full flex items-center justify-center gap-1.5 bg-zinc-900 hover:bg-primary-red disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl transition-colors"
+                        aria-label={`Add ${product.name} to cart`}
+                    >
+                        <Plus className="h-3 w-3 shrink-0" />
+                        {product.in_stock ? "Add to Cart" : "Unavailable"}
+                    </button>
+                </div>
             </div>
 
             <QuickViewModal

@@ -8,57 +8,51 @@ import { Product } from "@/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Shop All Products",
-  description:
-    "Browse Kafunda's full collection of 500+ premium wines, whiskies, gins, tequilas, and spirits. Fast delivery across Kampala.",
-  openGraph: {
-    title: "Shop All Products | Kafunda Wines & Spirits",
+    title: "Shop All Products",
     description:
-      "Browse 500+ premium wines, whiskies, gins, tequilas, and spirits. Fast delivery across Kampala.",
-  },
+        "Browse Kafunda's full collection of 500+ premium wines, whiskies, gins, tequilas, and spirits. Fast delivery across Kampala.",
+    openGraph: {
+        title: "Shop All Products | Kafunda Wines & Spirits",
+        description:
+            "Browse 500+ premium wines, whiskies, gins, tequilas, and spirits. Fast delivery across Kampala.",
+    },
 };
 
 export default async function ShopPage({
     searchParams,
 }: {
-    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const params = await searchParams;
 
-    // Extract query parameters
-    const currentCategory = typeof params.category === 'string' ? params.category : "All";
-    const currentBrand    = typeof params.brand    === 'string' ? params.brand    : null;
-    const currentFilter   = typeof params.filter   === 'string' ? params.filter   : null;
-    const currentSearch   = typeof params.search   === 'string' ? params.search   : null;
+    const currentCategory = typeof params.category === "string" ? params.category : "All";
+    const currentBrand    = typeof params.brand    === "string" ? params.brand    : null;
+    const currentFilter   = typeof params.filter   === "string" ? params.filter   : null;
+    const currentSearch   = typeof params.search   === "string" ? params.search   : null;
     const currentInStock  = params.inStock === "true";
-    const currentMinPrice = typeof params.minPrice === 'string' ? Number(params.minPrice) : null;
-    const currentMaxPrice = typeof params.maxPrice === 'string' ? Number(params.maxPrice) : null;
+    const currentMinPrice = typeof params.minPrice === "string" ? Number(params.minPrice) : null;
+    const currentMaxPrice = typeof params.maxPrice === "string" ? Number(params.maxPrice) : null;
+    const currentPage     = typeof params.page     === "string" ? parseInt(params.page) : 1;
 
-    const currentPage   = typeof params.page === 'string' ? parseInt(params.page) : 1;
     const ITEMS_PER_PAGE = 24;
 
     const [allProducts, wpCategories] = await Promise.all([
         getAllProducts(),
         getCategories(),
     ]);
-    const safeProducts   = allProducts   || [];
-    const safeCategories = wpCategories  || [];
+    const safeProducts   = allProducts  || [];
+    const safeCategories = wpCategories || [];
 
     const dynamicCategories = ["All", ...safeCategories.map((c) => c.name)];
 
-    // Apply all filters server-side
     let filteredProducts = currentCategory === "All"
         ? safeProducts
         : safeProducts.filter(p => p.category.toLowerCase().includes(currentCategory.toLowerCase()));
 
-    if (currentBrand) {
-        filteredProducts = filteredProducts.filter(p =>
-            p.brand.toLowerCase().includes(currentBrand.toLowerCase())
-        );
-    }
-    if (currentFilter === "offers") {
+    if (currentBrand)
+        filteredProducts = filteredProducts.filter(p => p.brand.toLowerCase().includes(currentBrand.toLowerCase()));
+    if (currentFilter === "offers")
         filteredProducts = filteredProducts.filter(p => p.is_sale);
-    }
     if (currentSearch) {
         const q = currentSearch.toLowerCase();
         filteredProducts = filteredProducts.filter(p =>
@@ -68,18 +62,12 @@ export default async function ShopPage({
             p.description.toLowerCase().includes(q)
         );
     }
-    if (currentInStock) {
-        filteredProducts = filteredProducts.filter(p => p.in_stock);
-    }
-    if (currentMinPrice !== null) {
-        filteredProducts = filteredProducts.filter(p => p.price_ugx >= currentMinPrice);
-    }
-    if (currentMaxPrice !== null) {
-        filteredProducts = filteredProducts.filter(p => p.price_ugx <= currentMaxPrice);
-    }
+    if (currentInStock)           filteredProducts = filteredProducts.filter(p => p.in_stock);
+    if (currentMinPrice !== null) filteredProducts = filteredProducts.filter(p => p.price_ugx >= currentMinPrice);
+    if (currentMaxPrice !== null) filteredProducts = filteredProducts.filter(p => p.price_ugx <= currentMaxPrice);
 
-    const totalProducts  = filteredProducts.length;
-    const totalPages     = Math.ceil(totalProducts / ITEMS_PER_PAGE);
+    const totalProducts     = filteredProducts.length;
+    const totalPages        = Math.ceil(totalProducts / ITEMS_PER_PAGE);
     const paginatedProducts = filteredProducts.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
         currentPage * ITEMS_PER_PAGE
@@ -106,13 +94,21 @@ export default async function ShopPage({
         ? currentCategory
         : "Our Collection";
 
+    const sharedFiltersProps = {
+        categories: dynamicCategories,
+        currentCategory,
+        currentFilter,
+        currentSearch,
+        totalProducts,
+    };
+
     return (
         <div className="bg-white min-h-screen">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
 
                 {/* Page header */}
-                <div className="mb-8 pb-6 border-b border-gray-100">
-                    <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2">
+                <div className="mb-5 lg:mb-8">
+                    <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter mb-1.5">
                         {pageTitle}
                     </h1>
                     <div className="flex flex-wrap items-center gap-3">
@@ -120,7 +116,7 @@ export default async function ShopPage({
                             {totalProducts} products
                         </p>
                         {currentBrand && (
-                            <span className="text-xs font-bold text-primary-red uppercase tracking-widest bg-red-50 px-3 py-1 rounded-full">
+                            <span className="text-xs font-bold text-primary-red uppercase bg-red-50 px-3 py-1 rounded-full">
                                 Brand: {currentBrand}
                             </span>
                         )}
@@ -132,35 +128,60 @@ export default async function ShopPage({
                     </div>
                 </div>
 
-                {/* Mobile filter trigger + main layout */}
+                {/* ── Mobile: category pills + filter trigger ──
+                    On mobile, ShopFilters renders only its drawer trigger button (the aside is hidden lg:block).
+                    Category pills scroll horizontally above it. */}
+                <div className="lg:hidden mb-5 space-y-3">
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [-webkit-overflow-scrolling:touch]">
+                        {dynamicCategories.map((cat) => {
+                            const isActive = currentCategory.toLowerCase() === cat.toLowerCase();
+                            const href = cat === "All"
+                                ? `/shop${currentFilter === "offers" ? "?filter=offers" : ""}`
+                                : `/shop?category=${cat}${currentFilter === "offers" ? "&filter=offers" : ""}`;
+                            return (
+                                <Link
+                                    key={cat}
+                                    href={href}
+                                    className={`shrink-0 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${
+                                        isActive
+                                            ? "bg-zinc-900 border-zinc-900 text-white"
+                                            : "bg-white border-gray-100 text-gray-500 hover:border-gray-300"
+                                    }`}
+                                >
+                                    {cat}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                    <ShopFilters {...sharedFiltersProps} />
+                </div>
+
+                {/* ── Main layout: desktop sidebar + content ── */}
                 <div className="flex gap-10">
 
-                    {/* Sidebar (desktop) / Drawer trigger (mobile) */}
-                    <ShopFilters
-                        categories={dynamicCategories}
-                        currentCategory={currentCategory}
-                        currentFilter={currentFilter}
-                        currentSearch={currentSearch}
-                        totalProducts={totalProducts}
-                    />
+                    {/* Desktop sidebar only — ShopFilters mobile button is lg:hidden inside it */}
+                    <div className="hidden lg:block">
+                        <ShopFilters {...sharedFiltersProps} />
+                    </div>
 
-                    {/* Right: category pills + grid */}
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                        {/* Category pill tabs */}
-                        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+
+                        {/* Desktop category pills */}
+                        <div className="hidden lg:flex gap-2 mb-8 overflow-x-auto pb-2 [scrollbar-width:none]">
                             {dynamicCategories.map((cat) => {
                                 const isActive = currentCategory.toLowerCase() === cat.toLowerCase();
                                 const href = cat === "All"
-                                    ? `/shop${currentFilter === 'offers' ? '?filter=offers' : ''}`
-                                    : `/shop?category=${cat}${currentFilter === 'offers' ? '&filter=offers' : ''}`;
+                                    ? `/shop${currentFilter === "offers" ? "?filter=offers" : ""}`
+                                    : `/shop?category=${cat}${currentFilter === "offers" ? "&filter=offers" : ""}`;
                                 return (
                                     <Link
                                         key={cat}
                                         href={href}
-                                        className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border-2 shrink-0 ${
+                                        className={`shrink-0 px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border-2 ${
                                             isActive
-                                            ? "bg-zinc-900 border-zinc-900 text-white"
-                                            : "bg-transparent border-gray-100 text-gray-400 hover:border-gray-300 hover:text-zinc-700"
+                                                ? "bg-zinc-900 border-zinc-900 text-white"
+                                                : "bg-transparent border-gray-100 text-gray-400 hover:border-gray-300 hover:text-zinc-700"
                                         }`}
                                     >
                                         {cat}
@@ -169,16 +190,15 @@ export default async function ShopPage({
                             })}
                         </div>
 
-                        {/* Product Grid */}
+                        {/* Product grid */}
                         {paginatedProducts.length > 0 ? (
                             <>
-                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mb-12">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-12">
                                     {paginatedProducts.map((product: Product) => (
                                         <ProductCard key={product.id} product={product} />
                                     ))}
                                 </div>
 
-                                {/* Pagination */}
                                 {totalPages > 1 && (
                                     <div className="flex justify-center items-center gap-4 border-t border-gray-100 pt-8">
                                         {currentPage > 1 ? (
