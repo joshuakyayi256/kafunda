@@ -21,7 +21,7 @@ export function ProductSkeleton() {
 
 export function CategorySkeleton() {
     return (
-        <div className="flex flex-col items-center gap-4 min-w-[112px]">
+        <div className="flex flex-col items-center gap-4 min-w-28">
             <Skeleton className="w-28 h-40 md:w-full md:aspect-2/3 rounded-full" />
             <Skeleton className="h-4 w-20" />
         </div>
