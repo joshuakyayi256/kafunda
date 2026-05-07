@@ -207,7 +207,7 @@ export default function CheckoutPage() {
     </div>
   );
 
-  if (itemsCount === 0 && !isSuccess && !yoSuccess) return (
+  if (itemsCount === 0 && !isSuccess) return (
     <div className="max-w-7xl mx-auto px-4 py-24 text-center">
       <div className="bg-gray-50 rounded-2xl p-12 max-w-md mx-auto border border-gray-100">
         <h1 className="text-2xl font-black uppercase tracking-tighter mb-4">Your Cart is Empty</h1>
