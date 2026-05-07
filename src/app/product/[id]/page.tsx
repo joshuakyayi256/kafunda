@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getProductBySlug, getAllProducts } from "@/lib/api";
+import { getProductBySlug, getProductsPreview } from "@/lib/api";
 import ProductDetailsClient from "@/components/shared/ProductDetailsClient";
 
 export async function generateMetadata(
@@ -36,8 +36,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     // Await the params to get the product slug/id
     const { id } = await params;
     
-    // Fetch the specific product from WordPress
-    const product = await getProductBySlug(id);
+    // Fetch product and a preview pool for related items in parallel
+    const [product, previewProducts] = await Promise.all([
+        getProductBySlug(id),
+        getProductsPreview(20),
+    ]);
 
     if (!product) {
         return (
@@ -51,13 +54,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         );
     }
 
-    // Fetch related products (grabbing items in the same primary category)
-    const allProducts = await getAllProducts() || [];
-    
-    // Split to get just the primary category name if it has multiple (e.g. "Wines, Red Wines")
     const primaryCategory = product.category.split(',')[0].trim();
-    
-    const relatedProducts = allProducts
+    const relatedProducts = previewProducts
         .filter((p) => p.id !== product.id && p.category.includes(primaryCategory))
         .slice(0, 4);
 

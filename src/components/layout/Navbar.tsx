@@ -552,15 +552,21 @@ const Navbar = () => {
 
                 {/* Policy Links */}
                 <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-8">
-                  {["About Us", "Delivery Info", "Contact Us", "Privacy Policy"].map((link) => (
+                  {[
+                    { label: "About Us",      href: "/about"    },
+                    { label: "Delivery Info",  href: "/delivery" },
+                    { label: "Contact Us",     href: "/contact"  },
+                    { label: "Privacy Policy", href: "/privacy"  },
+                    { label: "Terms",          href: "/terms"    },
+                  ].map(({ label, href }) => (
                     <Link
-                      key={link}
-                      href={`/${link.toLowerCase().replace(" ", "-")}`}
+                      key={href}
+                      href={href}
                       onClick={closeAll}
                       className="text-zinc-500 hover:text-zinc-900 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
                     >
                       <div className="w-1 h-1 bg-zinc-200 rounded-full" />
-                      {link}
+                      {label}
                     </Link>
                   ))}
                 </div>

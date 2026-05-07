@@ -187,14 +187,20 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <FooterLinkSection title="Explore">
               <div className="flex flex-col gap-4">
-                {["Home", "Shop", "About Us", "Delivery Info", "Contact Us"].map((link) => (
+                {[
+                  { label: "Home",          href: "/"          },
+                  { label: "Shop",          href: "/shop"      },
+                  { label: "About Us",      href: "/about"     },
+                  { label: "Delivery Info", href: "/delivery"  },
+                  { label: "Contact Us",    href: "/contact"   },
+                ].map(({ label, href }) => (
                   <Link
-                    key={link}
-                    href={link === "Home" ? "/" : `/${link.toLowerCase().replace(" ", "-")}`}
+                    key={href}
+                    href={href}
                     className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
                   >
                     <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
-                    {link}
+                    {label}
                   </Link>
                 ))}
               </div>
@@ -205,14 +211,19 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <FooterLinkSection title="Support">
               <div className="flex flex-col gap-4">
-                {["Privacy Policy", "Terms & Conditions", "FAQs", "Return Policy"].map((link) => (
+                {[
+                  { label: "Privacy Policy",     href: "/privacy"  },
+                  { label: "Terms & Conditions", href: "/terms"    },
+                  { label: "Delivery Info",      href: "/delivery" },
+                  { label: "Contact Us",         href: "/contact"  },
+                ].map(({ label, href }) => (
                   <Link
-                    key={link}
-                    href={`/${link.toLowerCase().replace(" & ", "-").replace(" ", "-").replace("policy", "")}`}
+                    key={href}
+                    href={href}
                     className="text-zinc-400 hover:text-white transition-colors text-sm font-medium group flex items-center"
                   >
                     <div className="w-0 group-hover:w-2 h-px bg-primary-red mr-0 group-hover:mr-2 transition-all" />
-                    {link}
+                    {label}
                   </Link>
                 ))}
               </div>

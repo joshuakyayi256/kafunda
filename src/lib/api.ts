@@ -134,6 +134,36 @@ export async function getAllProducts(): Promise<Product[]> {
   });
 }
 
+// 3a. FETCH A SMALL SET OF PRODUCTS FOR RELATED ITEMS (avoids full pagination)
+export async function getProductsPreview(limit: number = 8): Promise<Product[]> {
+  const data = await fetchWooREST(`products?status=publish&per_page=${limit}&page=1`);
+  if (!data || !Array.isArray(data)) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((node: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const categoryNames = node.categories?.map((c: any) => c.name).join(", ") || "Uncategorized";
+    const rawDescription = node.short_description || node.description || "";
+    const cleanDescription = rawDescription.replace(/<[^>]*>?/gm, '').trim() || "No description available.";
+    return {
+      id: node.id.toString(),
+      name: node.name || "Unknown Product",
+      brand: "Kafunda Selection",
+      category: categoryNames,
+      price_ugx: Number(node.price || 0),
+      original_price_ugx: node.regular_price && Number(node.regular_price) > Number(node.price) ? Number(node.regular_price) : null,
+      image_url: node.images?.[0]?.src || "/don julio.webp",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      gallery_urls: node.images?.map((img: any) => img.src) || [],
+      in_stock: node.stock_status === "instock",
+      is_sale: node.on_sale,
+      description: cleanDescription,
+      abv: "N/A",
+      volume: "750ml",
+      stock_count: node.stock_quantity || 5,
+    };
+  });
+}
+
 // 3. FETCH SINGLE PRODUCT BY ID OR SLUG
 export async function getProductBySlug(idOrSlug: string): Promise<Product | null> {
   const isNumericId = /^\d+$/.test(idOrSlug);
@@ -181,6 +211,7 @@ export interface CheckoutFormData {
   email: string;
   address: string;
   city: string;
+  notes?: string;
 }
 
 export interface CartItem {
@@ -188,8 +219,11 @@ export interface CartItem {
   quantity: number;
 }
 
-export async function createOrder(customerData: CheckoutFormData, cartItems: CartItem[]) {
-  // Format the order exactly how WooCommerce expects it via REST
+export async function createOrder(
+  customerData: CheckoutFormData,
+  cartItems: CartItem[],
+  deliveryFee: number = 0
+) {
   const orderData = {
     payment_method: "cod",
     payment_method_title: "Cash on Delivery",
@@ -200,23 +234,26 @@ export async function createOrder(customerData: CheckoutFormData, cartItems: Car
       address_1: customerData.address,
       city: customerData.city,
       country: "UG",
-      email: customerData.email,
-      phone: customerData.phone
+      email: customerData.email || "",
+      phone: customerData.phone,
     },
     shipping: {
       first_name: customerData.firstName,
       last_name: customerData.lastName,
       address_1: customerData.address,
       city: customerData.city,
-      country: "UG"
+      country: "UG",
     },
     line_items: cartItems.map(item => ({
       product_id: parseInt(item.product.id, 10),
-      quantity: item.quantity
-    }))
+      quantity: item.quantity,
+    })),
+    fee_lines: deliveryFee > 0
+      ? [{ name: "Delivery Fee", total: deliveryFee.toString() }]
+      : [],
+    customer_note: customerData.notes || "",
   };
 
-  // Post the order directly to Badru's POS database
   const data = await fetchWooREST('orders', 'POST', orderData);
 
   if (!data || data.code) {
