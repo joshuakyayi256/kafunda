@@ -233,9 +233,11 @@ async function createWooOrder(
   deliveryFee: number,
   idempotencyKey: string | undefined
 ): Promise<number> {
-  const wcKey = process.env.WC_CONSUMER_KEY;
-  const wcSecret = process.env.WC_CONSUMER_SECRET;
-  if (!wcKey || !wcSecret) throw new Error("Missing WooCommerce credentials.");
+  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
+const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
+if (!wcKey || !wcSecret) {
+  throw new Error("Missing WooCommerce credentials (set WC_CONSUMER_KEY/SECRET or WP_APP_USER/PASS).");
+}
 
   const orderBody = {
     payment_method: "pesapal",
