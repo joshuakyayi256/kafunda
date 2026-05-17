@@ -105,11 +105,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                                 </p>
                             )}
                         </div>
-                        {product.in_stock && product.stock_count != null && product.stock_count < 10 && (
-                            <span className="shrink-0 text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full">
-                                {product.stock_count} left
-                            </span>
-                        )}
                     </div>
                 </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,32 +12,34 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
+// Config
 const SALE_END = new Date("2026-04-30T23:59:59");
 
 const TICKER = [
-  { emoji: "⚡", text: "1–2 Hour Delivery across Kampala" },
+  { emoji: "⚡", text: "1-2 Hour Delivery across Kampala" },
   { emoji: "🚚", text: "Free Delivery on orders over UGX 500,000" },
   { emoji: "💬", text: "Order directly via WhatsApp: +256 785 498 279" },
 ];
 
 const CATEGORIES = [
-  { label: "Wines", href: "/shop?category=Wines", emoji: "🍷" },
-  { label: "Whiskies", href: "/shop?category=Whisky", emoji: "🥃" },
-  { label: "Creams", href: "/shop?category=Creams", emoji: "🍶" },
-  { label: "Cognacs", href: "/shop?category=Cognacs", emoji: "🥃" },
-  { label: "Vodkas", href: "/shop?category=Vodkas", emoji: "🍸" },
-  { label: "Champagnes", href: "/shop?category=Champagne", emoji: "🥂" },
-  { label: "Beers", href: "/shop?category=Beers", emoji: "🍺" },
+  { label: "Wines",       href: "/shop?category=Wines",       emoji: "🍷" },
+  { label: "Whiskies",    href: "/shop?category=Whisky",      emoji: "🥃" },
+  { label: "Creams",      href: "/shop?category=Creams",      emoji: "🍶" },
+  { label: "Cognacs",     href: "/shop?category=Cognacs",     emoji: "🥃" },
+  { label: "Vodkas",      href: "/shop?category=Vodkas",      emoji: "🍸" },
+  { label: "Champagnes",  href: "/shop?category=Champagne",   emoji: "🥂" },
+  { label: "Beers",       href: "/shop?category=Beers",       emoji: "🍺" },
   { label: "Soft Drinks", href: "/shop?category=Soft-Drinks", emoji: "🥤" },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
+type TimeLeft = { h: number; m: number; s: number; expired: boolean };
 
-function pad(n: number) { return String(n).padStart(2, "0"); }
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
 
-function getTimeLeft(end: Date) {
+function getTimeLeft(end: Date): TimeLeft {
   const diff = Math.max(0, end.getTime() - Date.now());
   return {
     h: Math.floor(diff / 1000 / 60 / 60),
@@ -46,44 +49,42 @@ function getTimeLeft(end: Date) {
   };
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-/** Compact countdown used inside the sub-nav strip */
+// Compact countdown shown inside the category strip
 function InlineCountdown() {
-  const [time, setTime] = useState(getTimeLeft(SALE_END));
-  const [ready, setReady] = useState(false);
+  const [time, setTime] = useState<TimeLeft | null>(null);
 
   useEffect(() => {
-    setReady(true);
-    const id = setInterval(() => setTime(getTimeLeft(SALE_END)), 1000);
-    return () => clearInterval(id);
+    const tick = () => setTime(getTimeLeft(SALE_END));
+    const initial = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, []);
 
-  if (!ready || time.expired) return null;
+  if (!time || time.expired) return null;
 
   return (
-    <div className="flex items-center gap-3 shrink-0 ml-auto pl-4 border-l border-zinc-800/60">
-      {/* Label */}
+    <div className="flex items-center gap-3 shrink-0 ml-auto pl-4 border-l border-white/20">
       <div className="hidden sm:flex items-center gap-1.5">
-        <Zap className="h-3 w-3 text-primary-red fill-primary-red" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300">
+        <Zap className="h-3 w-3 text-kafunda-mustard fill-kafunda-mustard" />
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
           Flash Sale
         </span>
       </div>
 
-      {/* Timer */}
       <div className="flex items-center gap-0.5 font-black tabular-nums text-white text-sm">
-        <span className="bg-zinc-800 rounded px-1.5 py-0.5">{pad(time.h)}</span>
-        <span className="text-primary-red text-xs animate-pulse">:</span>
-        <span className="bg-zinc-800 rounded px-1.5 py-0.5">{pad(time.m)}</span>
-        <span className="text-primary-red text-xs animate-pulse">:</span>
-        <span className="bg-zinc-800 rounded px-1.5 py-0.5">{pad(time.s)}</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.h)}</span>
+        <span className="text-kafunda-mustard text-xs animate-pulse">:</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.m)}</span>
+        <span className="text-kafunda-mustard text-xs animate-pulse">:</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.s)}</span>
       </div>
 
-      {/* CTA */}
       <Link
         href="/shop?filter=offers"
-        className="hidden sm:flex items-center gap-1 bg-primary-red hover:bg-primary-red-hover text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-colors"
+        className="hidden sm:flex items-center gap-1 bg-kafunda-mustard hover:bg-amber-400 text-kafunda-burgundy text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-colors"
       >
         Shop Deals
         <ArrowRight className="h-3 w-3" />
@@ -92,7 +93,7 @@ function InlineCountdown() {
   );
 }
 
-/** Rotating announcement ticker */
+// Rotating announcement ticker
 function AnnouncementBar() {
   const [idx, setIdx] = useState(0);
 
@@ -104,7 +105,8 @@ function AnnouncementBar() {
   const msg = TICKER[idx];
 
   return (
-    <div className="w-full bg-zinc-950 text-white py-2 px-4 overflow-hidden">
+    <div className="relative w-full bg-kafunda-burgundy text-white py-2 px-4 overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-kafunda-mustard/40 to-transparent" />
       <AnimatePresence mode="wait">
         <motion.div
           key={idx}
@@ -115,12 +117,12 @@ function AnnouncementBar() {
           className="flex items-center justify-center gap-2 text-[11px] font-medium tracking-wide"
         >
           <span>{msg.emoji}</span>
-          <span className="text-zinc-300">{msg.text}</span>
+          <span className="text-white/85">{msg.text}</span>
           <a
             href="https://wa.me/256785498279"
-            className="text-emerald-400 font-bold hover:text-emerald-300 underline underline-offset-2 transition-colors ml-1"
+            className="text-kafunda-mustard font-bold hover:text-amber-300 underline underline-offset-2 transition-colors ml-1"
           >
-            Order Now →
+            Order Now
           </a>
         </motion.div>
       </AnimatePresence>
@@ -128,8 +130,7 @@ function AnnouncementBar() {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
+// Main Navbar
 const Navbar = () => {
   const { itemsCount } = useCart();
   const pathname = usePathname();
@@ -149,20 +150,31 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    if (isSearchOpen) setTimeout(() => overlaySearchRef.current?.focus(), 60);
+    if (isSearchOpen) {
+      setTimeout(() => overlaySearchRef.current?.focus(), 60);
+    }
   }, [isSearchOpen]);
 
   useEffect(() => {
-    document.body.style.overflow = (isSearchOpen || isMoreOpen) ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    document.body.style.overflow = isSearchOpen || isMoreOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isSearchOpen, isMoreOpen]);
 
+  // Close menus on route change (deferred to avoid synchronous setState in effect)
   useEffect(() => {
-    setIsSearchOpen(false);
-    setIsMoreOpen(false);
+    const t = setTimeout(() => {
+      setIsSearchOpen(false);
+      setIsMoreOpen(false);
+    }, 0);
+    return () => clearTimeout(t);
   }, [pathname]);
 
-  const closeAll = () => { setIsSearchOpen(false); setIsMoreOpen(false); };
+  const closeAll = () => {
+    setIsSearchOpen(false);
+    setIsMoreOpen(false);
+  };
 
   const handleSearch = (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -175,60 +187,63 @@ const Navbar = () => {
 
   return (
     <>
-      {/* ══════════════════════════ ANNOUNCEMENT BAR ══════════════════════════ */}
       <AnnouncementBar />
 
-      {/* ═══════════════════════════ STICKY HEADER ════════════════════════════ */}
       <header
-        className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${isScrolled
-          ? "shadow-[0_4px_24px_rgba(0,0,0,0.1)]"
-          : "border-b border-gray-100"
-          }`}
+        className={`sticky top-0 z-50 w-full bg-white transition-all duration-300 ${
+          isScrolled
+            ? "shadow-[0_4px_24px_rgba(110,31,42,0.12)]"
+            : "border-b border-kafunda-cream-soft"
+        }`}
       >
-        {/* ── Main row ── */}
+        {/* Main row */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16 gap-3">
-
+          <div className="flex items-center h-16 md:h-18 gap-3">
             {/* Logo */}
             <Link
               href="/"
-              className="shrink-0 flex items-center gap-2 group"
+              className="shrink-0 flex items-center group"
+              aria-label="Kafunda Wine Store and Spirits - Home"
             >
-              <div className="w-8 h-8 bg-primary-red rounded-lg flex items-center justify-center shadow-sm group-hover:bg-primary-red-hover transition-colors">
-                <span className="text-white font-black text-sm leading-none">K</span>
+              <div className="relative h-9 sm:h-11 w-32.5 sm:w-42.5 transition-transform duration-300 group-hover:scale-105">
+                <Image
+                  src="/kafunda-logo-wordmark.png"
+                  alt="Kafunda Wine Store and Spirits"
+                  fill
+                  priority
+                  sizes="(max-width: 640px) 130px, 170px"
+                  className="object-contain object-left"
+                />
               </div>
-              <span className="text-xl font-black tracking-[-0.04em] text-zinc-900 group-hover:text-primary-red transition-colors hidden sm:block">
-                Ka<span className="text-primary-red">funda</span>
-              </span>
             </Link>
 
-            {/* Search — desktop */}
+            {/* Desktop search */}
             <form
               onSubmit={handleSearch}
               className="hidden md:flex flex-1 max-w-2xl mx-auto relative"
             >
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
+                <Search className="h-4 w-4 text-kafunda-burgundy/40" />
               </div>
               <input
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search wines, whisky, gin, champagne…"
-                className="w-full h-11 pl-10 pr-10 text-sm bg-gray-50 border-2 border-gray-100 rounded-2xl placeholder:text-gray-400 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white transition-all duration-200"
+                placeholder="Search wines, whisky, gin, champagne..."
+                className="w-full h-11 pl-10 pr-10 text-sm bg-kafunda-cream/40 border border-kafunda-cream-soft rounded-2xl placeholder:text-kafunda-burgundy/40 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white focus:ring-2 focus:ring-primary-red/10 transition-all duration-200"
               />
               {searchValue ? (
                 <button
                   type="button"
                   onClick={() => setSearchValue("")}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-zinc-700"
+                  className="absolute inset-y-0 right-3 flex items-center text-kafunda-burgundy/40 hover:text-kafunda-burgundy"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               ) : (
                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                    ↵
+                  <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[10px] font-medium text-kafunda-burgundy/50 bg-white px-1.5 py-0.5 rounded border border-kafunda-cream-soft">
+                    Enter
                   </kbd>
                 </div>
               )}
@@ -236,29 +251,28 @@ const Navbar = () => {
 
             {/* Right actions */}
             <div className="flex items-center gap-1 ml-auto md:ml-0">
-
-              {/* Mobile: search trigger */}
               <button
-                onClick={() => { setIsSearchOpen(true); setIsMoreOpen(false); }}
-                className="md:hidden p-2.5 rounded-xl text-zinc-500 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
+                onClick={() => {
+                  setIsSearchOpen(true);
+                  setIsMoreOpen(false);
+                }}
+                className="md:hidden p-2.5 rounded-xl text-kafunda-burgundy/70 hover:bg-kafunda-cream/40 hover:text-kafunda-burgundy transition-colors"
                 aria-label="Open search"
               >
                 <Search className="h-5 w-5" />
               </button>
 
-              {/* Desktop: account */}
               <button
-                className="hidden md:flex p-2.5 rounded-xl text-zinc-500 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
+                className="hidden md:flex p-2.5 rounded-xl text-kafunda-burgundy/70 hover:bg-kafunda-cream/40 hover:text-kafunda-burgundy transition-colors"
                 aria-label="My Account"
               >
                 <User className="h-5 w-5" />
               </button>
 
-              {/* Cart — all screens */}
               <Link
                 href="/cart"
-                className="relative p-2.5 rounded-xl text-zinc-500 hover:bg-gray-50 hover:text-zinc-900 transition-colors"
-                aria-label={`Cart — ${itemsCount} items`}
+                className="relative p-2.5 rounded-xl text-kafunda-burgundy/70 hover:bg-kafunda-cream/40 hover:text-kafunda-burgundy transition-colors"
+                aria-label={`Cart with ${itemsCount} items`}
               >
                 <ShoppingCart className="h-5 w-5" />
                 <AnimatePresence>
@@ -276,12 +290,11 @@ const Navbar = () => {
                 </AnimatePresence>
               </Link>
 
-              {/* WhatsApp CTA — desktop */}
               <a
                 href="https://wa.me/256785498279"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ml-1 shadow-sm"
+                className="hidden md:flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ml-1 shadow-sm shadow-emerald-500/20"
               >
                 <MessageCircle className="h-4 w-4" />
                 Order on WhatsApp
@@ -290,50 +303,46 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* ── Category sub-nav strip ── */}
-        <div className="bg-brand-green border-t border-brand-green-hover">
+        {/* Category sub-nav strip */}
+        <div className="relative bg-brand-green border-t border-brand-green-hover">
+          <div className="absolute top-0 inset-x-0 h-px bg-kafunda-mustard/30" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-11 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-
-              {/* All Products */}
               <Link
                 href="/shop"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest text-white bg-black/25 hover:bg-black/40 transition-colors shrink-0"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest text-white bg-kafunda-burgundy/40 hover:bg-kafunda-burgundy/60 transition-colors shrink-0"
               >
                 <Flame className="h-3 w-3" />
                 All Products
               </Link>
 
-              {/* Category links */}
               {CATEGORIES.map((cat) => (
                 <Link
                   key={cat.label}
                   href={cat.href}
-                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-green-100 hover:text-white hover:bg-black/20 transition-colors border-b-2 border-transparent hover:border-white shrink-0"
+                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-white/85 hover:text-white hover:bg-kafunda-burgundy/30 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
                 >
                   <span className="text-sm leading-none">{cat.emoji}</span>
                   {cat.label}
                 </Link>
               ))}
 
-              {/* Offers */}
               <Link
                 href="/shop?filter=offers"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-yellow-200 hover:text-white hover:bg-black/20 transition-colors border-b-2 border-transparent hover:border-yellow-300 shrink-0"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-kafunda-mustard hover:text-white hover:bg-kafunda-burgundy/30 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
               >
                 <Sparkles className="h-3 w-3" />
                 Today&apos;s Offers
               </Link>
 
-              {/* Inline countdown — pushed to right */}
               <InlineCountdown />
             </div>
           </div>
         </div>
       </header>
 
-      {/* ═══════════════════════ MOBILE BOTTOM TAB BAR ════════════════════════ */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 safe-area-inset-bottom">
+      {/* Mobile bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-kafunda-cream-soft safe-area-inset-bottom shadow-[0_-4px_16px_rgba(110,31,42,0.06)]">
         <div className="flex items-stretch h-16">
           {[
             { href: "/", label: "Home", Icon: Home, exact: true },
@@ -344,8 +353,9 @@ const Navbar = () => {
               <Link
                 key={href}
                 href={href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${active ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-                  }`}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                  active ? "text-primary-red" : "text-kafunda-burgundy/50 hover:text-kafunda-burgundy"
+                }`}
               >
                 <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
                 {label}
@@ -353,21 +363,24 @@ const Navbar = () => {
             );
           })}
 
-          {/* Search */}
           <button
-            onClick={() => { setIsSearchOpen(true); setIsMoreOpen(false); }}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${isSearchOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-              }`}
+            onClick={() => {
+              setIsSearchOpen(true);
+              setIsMoreOpen(false);
+            }}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              isSearchOpen ? "text-primary-red" : "text-kafunda-burgundy/50 hover:text-kafunda-burgundy"
+            }`}
           >
             <Search className={`h-5 w-5 ${isSearchOpen ? "stroke-[2.5]" : ""}`} />
             Search
           </button>
 
-          {/* Cart */}
           <Link
             href="/cart"
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide relative transition-colors ${pathname === "/cart" ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-              }`}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide relative transition-colors ${
+              pathname === "/cart" ? "text-primary-red" : "text-kafunda-burgundy/50 hover:text-kafunda-burgundy"
+            }`}
           >
             <div className="relative">
               <ShoppingCart className={`h-5 w-5 ${pathname === "/cart" ? "stroke-[2.5]" : ""}`} />
@@ -380,11 +393,14 @@ const Navbar = () => {
             Cart
           </Link>
 
-          {/* More */}
           <button
-            onClick={() => { setIsMoreOpen(!isMoreOpen); setIsSearchOpen(false); }}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${isMoreOpen ? "text-primary-red" : "text-zinc-400 hover:text-zinc-700"
-              }`}
+            onClick={() => {
+              setIsMoreOpen(!isMoreOpen);
+              setIsSearchOpen(false);
+            }}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+              isMoreOpen ? "text-primary-red" : "text-kafunda-burgundy/50 hover:text-kafunda-burgundy"
+            }`}
           >
             <Menu className={`h-5 w-5 ${isMoreOpen ? "stroke-[2.5]" : ""}`} />
             More
@@ -392,7 +408,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* ═══════════════════════════ SEARCH OVERLAY ═══════════════════════════ */}
+      {/* Search overlay */}
       <AnimatePresence>
         {isSearchOpen && (
           <>
@@ -401,7 +417,7 @@ const Navbar = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-60 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-60 bg-kafunda-burgundy/55 backdrop-blur-sm"
               onClick={() => setIsSearchOpen(false)}
             />
             <motion.div
@@ -410,38 +426,40 @@ const Navbar = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
-              className="fixed top-0 left-0 right-0 z-61 bg-white shadow-2xl border-b border-gray-100"
+              className="fixed top-0 left-0 right-0 z-61 bg-white shadow-2xl border-b border-kafunda-cream-soft"
             >
-              <form onSubmit={handleSearch} className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+              <form
+                onSubmit={handleSearch}
+                className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3"
+              >
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-kafunda-burgundy/40" />
                   <input
                     ref={overlaySearchRef}
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Search wines, whisky, gin, champagne…"
-                    className="w-full h-12 pl-12 pr-4 text-base bg-gray-50 border-2 border-gray-100 rounded-2xl placeholder:text-gray-400 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white transition-all"
+                    placeholder="Search wines, whisky, gin, champagne..."
+                    className="w-full h-12 pl-12 pr-4 text-base bg-kafunda-cream/40 border border-kafunda-cream-soft rounded-2xl placeholder:text-kafunda-burgundy/40 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white transition-all"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(false)}
-                  className="shrink-0 p-2.5 rounded-xl text-zinc-500 hover:bg-gray-100 hover:text-zinc-900 transition-colors"
+                  className="shrink-0 p-2.5 rounded-xl text-kafunda-burgundy/70 hover:bg-kafunda-cream/40 hover:text-kafunda-burgundy transition-colors"
                   aria-label="Close search"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </form>
 
-              {/* Quick category links */}
               <div className="max-w-3xl mx-auto px-4 pb-4 flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
                   <Link
                     key={cat.label}
                     href={cat.href}
                     onClick={closeAll}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-xs font-semibold text-zinc-600 hover:text-zinc-900 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-kafunda-cream/50 hover:bg-kafunda-cream rounded-full text-xs font-semibold text-kafunda-burgundy hover:text-kafunda-burgundy-hover transition-colors"
                   >
                     <span>{cat.emoji}</span>
                     {cat.label}
@@ -453,7 +471,7 @@ const Navbar = () => {
         )}
       </AnimatePresence>
 
-      {/* ═══════════════════════ MOBILE "MORE" BOTTOM SHEET ═══════════════════ */}
+      {/* Mobile More bottom sheet */}
       <AnimatePresence>
         {isMoreOpen && (
           <>
@@ -462,7 +480,7 @@ const Navbar = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 md:hidden"
+              className="fixed inset-0 z-50 md:hidden bg-kafunda-burgundy/40"
               onClick={() => setIsMoreOpen(false)}
             />
             <motion.div
@@ -471,32 +489,41 @@ const Navbar = () => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              className="fixed bottom-16 left-0 right-0 z-51 md:hidden bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] max-h-[85vh] overflow-y-auto"
+              className="fixed bottom-16 left-0 right-0 z-51 md:hidden bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(110,31,42,0.15)] max-h-[85vh] overflow-y-auto"
             >
-              {/* Handle */}
               <div className="flex justify-center pt-4 pb-2">
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+                <div className="w-12 h-1.5 bg-kafunda-cream rounded-full" />
               </div>
 
               <div className="px-6 pt-4 pb-12 space-y-8">
-                {/* Brand Header In Sheet */}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-black tracking-tighter uppercase italic leading-none">Kafunda</h3>
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Wine Store & Spirits</p>
+                  <div className="relative h-10 w-35">
+                    <Image
+                      src="/kafunda-logo-wordmark.png"
+                      alt="Kafunda Wine Store and Spirits"
+                      fill
+                      sizes="140px"
+                      className="object-contain object-left"
+                    />
                   </div>
-                  <button onClick={() => setIsMoreOpen(false)} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
-                    <X className="w-4 h-4 text-zinc-500" />
+                  <button
+                    onClick={() => setIsMoreOpen(false)}
+                    className="w-9 h-9 bg-kafunda-cream rounded-full flex items-center justify-center hover:bg-kafunda-cream-soft transition-colors"
+                  >
+                    <X className="w-4 h-4 text-kafunda-burgundy" />
                   </button>
                 </div>
 
-                {/* Categories Grid */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-kafunda-burgundy/50">
                       Product Catalog
                     </p>
-                    <Link href="/shop" onClick={closeAll} className="text-[10px] font-bold text-primary-red uppercase tracking-widest">
+                    <Link
+                      href="/shop"
+                      onClick={closeAll}
+                      className="text-[10px] font-bold text-primary-red uppercase tracking-widest"
+                    >
                       View All
                     </Link>
                   </div>
@@ -506,10 +533,10 @@ const Navbar = () => {
                         key={cat.label}
                         href={cat.href}
                         onClick={closeAll}
-                        className="flex flex-col items-center gap-2 py-5 px-2 rounded-2xl bg-zinc-50 border border-zinc-100 active:scale-95 transition-all text-center"
+                        className="flex flex-col items-center gap-2 py-5 px-2 rounded-2xl bg-kafunda-cream/40 border border-kafunda-cream-soft active:scale-95 transition-all text-center"
                       >
                         <span className="text-2xl leading-none">{cat.emoji}</span>
-                        <span className="text-[9px] font-black uppercase tracking-tight text-zinc-600 leading-tight">
+                        <span className="text-[9px] font-black uppercase tracking-tight text-kafunda-burgundy leading-tight">
                           {cat.label}
                         </span>
                       </Link>
@@ -517,7 +544,6 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                {/* Quick actions */}
                 <div className="grid grid-cols-1 gap-3">
                   <Link
                     href="/shop?filter=offers"
@@ -525,12 +551,12 @@ const Navbar = () => {
                     className="flex items-center justify-between w-full p-5 rounded-2xl bg-amber-50 text-amber-900 border border-amber-100"
                   >
                     <div className="flex items-center gap-3 font-black text-xs uppercase tracking-widest">
-                      <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center text-white">
+                      <div className="w-8 h-8 bg-kafunda-mustard rounded-lg flex items-center justify-center text-white">
                         <Sparkles className="h-4 w-4" />
                       </div>
                       Today&apos;s Highlights
                     </div>
-                    <ArrowRight className="h-4 w-4 text-amber-400" />
+                    <ArrowRight className="h-4 w-4 text-kafunda-mustard" />
                   </Link>
 
                   <a
@@ -550,10 +576,9 @@ const Navbar = () => {
                   </a>
                 </div>
 
-                {/* Policy Links */}
-                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-8">
+                <div className="grid grid-cols-2 gap-4 border-t border-kafunda-cream-soft pt-8">
                   {[
-                    { label: "About Us",      href: "/about"    },
+                    { label: "About Us",       href: "/about"    },
                     { label: "Delivery Info",  href: "/delivery" },
                     { label: "Contact Us",     href: "/contact"  },
                     { label: "Privacy Policy", href: "/privacy"  },
@@ -563,9 +588,9 @@ const Navbar = () => {
                       key={href}
                       href={href}
                       onClick={closeAll}
-                      className="text-zinc-500 hover:text-zinc-900 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+                      className="text-kafunda-burgundy/60 hover:text-kafunda-burgundy text-xs font-bold uppercase tracking-widest flex items-center gap-2"
                     >
-                      <div className="w-1 h-1 bg-zinc-200 rounded-full" />
+                      <div className="w-1 h-1 bg-kafunda-burgundy/30 rounded-full" />
                       {label}
                     </Link>
                   ))}

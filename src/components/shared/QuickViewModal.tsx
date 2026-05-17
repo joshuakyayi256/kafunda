@@ -123,11 +123,7 @@ export default function QuickViewModal({ product, onClose }: Props) {
                   <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                     {product.in_stock ? "In Stock" : "Out of Stock"}
                   </span>
-                  {product.stock_count && product.stock_count < 10 && (
-                    <span className="text-[10px] font-bold text-primary-red uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded ml-1">
-                      Only {product.stock_count} left
-                    </span>
-                  )}
+                  
                 </div>
 
                 {/* Description */}

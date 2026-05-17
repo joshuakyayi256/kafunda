@@ -4,37 +4,50 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
-  --color-primary-red: #c62828;
-  --color-primary-red-hover: #b71c1c;
-  --color-brand-green: #43a047;
-  --color-brand-green-hover: #388e3c;
+  /* ── Brand (sampled directly from the logo PDF) ─────────────────────────── */
+  --color-primary-red: #e41824;
+  --color-primary-red-hover: #c5121d;
+  --color-brand-green: #60b430;
+  --color-brand-green-hover: #51992a;
+
+  /* ── Vintage blend accents (warm secondary palette) ─────────────────────── */
+  --color-kafunda-burgundy: #6e1f2a;
+  --color-kafunda-burgundy-hover: #5a1722;
+  --color-kafunda-cream: #efe3ce;
+  --color-kafunda-cream-soft: #f7efe1;
+  --color-kafunda-mustard: #e0a82e;
+  --color-kafunda-olive: #5a6b3a;
+  --color-kafunda-burnt: #d6502b;
+  --color-kafunda-peach: #e8a77a;
+
+  /* ── Functional ─────────────────────────────────────────────────────────── */
   --color-brand-gold: #c5b358;
   --color-success-green: #10b981;
-  --color-footer-zinc: #18181b;
   --color-secondary-gray: #f9fafb;
 
+  /* ── Marquee animations ─────────────────────────────────────────────────── */
   @keyframes marquee {
-    0% {
-      transform: translateX(0);
-    }
-
-    100% {
-      transform: translateX(-100%);
-    }
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
   }
-
   @keyframes marquee2 {
-    0% {
-      transform: translateX(100%);
-    }
-
-    100% {
-      transform: translateX(0);
-    }
+    0%   { transform: translateX(100%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes marquee-reverse {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes marquee-reverse-2 {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(100%); }
   }
 
   --animate-marquee: marquee 60s linear infinite;
   --animate-marquee2: marquee2 60s linear infinite;
+  --animate-marquee-slow: marquee 120s linear infinite;
+  --animate-marquee-reverse: marquee-reverse 80s linear infinite;
+  --animate-marquee-reverse-2: marquee-reverse-2 80s linear infinite;
 }
 
 :root {
@@ -48,13 +61,17 @@ body {
 }
 
 @layer base {
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     @apply font-bold;
   }
+}
+
+/* Pause marquee animations on hover so users can read */
+.marquee-paused:hover .animate-marquee,
+.marquee-paused:hover .animate-marquee2,
+.marquee-paused:hover .animate-marquee-slow,
+.marquee-paused:hover .animate-marquee-reverse,
+.marquee-paused:hover .animate-marquee-reverse-2 {
+  animation-play-state: paused;
 }

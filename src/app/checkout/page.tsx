@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft, CheckCircle, Loader2, ShieldCheck, Truck,
   MessageCircle, CreditCard, Package,
@@ -93,10 +92,16 @@ function SectionCard({ number, title, icon: Icon, children }: {
   );
 }
 
+/** Generate a fresh UUID for the idempotency key (server uses this to dedupe). */
+function newIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for environments without crypto.randomUUID
+  return `kaf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const { cart, subtotal, itemsCount, clearCart } = useCart();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,7 +116,13 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => { setIsMounted(true); }, []);
+  // Idempotency key — regenerated on mount, after errors, and after success
+  const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+
+  useEffect(() => {
+    setIsMounted(true);
+    setIdempotencyKey(newIdempotencyKey());
+  }, []);
 
   const selectedZone = DELIVERY_ZONES.find((z) => z.id === form.deliveryZone);
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (selectedZone?.fee ?? 0);
@@ -157,8 +168,11 @@ export default function CheckoutPage() {
       cart.map((item) => ({ product: item, quantity: item.quantity })),
       deliveryFee
     );
+    if (!data?.id) {
+      throw new Error("Order could not be created. Please try again or contact support.");
+    }
     clearCart();
-    setOrderNumber(`KAF-${data.id || Date.now().toString().slice(-6)}`);
+    setOrderNumber(`KAF-${data.id}`);
     setIsSuccess(true);
   }
 
@@ -172,16 +186,19 @@ export default function CheckoutPage() {
           firstName: form.firstName, lastName: form.lastName,
           phone: form.phone, email: form.email,
           address: form.address,
-          deliveryZone: selectedZone?.name || form.deliveryZone,
+          // Send the zone ID — the server looks up the fee from DELIVERY_ZONES.
+          deliveryZone: form.deliveryZone,
           notes: form.notes,
         },
-        cart: cart.map((i) => ({ id: i.id, name: i.name, price_ugx: i.price_ugx, quantity: i.quantity })),
-        subtotal, deliveryFee, total,
+        // Server re-fetches each product's price from Woo. We only send id + qty.
+        cart: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+        idempotencyKey,
       }),
     });
     const data = await res.json();
-    if (!res.ok || !data.redirect_url)
+    if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
+    }
     window.location.href = data.redirect_url;
   }
 
@@ -195,6 +212,8 @@ export default function CheckoutPage() {
       else                                  await handleCOD();
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      // Fresh key on retry — otherwise the server replays the failed attempt.
+      setIdempotencyKey(newIdempotencyKey());
     } finally {
       setIsSubmitting(false);
     }
@@ -441,7 +460,7 @@ export default function CheckoutPage() {
 
                 {/* Submit */}
                 <div className="px-6 pb-6 pt-4">
-                  <button type="submit" disabled={isSubmitting}
+                  <button type="submit" disabled={isSubmitting || !idempotencyKey}
                     className={`w-full py-4 font-bold text-sm tracking-widest uppercase rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed
                       ${form.paymentMethod === "cod"
                         ? "bg-zinc-900 hover:bg-black text-white"

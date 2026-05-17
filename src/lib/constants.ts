@@ -38,48 +38,64 @@ export const DELIVERY = {
   fee: 5_000,
   freeThreshold: 500_000,
   estimatedTime: "1–2 hours",
-  partner: "Also available on Glovo",
   recommendation: "99% recommendation rate",
 } as const;
 
 export const CATEGORIES = [
-  "Wines",
-  "Whiskies",
-  "Creams",
-  "Cognacs",
-  "Vodkas",
-  "Champagnes",
-  "Beers",
-  "Soft Drinks",
-  "Gins",
-  "Rums",
-  "Tequilas",
-  "Bitters",
+  "Wines", "Whiskies", "Creams", "Cognacs", "Vodkas", "Champagnes",
+  "Beers", "Soft Drinks", "Gins", "Rums", "Tequilas", "Bitters",
 ] as const;
 
 export const DELIVERY_ZONES = [
-  {
-    id: "zone1",
-    name: "Kampala Central",
-    areas: "CBD, Nakasero, Kololo, Kamwokya",
-    fee: 3_000,
-  },
-  {
-    id: "zone2",
-    name: "Inner Suburbs",
-    areas: "Ntinda, Bukoto, Bugolobi, Kisementi, Naguru",
-    fee: 5_000,
-  },
-  {
-    id: "zone3",
-    name: "Outer Suburbs",
-    areas: "Kireka, Namugongo, Makindye, Nsambya, Munyonyo",
-    fee: 8_000,
-  },
-  {
-    id: "zone4",
-    name: "Greater Kampala",
-    areas: "Gayaza, Wakiso, Nansana, Kyengera, Mukono area",
-    fee: 12_000,
-  },
+  { id: "zone1", name: "Kampala Central", areas: "CBD, Nakasero, Kololo, Kamwokya",      fee: 3_000  },
+  { id: "zone2", name: "Inner Suburbs",   areas: "Ntinda, Bukoto, Bugolobi, Kisementi, Naguru", fee: 5_000  },
+  { id: "zone3", name: "Outer Suburbs",   areas: "Kireka, Namugongo, Makindye, Nsambya, Munyonyo", fee: 8_000  },
+  { id: "zone4", name: "Greater Kampala", areas: "Gayaza, Wakiso, Nansana, Kyengera, Mukono area", fee: 12_000 },
 ] as const;
+
+/**
+ * Per-category visual styling for the scrolling category marquee.
+ * `bg` and `text` are Tailwind utility classes that reference the
+ * Vintage palette tokens defined in globals.css.
+ *
+ * Keys are matched case-insensitively against the lowercased category name.
+ * Unknown categories fall back to CATEGORY_STYLE_DEFAULT.
+ */
+export const CATEGORY_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
+  wines:           { bg: "bg-[var(--color-kafunda-burgundy)]",     text: "text-white",                                  icon: "🍷" },
+  "red wines":     { bg: "bg-[var(--color-kafunda-burgundy)]",     text: "text-white",                                  icon: "🍷" },
+  "dry red wines": { bg: "bg-[var(--color-kafunda-burgundy)]",     text: "text-white",                                  icon: "🍷" },
+  "sweet red wines":{bg: "bg-[var(--color-kafunda-burgundy)]",     text: "text-white",                                  icon: "🍷" },
+  "white wines":   { bg: "bg-[var(--color-kafunda-cream)]",        text: "text-[var(--color-kafunda-burgundy)]",        icon: "🥂" },
+  "dry white wines":{bg: "bg-[var(--color-kafunda-cream)]",        text: "text-[var(--color-kafunda-burgundy)]",        icon: "🥂" },
+  champagnes:      { bg: "bg-[var(--color-kafunda-cream-soft)]",   text: "text-[var(--color-kafunda-burgundy)]",        icon: "🍾" },
+  "sparkling wines":{bg:"bg-[var(--color-kafunda-cream-soft)]",    text: "text-[var(--color-kafunda-burgundy)]",        icon: "🍾" },
+  whiskies:        { bg: "bg-[var(--color-kafunda-mustard)]",      text: "text-[var(--color-kafunda-burgundy)]",        icon: "🥃" },
+  cognacs:         { bg: "bg-[var(--color-kafunda-burnt)]",        text: "text-white",                                  icon: "🥃" },
+  rums:            { bg: "bg-[var(--color-kafunda-burnt)]",        text: "text-white",                                  icon: "🍹" },
+  tequilas:        { bg: "bg-[var(--color-kafunda-mustard)]",      text: "text-[var(--color-kafunda-burgundy)]",        icon: "🌵" },
+  vodkas:          { bg: "bg-white",                               text: "text-[var(--color-kafunda-burgundy)]",        icon: "❄️" },
+  gins:            { bg: "bg-[var(--color-kafunda-olive)]",        text: "text-white",                                  icon: "🌿" },
+  creams:          { bg: "bg-[var(--color-kafunda-peach)]",        text: "text-[var(--color-kafunda-burgundy)]",        icon: "🍮" },
+  beers:           { bg: "bg-brand-green",                         text: "text-white",                                  icon: "🍺" },
+  ciders:          { bg: "bg-brand-green",                         text: "text-white",                                  icon: "🍏" },
+  "soft drinks":   { bg: "bg-sky-100",                             text: "text-sky-900",                                icon: "🥤" },
+  juices:          { bg: "bg-[var(--color-kafunda-mustard)]",      text: "text-[var(--color-kafunda-burgundy)]",        icon: "🍊" },
+  water:           { bg: "bg-sky-50",                              text: "text-sky-900",                                icon: "💧" },
+  mixers:          { bg: "bg-sky-50",                              text: "text-sky-900",                                icon: "💧" },
+  "energy drinks": { bg: "bg-[var(--color-kafunda-burnt)]",        text: "text-white",                                  icon: "⚡" },
+  bitters:         { bg: "bg-[var(--color-kafunda-olive)]",        text: "text-white",                                  icon: "🌱" },
+  "cocktail syrups":{bg: "bg-[var(--color-kafunda-peach)]",        text: "text-[var(--color-kafunda-burgundy)]",        icon: "🍸" },
+  "disposables & more":{bg:"bg-zinc-100",                          text: "text-zinc-700",                               icon: "🥡" },
+};
+
+export const CATEGORY_STYLE_DEFAULT = {
+  bg: "bg-[var(--color-kafunda-cream)]",
+  text: "text-[var(--color-kafunda-burgundy)]",
+  icon: "✨",
+} as const;
+
+/** Resolve styling for a category name (case-insensitive). */
+export function getCategoryStyle(name: string) {
+  return CATEGORY_STYLES[name.toLowerCase().trim()] ?? CATEGORY_STYLE_DEFAULT;
+}
