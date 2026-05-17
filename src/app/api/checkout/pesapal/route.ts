@@ -236,7 +236,14 @@ async function createWooOrder(
   const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
 const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
 if (!wcKey || !wcSecret) {
-  throw new Error("Missing WooCommerce credentials (set WC_CONSUMER_KEY/SECRET or WP_APP_USER/PASS).");
+  const state = {
+    WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
+    WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
+    WP_APP_USER:        !!process.env.WP_APP_USER,
+    WP_APP_PASS:        !!process.env.WP_APP_PASS,
+  };
+  console.error("[Pesapal] WC creds state:", state);
+  throw new Error(`Missing WC creds. State: ${JSON.stringify(state)}`);
 }
 
   const orderBody = {
