@@ -188,17 +188,17 @@ const CartPage = () => {
                 </span>
               </div>
 
-              {/* Updated Shipping Info */}
+              {/* Delivery: quoted on the confirmation call, not charged here */}
               <div className="flex justify-between text-sm text-zinc-600 font-medium pb-6 border-b border-gray-100">
                 <span className="flex items-center">Delivery</span>
                 <span className="text-xs text-zinc-400 text-right">
-                  Calculated at checkout
+                  Quoted on confirmation call
                 </span>
               </div>
 
               <div className="flex justify-between items-baseline pt-2">
                 <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">
-                  Total
+                  Total Due Now
                 </span>
                 <span className="text-2xl font-black text-primary-red">
                   {formatUGX(subtotal)}
@@ -206,31 +206,16 @@ const CartPage = () => {
               </div>
             </div>
 
-            {/* Free Shipping Progress Indicator */}
+            {/* Delivery explainer */}
             <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-100">
-              {subtotal >= 500000 ? (
-                <div className="flex items-center text-success-green">
-                  <Truck className="h-5 w-5 mr-3" />
-                  <p className="text-xs font-bold uppercase tracking-widest">
-                    You&apos;ve unlocked Free Delivery!
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                    <span>Free Delivery</span>
-                    <span>Need {formatUGX(500000 - subtotal)} more</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div
-                      className="bg-primary-red h-1.5 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min((subtotal / 500000) * 100, 100)}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-start gap-3">
+                <Truck className="h-5 w-5 text-zinc-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  We deliver across Kampala in 1-2 hours. Your delivery fee
+                  depends on your location, so our team confirms it by phone
+                  after you order.
+                </p>
+              </div>
             </div>
 
             <button
@@ -264,4 +249,4 @@ const CartPage = () => {
   );
 };
 
-export default CartPage;    
+export default CartPage;

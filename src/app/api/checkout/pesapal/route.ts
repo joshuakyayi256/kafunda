@@ -1,17 +1,18 @@
 /**
- * /api/checkout/pesapal — Pesapal Payment Initialization
- * ────────────────────────────────────────────────────────
+ * /api/checkout/pesapal - Pesapal Payment Initialization
+ * --------------------------------------------------------
  * Server-side only. Trusts NO pricing data from the client.
+ * Delivery fares are NOT charged here - they are quoted per location on the
+ * confirmation call, so the amount sent to Pesapal is the goods subtotal.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getProductBySlug } from "@/lib/api";
+import { getProductsByIds } from "@/lib/api";
 import { DELIVERY_ZONES } from "@/lib/constants";
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const PESAPAL_BASE = "https://pay.pesapal.com/v3";
-const FREE_DELIVERY_THRESHOLD = 500_000;
 const IDEMPOTENCY_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
@@ -22,7 +23,7 @@ const WC_BASE   = ORIGIN_IP ? `http://${ORIGIN_IP}` : `https://${WC_HOSTNAME}`;
 const WC_HEADERS: Record<string, string> = ORIGIN_IP ? { Host: WC_HOSTNAME } : {};
 const BASE_URL  = process.env.NEXT_PUBLIC_BASE_URL || "https://kafundawines.com";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface IncomingCartItem {
   id: string;
@@ -71,7 +72,7 @@ interface PesapalSubmitResponse {
   error?: { message?: string; code?: string; error_type?: string };
 }
 
-// ── In-memory caches ───────────────────────────────────────────────────────────
+// -- In-memory caches -------------------------------------------------------
 const idempotencyCache = new Map<string, IdempotencyEntry>();
 let cachedIpnId: string | null = null;
 
@@ -82,7 +83,7 @@ function purgeExpiredIdempotency() {
   }
 }
 
-// ── Error class for user-facing validation issues ─────────────────────────────
+// -- Error class for user-facing validation issues -------------------------
 
 class CheckoutError extends Error {
   constructor(message: string, public status: number = 400) {
@@ -91,7 +92,7 @@ class CheckoutError extends Error {
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------------
 
 async function getPesapalToken(): Promise<string> {
   const key = process.env.PESAPAL_CONSUMER_KEY;
@@ -137,6 +138,13 @@ async function getPesapalToken(): Promise<string> {
 }
 
 async function getOrRegisterIpnId(token: string): Promise<string> {
+  // Prefer a pre-registered IPN id from the environment. Registering on every
+  // cold start (the old behaviour) piles up duplicate IPN registrations on
+  // Pesapal because serverless memory does not persist. Register once and set
+  // PESAPAL_IPN_ID in Vercel.
+  const fromEnv = process.env.PESAPAL_IPN_ID;
+  if (fromEnv) return fromEnv;
+
   if (cachedIpnId) return cachedIpnId;
 
   const ipnUrl = `${BASE_URL}/api/checkout/pesapal/ipn`;
@@ -175,10 +183,20 @@ function validateCustomer(customer: IncomingCustomer): void {
     throw new CheckoutError("Valid email required for order receipt.");
   }
   if (!customer.address?.trim()) throw new CheckoutError("Delivery address required.");
-  if (!customer.deliveryZone?.trim()) throw new CheckoutError("Delivery zone required.");
+  if (!customer.deliveryZone?.trim()) throw new CheckoutError("Delivery area required.");
+
+  // Zone is informational (no fee) but must be a known value so the rider has
+  // a sensible location label on the order.
+  const knownZone = DELIVERY_ZONES.some((z) => z.id === customer.deliveryZone);
+  if (!knownZone) throw new CheckoutError("Invalid delivery area.");
 }
 
-/** Re-fetch each cart item from WooCommerce and compute trusted totals. */
+/**
+ * Re-fetch the whole cart from WooCommerce in ONE batched request and compute
+ * trusted totals. Uses getProductsByIds (products?include=...) -- the same
+ * query shape the catalogue uses -- which fixes the false "no longer
+ * available" errors caused by the WAF blocking the per-id path form.
+ */
 async function verifyCartAndPrice(
   cart: IncomingCartItem[]
 ): Promise<{ lines: VerifiedLine[]; subtotal: number }> {
@@ -189,30 +207,45 @@ async function verifyCartAndPrice(
     throw new CheckoutError("Cart too large.");
   }
 
-  const lines: VerifiedLine[] = [];
-  let subtotal = 0;
-
-  for (const item of cart) {
+  const wanted = cart.map((item) => {
     if (!item.id) throw new CheckoutError("Invalid cart line: missing product id.");
-
     const quantity = Number(item.quantity);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
       throw new CheckoutError(`Invalid quantity for product ${item.id}.`);
     }
+    return { id: String(item.id), quantity };
+  });
 
-    const product = await getProductBySlug(item.id);
-    if (!product) throw new CheckoutError(`Product ${item.id} no longer available.`);
+  let products;
+  try {
+    products = await getProductsByIds(wanted.map((w) => w.id));
+  } catch (err) {
+    console.error("[Pesapal] Cart verification fetch failed:", err);
+    throw new CheckoutError(
+      "We could not reach the product catalogue just now. Please try again in a moment.",
+      503
+    );
+  }
+
+  const byId = new Map(products.map((p) => [String(p.id), p]));
+
+  const lines: VerifiedLine[] = [];
+  let subtotal = 0;
+
+  for (const w of wanted) {
+    const product = byId.get(w.id);
+    if (!product) throw new CheckoutError(`A product in your cart (#${w.id}) is no longer available.`);
     if (!product.in_stock) throw new CheckoutError(`"${product.name}" is out of stock.`);
     if (product.price_ugx <= 0) throw new CheckoutError(`"${product.name}" has invalid pricing.`);
 
-    const lineTotal = product.price_ugx * quantity;
+    const lineTotal = product.price_ugx * w.quantity;
     subtotal += lineTotal;
 
     lines.push({
-      id: item.id,
+      id: w.id,
       name: product.name,
       unitPrice: product.price_ugx,
-      quantity,
+      quantity: w.quantity,
       lineTotal,
     });
   }
@@ -220,31 +253,23 @@ async function verifyCartAndPrice(
   return { lines, subtotal };
 }
 
-function resolveDeliveryFee(zoneId: string, subtotal: number): number {
-  if (subtotal >= FREE_DELIVERY_THRESHOLD) return 0;
-  const zone = DELIVERY_ZONES.find((z) => z.id === zoneId);
-  if (!zone) throw new CheckoutError("Invalid delivery zone.");
-  return zone.fee;
-}
-
 async function createWooOrder(
   customer: IncomingCustomer,
   lines: VerifiedLine[],
-  deliveryFee: number,
   idempotencyKey: string | undefined
 ): Promise<number> {
   const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
-const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
-if (!wcKey || !wcSecret) {
-  const state = {
-    WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
-    WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
-    WP_APP_USER:        !!process.env.WP_APP_USER,
-    WP_APP_PASS:        !!process.env.WP_APP_PASS,
-  };
-  console.error("[Pesapal] WC creds state:", state);
-  throw new Error(`Missing WC creds. State: ${JSON.stringify(state)}`);
-}
+  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
+  if (!wcKey || !wcSecret) {
+    const state = {
+      WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
+      WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
+      WP_APP_USER:        !!process.env.WP_APP_USER,
+      WP_APP_PASS:        !!process.env.WP_APP_PASS,
+    };
+    console.error("[Pesapal] WC creds state:", state);
+    throw new Error(`Missing WC creds. State: ${JSON.stringify(state)}`);
+  }
 
   const orderBody = {
     payment_method: "pesapal",
@@ -271,9 +296,7 @@ if (!wcKey || !wcSecret) {
       product_id: parseInt(l.id, 10),
       quantity: l.quantity,
     })),
-    fee_lines: deliveryFee > 0
-      ? [{ name: "Delivery Fee", total: deliveryFee.toString() }]
-      : [],
+    // Delivery fee is settled on the confirmation call, not charged here.
     customer_note: customer.notes || "",
     meta_data: idempotencyKey
       ? [{ key: "_kafunda_idempotency_key", value: idempotencyKey }]
@@ -302,7 +325,7 @@ if (!wcKey || !wcSecret) {
   return data.id as number;
 }
 
-// ── Route Handler ──────────────────────────────────────────────────────────────
+// -- Route Handler ----------------------------------------------------------
 
 export async function POST(request: NextRequest) {
   try {
@@ -317,7 +340,7 @@ export async function POST(request: NextRequest) {
     const idempotencyKey = payload.idempotencyKey?.trim();
     if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
       const existing = idempotencyCache.get(idempotencyKey)!;
-      console.log(`[Pesapal] Idempotent replay key=${idempotencyKey} → order ${existing.wcOrderId}`);
+      console.log(`[Pesapal] Idempotent replay key=${idempotencyKey} -> order ${existing.wcOrderId}`);
       return NextResponse.json({
         success: true,
         redirect_url: existing.redirectUrl,
@@ -328,24 +351,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Server-side cart + price verification
+    // 3. Server-side cart + price verification (batched)
     const { lines, subtotal } = await verifyCartAndPrice(payload.cart);
 
-    // 4. Server-side delivery fee
-    const deliveryFee = resolveDeliveryFee(payload.customer.deliveryZone, subtotal);
+    // 4. Trusted total = goods subtotal (delivery quoted on the call)
+    const total = subtotal;
 
-    // 5. Trusted total
-    const total = subtotal + deliveryFee;
-
-    // 6. Pesapal token + cached IPN id
+    // 5. Pesapal token + IPN id
     const token = await getPesapalToken();
     const notificationId = await getOrRegisterIpnId(token);
 
-    // 7. Create pending Woo order with verified prices
-    const wcOrderId = await createWooOrder(payload.customer, lines, deliveryFee, idempotencyKey);
+    // 6. Create pending Woo order with verified prices
+    const wcOrderId = await createWooOrder(payload.customer, lines, idempotencyKey);
     const merchantRef = `KAF-${wcOrderId}`;
 
-    // 8. Submit to Pesapal with the trusted amount
+    // 7. Submit to Pesapal with the trusted amount
     const submitBody = {
       id: merchantRef,
       currency: "UGX",
@@ -398,7 +418,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Pesapal refused submission: ${reason}`);
     }
 
-    // 9. Cache for idempotency
+    // 8. Cache for idempotency
     if (idempotencyKey) {
       idempotencyCache.set(idempotencyKey, {
         wcOrderId,

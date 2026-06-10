@@ -35,8 +35,6 @@ interface FormErrors {
   deliveryZone?: string;
 }
 
-const FREE_DELIVERY_THRESHOLD = 500_000;
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function InputField({
@@ -125,8 +123,9 @@ export default function CheckoutPage() {
   }, []);
 
   const selectedZone = DELIVERY_ZONES.find((z) => z.id === form.deliveryZone);
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (selectedZone?.fee ?? 0);
-  const total = subtotal + deliveryFee;
+  // Delivery fare is quoted per location on the confirmation call, so the
+  // amount charged here is the goods subtotal only.
+  const total = subtotal;
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -144,7 +143,7 @@ export default function CheckoutPage() {
       e.email = "Enter a valid email address.";
     }
     if (!form.address.trim())      e.address      = "Delivery address is required.";
-    if (!form.deliveryZone)        e.deliveryZone = "Please select your delivery zone.";
+    if (!form.deliveryZone)        e.deliveryZone = "Please select your area.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -166,7 +165,7 @@ export default function CheckoutPage() {
         notes: form.notes,
       },
       cart.map((item) => ({ product: item, quantity: item.quantity })),
-      deliveryFee
+      0 // delivery fee settled on the confirmation call
     );
     if (!data?.id) {
       throw new Error("Order could not be created. Please try again or contact support.");
@@ -186,7 +185,7 @@ export default function CheckoutPage() {
           firstName: form.firstName, lastName: form.lastName,
           phone: form.phone, email: form.email,
           address: form.address,
-          // Send the zone ID — the server looks up the fee from DELIVERY_ZONES.
+          // Zone is sent as delivery info for the rider, not a priced choice.
           deliveryZone: form.deliveryZone,
           notes: form.notes,
         },
@@ -249,7 +248,7 @@ export default function CheckoutPage() {
           Order <span className="font-black text-zinc-900">{orderNumber}</span> received.
         </p>
         <p className="text-zinc-500 mb-8 font-medium">
-          Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> to confirm delivery within 1–2 hours.
+          Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order and the delivery fee for your area.
         </p>
         <a href={`https://wa.me/256785498279?text=Hi! I just placed order ${orderNumber} on the Kafunda website.`}
           target="_blank" rel="noopener noreferrer"
@@ -305,15 +304,14 @@ export default function CheckoutPage() {
                     placeholder="Plot 14, Acacia Ave, Kololo" required
                     value={form.address} onChange={handleChange} error={errors.address} />
 
-                  {/* Delivery zones */}
+                  {/* Delivery zones — informational, no fee charged here */}
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                      Delivery Zone <span className="text-primary-red">*</span>
+                      Your Area <span className="text-primary-red">*</span>
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {DELIVERY_ZONES.map((zone) => {
                         const active = form.deliveryZone === zone.id;
-                        const free = subtotal >= FREE_DELIVERY_THRESHOLD;
                         return (
                           <label key={zone.id}
                             className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
@@ -323,12 +321,7 @@ export default function CheckoutPage() {
                               checked={active} onChange={handleChange}
                               className="mt-0.5 accent-primary-red shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-bold text-zinc-900 leading-none">{zone.name}</p>
-                                <span className={`text-sm font-black shrink-0 ${free ? "text-success-green line-through" : active ? "text-primary-red" : "text-zinc-700"}`}>
-                                  {free ? "Free" : formatUGX(zone.fee)}
-                                </span>
-                              </div>
+                              <p className="text-sm font-bold text-zinc-900 leading-none">{zone.name}</p>
                               <p className="text-[10px] text-zinc-400 mt-1 leading-relaxed">{zone.areas}</p>
                             </div>
                           </label>
@@ -338,11 +331,14 @@ export default function CheckoutPage() {
                     {errors.deliveryZone && (
                       <p className="mt-1.5 text-[11px] text-primary-red font-medium">{errors.deliveryZone}</p>
                     )}
-                    {subtotal >= FREE_DELIVERY_THRESHOLD && (
-                      <p className="mt-2 text-xs text-success-green font-bold flex items-center gap-1.5">
-                        <Truck className="h-3.5 w-3.5" /> Free delivery on this order!
+
+                    {/* Fare-on-call explainer */}
+                    <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-amber-50/70 border border-amber-100 px-3.5 py-3">
+                      <Truck className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
+                        We deliver across Kampala. Your delivery fee depends on your exact location, so our team confirms it by phone after you order and it&apos;s paid to the rider on arrival.
                       </p>
-                    )}
+                    </div>
                   </div>
 
                   <div>
@@ -350,7 +346,7 @@ export default function CheckoutPage() {
                       Delivery Notes <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(optional)</span>
                     </label>
                     <textarea name="notes" value={form.notes} onChange={handleChange} rows={3}
-                      placeholder="Gate codes, landmarks, or any special instructions…"
+                      placeholder="Gate codes, landmarks, or any special instructions..."
                       className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red/20 focus:border-primary-red transition-all resize-none" />
                   </div>
                 </div>
@@ -372,7 +368,7 @@ export default function CheckoutPage() {
                         <CreditCard className={`h-4 w-4 ${form.paymentMethod === "pesapal" ? "text-primary-red" : "text-gray-400"}`} />
                         <p className="text-sm font-bold text-zinc-900">Pay Online via Pesapal</p>
                       </div>
-                      <p className="text-xs text-zinc-500 mb-2">Instant and secure. Supports all major methods.</p>
+                      <p className="text-xs text-zinc-500 mb-2">Pay for your items now. Delivery is settled separately on the confirmation call.</p>
                       <div className="flex flex-wrap gap-1.5">
                         {["MTN MoMo", "Airtel Money", "Visa", "Mastercard"].map((b) => (
                           <span key={b} className="text-[9px] font-black uppercase tracking-wider bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded">
@@ -395,7 +391,7 @@ export default function CheckoutPage() {
                         <Package className={`h-4 w-4 ${form.paymentMethod === "cod" ? "text-zinc-800" : "text-gray-400"}`} />
                         <p className="text-sm font-bold text-zinc-900">Cash on Delivery</p>
                       </div>
-                      <p className="text-xs text-zinc-500">Pay in cash when your order arrives at your door.</p>
+                      <p className="text-xs text-zinc-500">Pay for items plus delivery in cash when your order arrives.</p>
                     </div>
                   </label>
                 </div>
@@ -437,18 +433,15 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex justify-between text-sm text-zinc-500 font-medium">
                     <span>Delivery{selectedZone ? ` · ${selectedZone.name}` : ""}</span>
-                    {!form.deliveryZone ? (
-                      <span className="text-zinc-400 italic text-xs">Select zone</span>
-                    ) : deliveryFee === 0 ? (
-                      <span className="text-success-green font-bold text-sm">Free</span>
-                    ) : (
-                      <span className="font-bold text-zinc-800">{formatUGX(deliveryFee)}</span>
-                    )}
+                    <span className="text-zinc-400 italic text-xs text-right">Quoted on confirmation call</span>
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
-                    <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total Due Now</span>
                     <span className="text-2xl font-black text-primary-red">{formatUGX(total)}</span>
                   </div>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">
+                    Total shown is for your items. Delivery is added when our team confirms your order by phone.
+                  </p>
                 </div>
 
                 {/* Error */}
@@ -468,7 +461,7 @@ export default function CheckoutPage() {
                     }`}>
                     {isSubmitting ? (
                       <><Loader2 className="h-5 w-5 animate-spin" />
-                        {form.paymentMethod === "pesapal" ? "Redirecting to Pesapal…" : "Placing Order…"}
+                        {form.paymentMethod === "pesapal" ? "Redirecting to Pesapal..." : "Placing Order..."}
                       </>
                     ) : form.paymentMethod === "pesapal" ? (
                       <>{formatUGX(total)} · Pay via Pesapal</>
@@ -485,7 +478,7 @@ export default function CheckoutPage() {
 
                   <div className="mt-5 flex items-center justify-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                     <ShieldCheck className="h-4 w-4 text-success-green" />
-                    Secure & Encrypted
+                    Secure &amp; Encrypted
                   </div>
                 </div>
               </div>

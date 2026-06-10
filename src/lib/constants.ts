@@ -1,9 +1,9 @@
 /**
- * Kafunda Wines & Spirits — Site Constants
- * ─────────────────────────────────────────
+ * Kafunda Wines & Spirits - Site Constants
+ * -----------------------------------------
  * All real business details live here.
  * To update a phone number, address, or social link,
- * change it once in this file — it propagates everywhere.
+ * change it once in this file - it propagates everywhere.
  */
 
 export const SITE = {
@@ -11,7 +11,7 @@ export const SITE = {
   tagline: "Uganda's premier destination for wines, spirits & fine drinks.",
   url: "https://kafundawines.com",
   email: "info@kafundawines.com",
-  description: "Buy Beer, Spirits and Wine Online — Shop Drinks in Uganda.",
+  description: "Buy Beer, Spirits and Wine Online - Shop Drinks in Uganda.",
 } as const;
 
 export const CONTACT = {
@@ -22,8 +22,8 @@ export const CONTACT = {
   address: "Mpererwe, Lusanja-Kiteezi Road",
   city: "Kampala, Uganda",
   hours: {
-    weekday: "Mon – Sat: 9 am – 10 pm",
-    weekend: "Sunday: 11 am – 8 pm",
+    weekday: "Mon - Sat: 9 am - 10 pm",
+    weekend: "Sunday: 11 am - 8 pm",
   },
 } as const;
 
@@ -35,10 +35,11 @@ export const SOCIAL = {
 } as const;
 
 export const DELIVERY = {
-  fee: 5_000,
-  freeThreshold: 500_000,
-  estimatedTime: "1–2 hours",
+  estimatedTime: "1-2 hours",
   recommendation: "99% recommendation rate",
+  // Delivery fares are quoted per location on the confirmation call,
+  // not charged at checkout.
+  note: "Delivery fee confirmed by phone and paid to the rider on arrival.",
 } as const;
 
 export const CATEGORIES = [
@@ -46,11 +47,17 @@ export const CATEGORIES = [
   "Beers", "Soft Drinks", "Gins", "Rums", "Tequilas", "Bitters",
 ] as const;
 
+/**
+ * Delivery zones are now INFORMATIONAL only - they tell the rider roughly
+ * where the customer is so the fare can be quoted on the confirmation call.
+ * No fee is charged at checkout. (Fees were removed because real transport
+ * cost depends on distance, which we settle by phone.)
+ */
 export const DELIVERY_ZONES = [
-  { id: "zone1", name: "Kampala Central", areas: "CBD, Nakasero, Kololo, Kamwokya",      fee: 3_000  },
-  { id: "zone2", name: "Inner Suburbs",   areas: "Ntinda, Bukoto, Bugolobi, Kisementi, Naguru", fee: 5_000  },
-  { id: "zone3", name: "Outer Suburbs",   areas: "Kireka, Namugongo, Makindye, Nsambya, Munyonyo", fee: 8_000  },
-  { id: "zone4", name: "Greater Kampala", areas: "Gayaza, Wakiso, Nansana, Kyengera, Mukono area", fee: 12_000 },
+  { id: "zone1", name: "Kampala Central", areas: "CBD, Nakasero, Kololo, Kamwokya" },
+  { id: "zone2", name: "Inner Suburbs",   areas: "Ntinda, Bukoto, Bugolobi, Kisementi, Naguru" },
+  { id: "zone3", name: "Outer Suburbs",   areas: "Kireka, Namugongo, Makindye, Nsambya, Munyonyo" },
+  { id: "zone4", name: "Greater Kampala", areas: "Gayaza, Wakiso, Nansana, Kyengera, Mukono area" },
 ] as const;
 
 /**
