@@ -9,6 +9,7 @@ import Hero from "@/components/shared/Hero";
 import BrandMarquee from "@/components/shared/BrandMarquee";
 import CategoryGrid from "@/components/shared/CategoryGrid";
 import CategoryShelf from "@/components/shared/CategoryShelf";
+import PromoBanner from "@/components/shared/PromoBanner";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
 import { getAllProducts, getCategories } from "@/lib/api";
 import { Product } from "@/types";
@@ -128,6 +129,16 @@ export default async function Home() {
         products={softDrinks}
         viewAllHref="/shop?category=Soft-Drinks"
         textured
+      />
+
+      {/* Promo banner between shelves */}
+      <PromoBanner
+        eyebrow="Limited Time"
+        line1="Up to"
+        accent="30% off"
+        line2="special offers"
+        ctaLabel="Shop all deals"
+        href="/shop?filter=offers"
       />
 
       {/* 7 ── The other drink types */}

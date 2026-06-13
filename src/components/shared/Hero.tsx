@@ -55,7 +55,8 @@ export default function Hero() {
   const slide = SLIDES[index];
 
   return (
-    <section className="relative h-[52vh] min-h-95 md:h-[62vh] md:min-h-115 overflow-hidden bg-kafunda-ink">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 md:pt-7">
+    <section className="relative h-[46vh] min-h-85 md:h-[54vh] md:min-h-105 overflow-hidden rounded-3xl bg-kafunda-ink shadow-sm">
       {/* Imagery */}
       <AnimatePresence mode="popLayout">
         <motion.div
@@ -82,7 +83,7 @@ export default function Hero() {
 
       {/* Copy - one line + CTAs, bottom-left */}
       <div className="absolute inset-x-0 bottom-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 md:pb-12">
+        <div className="px-6 sm:px-8 lg:px-12 pb-8 md:pb-12">
           <AnimatePresence mode="wait">
             <motion.p
               key={slide.id}
@@ -128,5 +129,6 @@ export default function Hero() {
         </div>
       </div>
     </section>
+    </div>
   );
 }

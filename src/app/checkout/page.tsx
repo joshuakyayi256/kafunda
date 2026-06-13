@@ -258,6 +258,17 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    // Delivery fee must be computed before checkout (no confirmation-call
+    // fallback): require a pinned, in-range location.
+    if (quoteState !== "ok" || !quote) {
+      setServerError(
+        quoteState === "fallback"
+          ? "We can't deliver to that pin (it may be outside our delivery range). Please pin a location within Kampala."
+          : "Please pin your delivery location so we can calculate your delivery fee before checkout."
+      );
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setIsSubmitting(true);
     setServerError("");
     try {
@@ -398,8 +409,8 @@ export default function CheckoutPage() {
                         <Truck className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                         <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
                           {quoteState === "fallback"
-                            ? "Your pin is outside our instant-quote area (or the map service is busy), so our team will confirm your delivery fee by phone after you order — paid to the rider on arrival."
-                            : "We deliver across Kampala. Pin your location above to see your delivery fee instantly — or skip it and our team will confirm the fee by phone after you order."}
+                            ? "We can't calculate a fee for that pin — it may be outside our delivery range, or the map service is busy. Please pin a location within Kampala to continue."
+                            : "We deliver across Kampala. Pin your exact location above to calculate your delivery fee — it's required to place an order."}
                         </p>
                       </div>
                     )}
@@ -504,7 +515,7 @@ export default function CheckoutPage() {
                     {quoteState === "ok" && quote ? (
                       <span className="font-bold text-zinc-800">{formatUGX(quote.feeUgx)}</span>
                     ) : (
-                      <span className="text-zinc-400 italic text-xs text-right">Quoted on confirmation call</span>
+                      <span className="text-zinc-400 italic text-xs text-right">Pin location to calculate</span>
                     )}
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
@@ -515,12 +526,10 @@ export default function CheckoutPage() {
                   </div>
                   <p className="text-[10px] text-zinc-400 leading-relaxed">
                     {form.paymentMethod === "pesapal"
-                      ? quoteState === "ok"
-                        ? "Includes your delivery fee and a 3.5% online payment processing charge. Nothing more to pay on arrival."
-                        : "Includes a 3.5% online payment processing charge. Delivery is added when our team confirms your order by phone."
-                      : quoteState === "ok" && quote
+                      ? "Includes your delivery fee and a 3.5% online payment processing charge. Nothing more to pay on arrival."
+                      : quote
                         ? `Pay ${formatUGX(subtotal + quote.feeUgx)} in cash on arrival (items + ${formatUGX(quote.feeUgx)} delivery).`
-                        : "Total shown is for your items. Delivery is added when our team confirms your order by phone."}
+                        : "Pin your location to see your delivery fee and total."}
                   </p>
                 </div>
 
@@ -533,7 +542,7 @@ export default function CheckoutPage() {
 
                 {/* Submit */}
                 <div className="px-6 pb-6 pt-4">
-                  <button type="submit" disabled={isSubmitting || !idempotencyKey || quoteState === "loading"}
+                  <button type="submit" disabled={isSubmitting || !idempotencyKey || quoteState !== "ok"}
                     className={`w-full py-4 font-bold text-sm tracking-widest uppercase rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed
                       ${form.paymentMethod === "cod"
                         ? "bg-zinc-900 hover:bg-black text-white"

@@ -62,9 +62,11 @@ export async function getDeliveryQuote(lat: number, lng: number): Promise<QuoteR
     return { ok: false, reason: "out_of_range" };
   }
 
+  // Mapbox rejects coordinates with excessive precision; 6 dp is ~0.1m, plenty.
+  const fmt = (n: number) => Number(n.toFixed(6));
   const coords = [
-    ...STORES.map((s) => `${s.lng},${s.lat}`),
-    `${lng},${lat}`,
+    ...STORES.map((s) => `${fmt(s.lng)},${fmt(s.lat)}`),
+    `${fmt(lng)},${fmt(lat)}`,
   ].join(";");
   const sources = STORES.map((_, i) => i).join(";");
   const destination = STORES.length; // customer is the last coordinate
@@ -83,7 +85,10 @@ export async function getDeliveryQuote(lat: number, lng: number): Promise<QuoteR
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
-      console.error(`[delivery] Mapbox Matrix returned ${res.status}`);
+      const body = await res.text().catch(() => "");
+      // A 422 almost always means a store coordinate in STORES (constants.ts)
+      // is not a real, routable location - check the lat/lng there first.
+      console.error(`[delivery] Mapbox Matrix ${res.status}: ${body.slice(0, 300)}`);
       return { ok: false, reason: "unavailable" };
     }
     data = await res.json();
