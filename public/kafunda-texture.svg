@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <g fill="none" stroke="#1b7a43" stroke-opacity="0.055" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- bottle top-left -->
+    <g transform="translate(24,30)">
+      <rect x="0" y="14" width="18" height="42" rx="3"/>
+      <rect x="5" y="0" width="8" height="15"/>
+      <path d="M0 24 Q0 16 5 14 M18 24 Q18 16 13 14"/>
+    </g>
+    <!-- wine glass top-right -->
+    <g transform="translate(104,30)">
+      <path d="M0 0 Q0 20 15 20 Q30 20 30 0 Z"/>
+      <line x1="15" y1="20" x2="15" y2="48"/>
+      <line x1="4" y1="48" x2="26" y2="48"/>
+    </g>
+    <!-- wine glass bottom-left -->
+    <g transform="translate(30,104)">
+      <path d="M0 0 Q0 20 15 20 Q30 20 30 0 Z"/>
+      <line x1="15" y1="20" x2="15" y2="48"/>
+      <line x1="4" y1="48" x2="26" y2="48"/>
+    </g>
+    <!-- bottle bottom-right -->
+    <g transform="translate(108,108)">
+      <rect x="0" y="14" width="18" height="42" rx="3"/>
+      <rect x="5" y="0" width="8" height="15"/>
+      <path d="M0 24 Q0 16 5 14 M18 24 Q18 16 13 14"/>
+    </g>
+  </g>
+</svg>

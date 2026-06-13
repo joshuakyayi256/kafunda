@@ -1,3 +1,6 @@
+// Render on-demand so `next build` never depends on a live WooCommerce fetch (a Woo 403/SSL blip or greylisted build IP must not fail the deploy). ISR-style caching still applies underneath via lib/api tags.
+export const dynamic = "force-dynamic";
+
 import React from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";

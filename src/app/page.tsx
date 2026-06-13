@@ -1,16 +1,23 @@
-export const dynamic = 'force-dynamic';
+// Render on-demand (not at build time) and cache the result for 5 minutes.
+// `force-dynamic` ensures `next build` NEVER reaches out to WooCommerce, so a
+// transient Woo 403/SSL/network blip (or a greylisted build IP) can't fail the
+// deploy. The first real request fills the cache; ISR keeps it fast after that.
+export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
-import Link from "next/link";
-import { ArrowRight, Sparkles, Droplets } from "lucide-react";
-import ProductCard from "@/components/shared/ProductCard";
-import FAQSection from "@/components/shared/FAQSection";
+import Hero from "@/components/shared/Hero";
 import BrandMarquee from "@/components/shared/BrandMarquee";
-import HeroCarousel from "@/components/shared/HeroCarousel";
+import CategoryGrid from "@/components/shared/CategoryGrid";
+import CategoryShelf from "@/components/shared/CategoryShelf";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
-import CategoryMarquee from "@/components/shared/CategoryMarquee";
-import ProductMarquee from "@/components/shared/ProductMarquee";
 import { getAllProducts, getCategories } from "@/lib/api";
 import { Product } from "@/types";
+
+/** Case-insensitive: does the product's category string contain any keyword? */
+function inCategory(p: Product, keywords: string[]): boolean {
+  const cat = p.category?.toLowerCase() || "";
+  return keywords.some((kw) => cat.includes(kw));
+}
 
 export default async function Home() {
   const [liveProducts, wpCategories] = await Promise.all([
@@ -18,121 +25,120 @@ export default async function Home() {
     getCategories(),
   ]);
 
-  // Filter out the "Offers" pseudo-category
+  const products = liveProducts || [];
+
+  // ── Serve-stale-on-error guard ─────────────────────────────────────────────
+  // At RUNTIME: if WooCommerce is unreachable during a background revalidation,
+  // the fetch layer returns an empty list. Rendering that would cache an EMPTY
+  // homepage, so we throw — Next.js then keeps serving the last good version
+  // and retries later, making Woo downtime invisible to shoppers.
+  //
+  // At BUILD / FIRST RENDER there is no "last good version" to fall back to, so
+  // throwing would abort the deploy. In that case we render whatever we have
+  // (often nothing yet); the next revalidation fills it once Woo is reachable.
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+  if (products.length === 0 && !isBuildPhase) {
+    throw new Error("Product catalogue unavailable — keeping previous page.");
+  }
+
+  // Filter out the "Offers" pseudo-category from the tile grid
   const displayCategories = (wpCategories || []).filter(
-    (cat) => cat.name.toLowerCase() !== "offers" && cat.name.toLowerCase() !== "offer"
+    (cat) => !["offers", "offer"].includes(cat.name.toLowerCase())
   );
 
-  // All sale items — show everything, no artificial cap
-  const offerPicks = (liveProducts || []).filter((p) => p.is_sale);
+  // ── Section datasets (one fetch, filtered in memory) ──────────────────────
+  const offerPicks = products.filter((p) => p.is_sale);
 
-  // Cold drinks: Soft Drinks, Beers, Juices, Water
-  const COLD_CATS = ["soft drink", "beer", "juice", "water", "soda", "cider", "non-alcoholic"];
-  const coldDrinks = (liveProducts || [])
-    .filter((p) => COLD_CATS.some((kw) => p.category?.toLowerCase().includes(kw)))
-    .slice(0, 8);
-
-  // Popular picks: non-sale items — fed to the scrolling marquee
-  const popularPicks = (liveProducts || [])
-    .filter((p) => !p.is_sale)
-    .slice(0, 16);
+  const beers       = products.filter((p) => inCategory(p, ["beer", "cider"]));
+  const champagnes  = products.filter((p) => inCategory(p, ["champagne", "sparkling", "prosecco"]));
+  const softDrinks  = products.filter((p) =>
+    inCategory(p, ["soft drink", "juice", "water", "soda", "mixer", "energy", "non-alcoholic", "accessor", "disposable"])
+  );
+  const wines       = products.filter((p) => inCategory(p, ["wine"]) && !inCategory(p, ["sparkling", "champagne"]));
+  const whiskies    = products.filter((p) => inCategory(p, ["whisk", "bourbon", "scotch"]));
+  const ginsVodkas  = products.filter((p) => inCategory(p, ["gin", "vodka"]));
+  const darkSpirits = products.filter((p) => inCategory(p, ["cognac", "brandy", "rum", "tequila"]));
+  const creams      = products.filter((p) => inCategory(p, ["cream", "liqueur", "bitter"]));
 
   return (
-    <main className="min-h-screen bg-white">
-      <HeroCarousel />
+    <main className="min-h-screen bg-kafunda-bone">
+      {/* 1 ── Hero: image-led, minimal copy */}
+      <Hero />
 
       <BrandMarquee />
 
-      {/* Categories — right-to-left auto-scrolling strip (replaces bento) */}
-      <CategoryMarquee categories={displayCategories} />
+      {/* 2 ── Today's Offers */}
+      <CategoryShelf
+        title="Today's Offers"
+        accentWord="Offers"
+        eyebrow="Limited Time"
+        products={offerPicks}
+        viewAllHref="/shop?filter=offers"
+        textured
+      />
 
-      {/* Dedicated Offers Section — kept as grid for product detail */}
-      {offerPicks.length > 0 && (
-        <section className="py-16 md:py-24 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-end mb-10 md:mb-12 border-b border-gray-100 pb-6">
-              <div>
-                <p className="flex items-center text-[10px] font-bold text-kafunda-mustard uppercase tracking-[0.3em] mb-2 md:mb-3">
-                  <Sparkles className="h-3 w-3 mr-1" /> Limited Time
-                </p>
-                <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-kafunda-burgundy">
-                  Today&apos;s <span className="text-primary-red">Offers</span>
-                </h2>
-              </div>
-              <Link href="/shop?filter=offers" className="text-primary-red font-bold uppercase tracking-widest text-[10px] md:text-xs hover:underline flex items-center">
-                View All Offers <ArrowRight className="ml-1 h-3 w-3" />
-              </Link>
-            </div>
+      {/* 3 ── Categories grid (replaces the marquee) */}
+      <CategoryGrid categories={displayCategories} />
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {offerPicks.map((product: Product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* 4 ── Beers */}
+      <CategoryShelf
+        title="Beers & Ciders"
+        accentWord="Beers"
+        products={beers}
+        viewAllHref="/shop?category=Beers"
+      />
 
-      {/* Cold Drinks & Refreshments */}
-      <section className="py-16 md:py-24 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-10 md:mb-12">
-            <div>
-              <p className="flex items-center text-[10px] font-bold text-brand-green uppercase tracking-[0.3em] mb-2 md:mb-3">
-                <Droplets className="h-3 w-3 mr-1" /> Not Just Liquor
-              </p>
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-kafunda-burgundy">
-                Cold Drinks &amp; <span className="text-brand-green">Refreshments</span>
-              </h2>
-              <p className="text-sm text-zinc-500 mt-2 font-medium max-w-md">
-                Soft drinks, beers, juices &amp; more — perfect for every occasion and every guest.
-              </p>
-            </div>
-            <Link href="/shop?category=Soft-Drinks" className="text-brand-green font-bold uppercase tracking-widest text-[10px] md:text-xs hover:underline flex items-center">
-              View All <ArrowRight className="ml-1 h-3 w-3" />
-            </Link>
-          </div>
+      {/* 5 ── Champagnes */}
+      <CategoryShelf
+        title="Champagnes & Sparkling"
+        accentWord="Champagnes"
+        products={champagnes}
+        viewAllHref="/shop?category=Champagne"
+      />
 
-          {coldDrinks.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {coldDrinks.map((product: Product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: "Soft Drinks",    emoji: "🥤", href: "/shop?category=Soft-Drinks", bg: "bg-sky-50 border-sky-100",      text: "text-sky-700" },
-                { label: "Beers & Ciders", emoji: "🍺", href: "/shop?category=Beers",       bg: "bg-amber-50 border-amber-100",  text: "text-amber-700" },
-                { label: "Juices",         emoji: "🍊", href: "/shop?category=Juice",       bg: "bg-orange-50 border-orange-100", text: "text-orange-700" },
-                { label: "Water & Mixers", emoji: "💧", href: "/shop?category=Mixers",      bg: "bg-cyan-50 border-cyan-100",    text: "text-cyan-700" },
-              ].map(({ label, emoji, href, bg, text }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className={`${bg} border rounded-2xl p-6 flex flex-col items-center gap-3 hover:shadow-md transition-shadow group`}
-                >
-                  <span className="text-4xl">{emoji}</span>
-                  <span className={`${text} text-xs font-black uppercase tracking-widest text-center`}>{label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* 6 ── Soft drinks & accessories */}
+      <CategoryShelf
+        title="Soft Drinks & Accessories"
+        accentWord="Soft Drinks"
+        products={softDrinks}
+        viewAllHref="/shop?category=Soft-Drinks"
+        textured
+      />
 
-      {/* Popular Picks — left-to-right auto-scrolling strip (counter-motion to categories) */}
-      <ProductMarquee
-        products={popularPicks}
-        title="Popular Picks"
-        eyebrow="Trending Now"
-        accent="red"
-        viewAllHref="/shop"
+      {/* 7 ── The other drink types */}
+      <CategoryShelf
+        title="Fine Wines"
+        accentWord="Wines"
+        products={wines}
+        viewAllHref="/shop?category=Wines"
+      />
+      <CategoryShelf
+        title="Whiskies & Bourbons"
+        accentWord="Whiskies"
+        products={whiskies}
+        viewAllHref="/shop?category=Whisky"
+      />
+      <CategoryShelf
+        title="Gins & Vodkas"
+        accentWord="Gins"
+        products={ginsVodkas}
+        viewAllHref="/shop?category=Gins"
+      />
+      <CategoryShelf
+        title="Cognacs, Rums & Tequilas"
+        accentWord="Cognacs"
+        products={darkSpirits}
+        viewAllHref="/shop?category=Cognacs"
+        textured
+      />
+      <CategoryShelf
+        title="Creams & Liqueurs"
+        accentWord="Creams"
+        products={creams}
+        viewAllHref="/shop?category=Creams"
       />
 
       <RecentlyViewed />
-
-      <FAQSection />
     </main>
   );
 }

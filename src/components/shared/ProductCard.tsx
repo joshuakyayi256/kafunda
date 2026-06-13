@@ -81,7 +81,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 {/* Info */}
                 <div className="px-3 pt-2.5 pb-2 flex flex-col grow">
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">
-                        {product.category.split(",")[0].trim()}
+                        {(product.category || "Uncategorized").split(",")[0].trim()}
                     </p>
 
                     <Link

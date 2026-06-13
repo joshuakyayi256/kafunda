@@ -8,9 +8,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Search, ShoppingCart, X, MessageCircle,
   Flame, Sparkles, Home, Store, Menu,
-  Zap, ArrowRight, User,
+  Zap, ArrowRight, User, Loader2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { formatUGX } from "@/lib/utils";
 
 // Config
 const SALE_END = new Date("2026-04-30T23:59:59");
@@ -130,6 +131,103 @@ function AnnouncementBar() {
   );
 }
 
+// ── Search suggestions (#6) ──────────────────────────────────────────────────
+// Backed by /api/search, which rides the 1h tagged product cache — suggestion
+// keystrokes never hit WordPress live (same architecture as the catalogue).
+
+interface SearchSuggestion {
+  id: string;
+  name: string;
+  category: string;
+  price_ugx: number;
+  image_url: string;
+  is_sale: boolean;
+}
+
+function MatchHighlight({ text, query }: { text: string; query: string }) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (!query || idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-primary-red">{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+function SearchSuggestionsList({
+  suggestions, loading, query, activeIdx, onSelect, onSeeAll,
+}: {
+  suggestions: SearchSuggestion[];
+  loading: boolean;
+  query: string;
+  activeIdx: number;
+  onSelect: (s: SearchSuggestion) => void;
+  onSeeAll: () => void;
+}) {
+  if (loading && suggestions.length === 0) {
+    return (
+      <div className="px-4 py-4 flex items-center gap-2 text-xs text-kafunda-burgundy/50 font-medium">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching the cellar…
+      </div>
+    );
+  }
+  if (suggestions.length === 0) {
+    return (
+      <div className="px-4 py-4 text-xs text-kafunda-burgundy/50 font-medium">
+        No matches for &ldquo;{query}&rdquo; — press Enter to search the full shop.
+      </div>
+    );
+  }
+  return (
+    <ul role="listbox" aria-label="Product suggestions">
+      {suggestions.map((s, i) => (
+        <li key={s.id} role="option" aria-selected={i === activeIdx}>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onSelect(s)}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+              i === activeIdx ? "bg-kafunda-cream/60" : "hover:bg-kafunda-cream/40"
+            }`}
+          >
+            <div className="relative w-9 h-9 rounded-lg bg-kafunda-cream/40 border border-kafunda-cream-soft overflow-hidden shrink-0">
+              <Image src={s.image_url} alt="" fill sizes="36px" className="object-contain p-0.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-zinc-900 line-clamp-1">
+                <MatchHighlight text={s.name} query={query} />
+              </p>
+              <p className="text-[10px] text-kafunda-burgundy/50 line-clamp-1">{s.category}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              {s.is_sale && (
+                <span className="block text-[8px] font-black uppercase tracking-wider text-kafunda-crimson">
+                  Sale
+                </span>
+              )}
+              <span className="text-xs font-black text-zinc-900">{formatUGX(s.price_ugx)}</span>
+            </div>
+          </button>
+        </li>
+      ))}
+      <li>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onSeeAll}
+          className={`w-full flex items-center justify-center gap-1.5 px-4 py-3 text-[11px] font-black uppercase tracking-widest text-primary-red border-t border-kafunda-cream-soft transition-colors ${
+            activeIdx === suggestions.length ? "bg-kafunda-cream/60" : "hover:bg-kafunda-cream/40"
+          }`}
+        >
+          See all results for &ldquo;{query}&rdquo; <ArrowRight className="h-3 w-3" />
+        </button>
+      </li>
+    </ul>
+  );
+}
+
 // Main Navbar
 const Navbar = () => {
   const { itemsCount } = useCart();
@@ -141,7 +239,16 @@ const Navbar = () => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
+  // Search suggestions
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [desktopOpen, setDesktopOpen] = useState(false);
+
   const overlaySearchRef = useRef<HTMLInputElement>(null);
+  const desktopFormRef = useRef<HTMLFormElement>(null);
+
+  const query = searchValue.trim();
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -167,13 +274,59 @@ const Navbar = () => {
     const t = setTimeout(() => {
       setIsSearchOpen(false);
       setIsMoreOpen(false);
+      setDesktopOpen(false);
     }, 0);
     return () => clearTimeout(t);
   }, [pathname]);
 
+  // Debounced suggestion fetch — every setState lives in timer/promise
+  // callbacks (react-hooks/set-state-in-effect safe).
+  useEffect(() => {
+    const q = searchValue.trim();
+    if (q.length < 2) {
+      const t = setTimeout(() => {
+        setSuggestions([]);
+        setIsSuggesting(false);
+        setActiveIdx(-1);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      setIsSuggesting(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          signal: ctrl.signal,
+        });
+        const data = await res.json();
+        setSuggestions(Array.isArray(data?.results) ? data.results : []);
+        setActiveIdx(-1);
+        setIsSuggesting(false);
+      } catch {
+        // Aborted (user kept typing) or offline — leave previous list alone.
+      }
+    }, 220);
+    return () => {
+      ctrl.abort();
+      clearTimeout(t);
+    };
+  }, [searchValue]);
+
+  // Close the desktop dropdown on outside click
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (desktopFormRef.current && !desktopFormRef.current.contains(e.target as Node)) {
+        setDesktopOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
   const closeAll = () => {
     setIsSearchOpen(false);
     setIsMoreOpen(false);
+    setDesktopOpen(false);
   };
 
   const handleSearch = (e: { preventDefault(): void }) => {
@@ -183,6 +336,36 @@ const Navbar = () => {
     closeAll();
     setSearchValue("");
     router.push(`/shop?search=${encodeURIComponent(q)}`);
+  };
+
+  const selectSuggestion = (s: SearchSuggestion) => {
+    closeAll();
+    setSearchValue("");
+    router.push(`/product/${s.id}`);
+  };
+
+  // Keyboard navigation: arrows cycle suggestions + the "see all" row,
+  // Enter picks the active row (or submits the form when none is active),
+  // Escape closes whatever is open.
+  const totalRows = suggestions.length > 0 ? suggestions.length + 1 : 0;
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      setDesktopOpen(false);
+      setIsSearchOpen(false);
+      return;
+    }
+    if (totalRows === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % totalRows);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => (i - 1 + totalRows) % totalRows);
+    } else if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      if (activeIdx < suggestions.length) selectSuggestion(suggestions[activeIdx]);
+      else handleSearch(e);
+    }
   };
 
   return (
@@ -219,6 +402,7 @@ const Navbar = () => {
 
             {/* Desktop search */}
             <form
+              ref={desktopFormRef}
               onSubmit={handleSearch}
               className="hidden md:flex flex-1 max-w-2xl mx-auto relative"
             >
@@ -229,7 +413,12 @@ const Navbar = () => {
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
+                onFocus={() => setDesktopOpen(true)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search wines, whisky, gin, champagne..."
+                role="combobox"
+                aria-expanded={desktopOpen && query.length >= 2}
+                aria-controls="navbar-search-suggestions"
                 className="w-full h-11 pl-10 pr-10 text-sm bg-kafunda-cream/40 border border-kafunda-cream-soft rounded-2xl placeholder:text-kafunda-burgundy/40 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white focus:ring-2 focus:ring-primary-red/10 transition-all duration-200"
               />
               {searchValue ? (
@@ -245,6 +434,23 @@ const Navbar = () => {
                   <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[10px] font-medium text-kafunda-burgundy/50 bg-white px-1.5 py-0.5 rounded border border-kafunda-cream-soft">
                     Enter
                   </kbd>
+                </div>
+              )}
+
+              {/* Suggestions dropdown */}
+              {desktopOpen && query.length >= 2 && (
+                <div
+                  id="navbar-search-suggestions"
+                  className="absolute top-12 left-0 right-0 z-50 bg-white border border-kafunda-cream-soft rounded-2xl shadow-[0_16px_48px_rgba(110,31,42,0.16)] overflow-hidden"
+                >
+                  <SearchSuggestionsList
+                    suggestions={suggestions}
+                    loading={isSuggesting}
+                    query={query}
+                    activeIdx={activeIdx}
+                    onSelect={selectSuggestion}
+                    onSeeAll={() => handleSearch({ preventDefault() {} })}
+                  />
                 </div>
               )}
             </form>
@@ -439,6 +645,7 @@ const Navbar = () => {
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
                     placeholder="Search wines, whisky, gin, champagne..."
                     className="w-full h-12 pl-12 pr-4 text-base bg-kafunda-cream/40 border border-kafunda-cream-soft rounded-2xl placeholder:text-kafunda-burgundy/40 text-zinc-900 focus:outline-none focus:border-primary-red focus:bg-white transition-all"
                   />
@@ -453,19 +660,34 @@ const Navbar = () => {
                 </button>
               </form>
 
-              <div className="max-w-3xl mx-auto px-4 pb-4 flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => (
-                  <Link
-                    key={cat.label}
-                    href={cat.href}
-                    onClick={closeAll}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-kafunda-cream/50 hover:bg-kafunda-cream rounded-full text-xs font-semibold text-kafunda-burgundy hover:text-kafunda-burgundy-hover transition-colors"
-                  >
-                    <span>{cat.emoji}</span>
-                    {cat.label}
-                  </Link>
-                ))}
-              </div>
+              {query.length >= 2 ? (
+                <div className="max-w-3xl mx-auto px-4 pb-4">
+                  <div className="bg-white border border-kafunda-cream-soft rounded-2xl shadow-sm overflow-hidden">
+                    <SearchSuggestionsList
+                      suggestions={suggestions}
+                      loading={isSuggesting}
+                      query={query}
+                      activeIdx={activeIdx}
+                      onSelect={selectSuggestion}
+                      onSeeAll={() => handleSearch({ preventDefault() {} })}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-3xl mx-auto px-4 pb-4 flex flex-wrap gap-2">
+                  {CATEGORIES.map((cat) => (
+                    <Link
+                      key={cat.label}
+                      href={cat.href}
+                      onClick={closeAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-kafunda-cream/50 hover:bg-kafunda-cream rounded-full text-xs font-semibold text-kafunda-burgundy hover:text-kafunda-burgundy-hover transition-colors"
+                    >
+                      <span>{cat.emoji}</span>
+                      {cat.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </>
         )}

@@ -4,13 +4,36 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Brand (sampled directly from the logo PDF) ─────────────────────────── */
-  --color-primary-red: #e41824;
-  --color-primary-red-hover: #c5121d;
-  --color-brand-green: #60b430;
-  --color-brand-green-hover: #51992a;
+  /* ── Primary action = bottle green ──────────────────────────────────────────
+     NOTE: the token is still named `primary-red` so the ~27 components that
+     reference `bg-primary-red` / `text-primary-red` flip to green with no edits.
+     Despite the name, this is now the brand GREEN. Use `kafunda-green` in new code. */
+  --color-primary-red: #1b7a43;
+  --color-primary-red-hover: #0f5a30;
 
-  /* ── Vintage blend accents (warm secondary palette) ─────────────────────── */
+  /* ── Brand greens (canonical names for new code) ────────────────────────── */
+  --color-kafunda-green: #1b7a43;
+  --color-kafunda-green-deep: #0f5a30;
+  --color-kafunda-green-tint: #ebf3ec;
+  --color-brand-green: #1b7a43;
+  --color-brand-green-hover: #0f5a30;
+
+  /* ── Red accent — sale badges, discounts, urgency only ──────────────────── */
+  --color-kafunda-crimson: #c8362b;
+  --color-kafunda-crimson-hover: #a52a20;
+
+  /* ── Neutrals ───────────────────────────────────────────────────────────── */
+  --color-kafunda-bone: #faf7f0;
+  --color-kafunda-bone-soft: #f4efe4;
+  --color-kafunda-ink: #141414;
+
+  /* ── Functional ─────────────────────────────────────────────────────────── */
+  --color-brand-gold: #c5b358;
+  --color-success-green: #10b981;
+  --color-secondary-gray: #f9fafb;
+
+  /* ── Legacy vintage accents (retained so existing references keep compiling;
+        being phased out of the UI) ─────────────────────────────────────────── */
   --color-kafunda-burgundy: #6e1f2a;
   --color-kafunda-burgundy-hover: #5a1722;
   --color-kafunda-cream: #efe3ce;
@@ -19,11 +42,6 @@
   --color-kafunda-olive: #5a6b3a;
   --color-kafunda-burnt: #d6502b;
   --color-kafunda-peach: #e8a77a;
-
-  /* ── Functional ─────────────────────────────────────────────────────────── */
-  --color-brand-gold: #c5b358;
-  --color-success-green: #10b981;
-  --color-secondary-gray: #f9fafb;
 
   /* ── Marquee animations ─────────────────────────────────────────────────── */
   @keyframes marquee {
@@ -51,8 +69,8 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf7f0;
+  --foreground: #141414;
 }
 
 body {
@@ -65,6 +83,25 @@ body {
     font-family: var(--font-heading);
     @apply font-bold;
   }
+}
+
+/* ── Textured background utility ──────────────────────────────────────────────
+   Subtle bottle + wine-glass watermark on bone. Apply to <body>, a section
+   band, or the hero wrapper: <section className="bg-kafunda-texture"> .
+   The SVG lives at /public/kafunda-texture.svg. */
+.bg-kafunda-texture {
+  background-color: var(--color-kafunda-bone);
+  background-image: url('/kafunda-texture.svg');
+  background-repeat: repeat;
+  background-size: 160px 160px;
+}
+
+/* A slightly stronger band, e.g. for the hero or a feature strip */
+.bg-kafunda-texture-soft {
+  background-color: var(--color-kafunda-bone-soft);
+  background-image: url('/kafunda-texture.svg');
+  background-repeat: repeat;
+  background-size: 200px 200px;
 }
 
 /* Pause marquee animations on hover so users can read */

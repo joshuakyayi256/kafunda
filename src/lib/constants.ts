@@ -34,12 +34,60 @@ export const SOCIAL = {
   tiktok: "https://www.tiktok.com/@kafundawines",
 } as const;
 
+/**
+ * Pesapal passes a ~3.5% processing fee to the merchant. Per business
+ * decision this is folded into the amount due on ONLINE payments only
+ * (never Cash on Delivery). Client and server both read this constant;
+ * the server's calculation is authoritative.
+ */
+export const PESAPAL_SURCHARGE_RATE = 0.035;
+
+/**
+ * Physical stores delivery riders dispatch from. The Mapbox quote engine
+ * (src/lib/delivery.ts) measures driving distance from the customer's
+ * pinned location to the NEAREST store in this list.
+ *
+ * ⚠️ COORDINATES ARE A PLACEHOLDER near Mpererwe / Lusanja-Kiteezi Rd.
+ * Before launch: open Google Maps, right-click the exact shop entrance,
+ * "copy coordinates", and paste the real lat/lng here. The entire fee
+ * calculation keys off this point. Add more entries if branches open.
+ */
+export const STORES = [
+  {
+    id: "mpererwe",
+    name: "Kafunda — Mpererwe",
+    address: "Mpererwe, Lusanja-Kiteezi Road, Kampala",
+    lat: 0.3946,  // TODO: replace with exact pin
+    lng: 32.5742, // TODO: replace with exact pin
+  },
+] as const;
+
+/**
+ * Distance-based delivery tariff (UGX), applied to Mapbox DRIVING distance
+ * from the nearest store. Tune freely — both the live checkout quote and
+ * the server's authoritative recalculation read these same numbers.
+ *
+ *   fee = BASE_UGX + PER_KM_UGX × km
+ *   fee = max(fee, MIN_UGX), rounded UP to the nearest ROUND_UP_TO_UGX
+ *
+ * Beyond MAX_RADIUS_KM (or when the customer doesn't pin a location, or
+ * Mapbox is unreachable) checkout falls back to the previous behaviour:
+ * the fee is quoted on the confirmation call.
+ */
+export const DELIVERY_FEE = {
+  BASE_UGX: 3_000,
+  PER_KM_UGX: 1_200,
+  MIN_UGX: 5_000,
+  ROUND_UP_TO_UGX: 500,
+  MAX_RADIUS_KM: 30,
+} as const;
+
 export const DELIVERY = {
   estimatedTime: "1-2 hours",
   recommendation: "99% recommendation rate",
-  // Delivery fares are quoted per location on the confirmation call,
-  // not charged at checkout.
-  note: "Delivery fee confirmed by phone and paid to the rider on arrival.",
+  // Fee is auto-quoted from the customer's pinned location (see STORES /
+  // DELIVERY_FEE). If no pin is given, it's confirmed by phone instead.
+  note: "Pin your location for an instant delivery fee — otherwise we confirm it by phone.",
 } as const;
 
 export const CATEGORIES = [
@@ -48,10 +96,9 @@ export const CATEGORIES = [
 ] as const;
 
 /**
- * Delivery zones are now INFORMATIONAL only - they tell the rider roughly
- * where the customer is so the fare can be quoted on the confirmation call.
- * No fee is charged at checkout. (Fees were removed because real transport
- * cost depends on distance, which we settle by phone.)
+ * LEGACY — delivery zones from the quote-on-call era. No longer used by
+ * checkout (replaced by the Mapbox location pin) but kept as reference
+ * for the rider team / any copy that still mentions areas.
  */
 export const DELIVERY_ZONES = [
   { id: "zone1", name: "Kampala Central", areas: "CBD, Nakasero, Kololo, Kamwokya" },

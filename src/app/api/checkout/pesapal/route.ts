@@ -2,13 +2,17 @@
  * /api/checkout/pesapal - Pesapal Payment Initialization
  * --------------------------------------------------------
  * Server-side only. Trusts NO pricing data from the client.
- * Delivery fares are NOT charged here - they are quoted per location on the
- * confirmation call, so the amount sent to Pesapal is the goods subtotal.
+ * Delivery: if the customer pinned a location, the fee is recomputed HERE
+ * from the coordinates (src/lib/delivery.ts) and charged with the order.
+ * If there's no pin (or the quote engine can't price it), the fee falls
+ * back to being quoted per location on the confirmation call, so the
+ * amount sent to Pesapal is the goods subtotal only.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getProductsByIds } from "@/lib/api";
-import { DELIVERY_ZONES } from "@/lib/constants";
+import { PESAPAL_SURCHARGE_RATE } from "@/lib/constants";
+import { getDeliveryQuote, isInUganda, type DeliveryQuote } from "@/lib/delivery";
 
 // -- Constants --------------------------------------------------------------
 
@@ -36,7 +40,10 @@ interface IncomingCustomer {
   phone: string;
   email: string;
   address: string;
-  deliveryZone: string;
+  /** Pinned delivery coordinates from the checkout map (optional). */
+  location?: { lat: number; lng: number } | null;
+  /** Reverse-geocoded label for the pin (rider context / Woo city). */
+  locationLabel?: string;
   notes?: string;
 }
 
@@ -183,12 +190,15 @@ function validateCustomer(customer: IncomingCustomer): void {
     throw new CheckoutError("Valid email required for order receipt.");
   }
   if (!customer.address?.trim()) throw new CheckoutError("Delivery address required.");
-  if (!customer.deliveryZone?.trim()) throw new CheckoutError("Delivery area required.");
 
-  // Zone is informational (no fee) but must be a known value so the rider has
-  // a sensible location label on the order.
-  const knownZone = DELIVERY_ZONES.some((z) => z.id === customer.deliveryZone);
-  if (!knownZone) throw new CheckoutError("Invalid delivery area.");
+  // Location pin is optional, but if present it must be sane coordinates —
+  // garbage here would feed the fee calculation.
+  if (customer.location) {
+    const { lat, lng } = customer.location;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInUganda(lat, lng)) {
+      throw new CheckoutError("Invalid delivery location pin.");
+    }
+  }
 }
 
 /**
@@ -253,9 +263,39 @@ async function verifyCartAndPrice(
   return { lines, subtotal };
 }
 
+/**
+ * Quote the delivery fee from the pinned coordinates. AUTHORITATIVE — the
+ * figure the client displayed is ignored. Returns null when the customer
+ * didn't pin a location or the engine can't price it (out of range, Mapbox
+ * down): in those cases NO fee is charged and the fare is settled on the
+ * confirmation call, exactly like the previous flow.
+ */
+async function quoteDeliveryFee(
+  customer: IncomingCustomer
+): Promise<DeliveryQuote | null> {
+  if (!customer.location) return null;
+  try {
+    const result = await getDeliveryQuote(customer.location.lat, customer.location.lng);
+    if (result.ok) return result.quote;
+    console.warn(`[Pesapal] Delivery quote fell back to call (${result.reason}).`);
+    return null;
+  } catch (err) {
+    console.error("[Pesapal] Delivery quote error:", err);
+    return null;
+  }
+}
+
+/** City label for Woo / Pesapal: pin label > "Kampala". Woo caps city length. */
+function cityLabel(customer: IncomingCustomer): string {
+  const label = customer.locationLabel?.trim();
+  return label ? label.slice(0, 90) : "Kampala";
+}
+
 async function createWooOrder(
   customer: IncomingCustomer,
   lines: VerifiedLine[],
+  delivery: DeliveryQuote | null,
+  surcharge: number,
   idempotencyKey: string | undefined
 ): Promise<number> {
   const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
@@ -271,6 +311,39 @@ async function createWooOrder(
     throw new Error(`Missing WC creds. State: ${JSON.stringify(state)}`);
   }
 
+  const feeLines: { name: string; total: string }[] = [];
+  // Delivery fee (when auto-quoted from the pin) is recorded as a fee line so
+  // the Woo order total exactly matches the amount charged via Pesapal. When
+  // there's no quote, the fee is settled on the confirmation call instead.
+  if (delivery) {
+    feeLines.push({
+      name: `Delivery (${delivery.distanceKm} km · ${delivery.storeName})`,
+      total: delivery.feeUgx.toString(),
+    });
+  }
+  if (surcharge > 0) {
+    feeLines.push({ name: "Online payment charge (3.5%)", total: surcharge.toString() });
+  }
+
+  const metaData: { key: string; value: string }[] = [];
+  if (idempotencyKey) {
+    metaData.push({ key: "_kafunda_idempotency_key", value: idempotencyKey });
+  }
+  if (customer.location) {
+    metaData.push({
+      key: "_kafunda_delivery_pin",
+      value: JSON.stringify({
+        lat: customer.location.lat,
+        lng: customer.location.lng,
+        label: customer.locationLabel || "",
+        distanceKm: delivery?.distanceKm ?? null,
+        feeUgx: delivery?.feeUgx ?? null,
+        store: delivery?.storeId ?? null,
+        maps: `https://www.google.com/maps?q=${customer.location.lat},${customer.location.lng}`,
+      }),
+    });
+  }
+
   const orderBody = {
     payment_method: "pesapal",
     payment_method_title: "Pesapal (Mobile Money / Card)",
@@ -280,7 +353,7 @@ async function createWooOrder(
       first_name: customer.firstName,
       last_name: customer.lastName,
       address_1: customer.address,
-      city: customer.deliveryZone,
+      city: cityLabel(customer),
       country: "UG",
       email: customer.email,
       phone: customer.phone,
@@ -289,18 +362,16 @@ async function createWooOrder(
       first_name: customer.firstName,
       last_name: customer.lastName,
       address_1: customer.address,
-      city: customer.deliveryZone,
+      city: cityLabel(customer),
       country: "UG",
     },
     line_items: lines.map((l) => ({
       product_id: parseInt(l.id, 10),
       quantity: l.quantity,
     })),
-    // Delivery fee is settled on the confirmation call, not charged here.
+    fee_lines: feeLines,
     customer_note: customer.notes || "",
-    meta_data: idempotencyKey
-      ? [{ key: "_kafunda_idempotency_key", value: idempotencyKey }]
-      : [],
+    meta_data: metaData,
   };
 
   const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
@@ -354,15 +425,23 @@ export async function POST(request: NextRequest) {
     // 3. Server-side cart + price verification (batched)
     const { lines, subtotal } = await verifyCartAndPrice(payload.cart);
 
-    // 4. Trusted total = goods subtotal (delivery quoted on the call)
-    const total = subtotal;
+    // 4. Server-side delivery quote from the pinned coordinates (null = fee
+    //    settled on the confirmation call), then the trusted total:
+    //    goods + delivery + 3.5% online processing charge on the amount that
+    //    actually moves through Pesapal. Computed from verified prices —
+    //    the client's figures are display-only. Whole UGX shillings.
+    const delivery = await quoteDeliveryFee(payload.customer);
+    const deliveryFee = delivery?.feeUgx ?? 0;
+    const surcharge = Math.round((subtotal + deliveryFee) * PESAPAL_SURCHARGE_RATE);
+    const total = subtotal + deliveryFee + surcharge;
 
     // 5. Pesapal token + IPN id
     const token = await getPesapalToken();
     const notificationId = await getOrRegisterIpnId(token);
 
-    // 6. Create pending Woo order with verified prices
-    const wcOrderId = await createWooOrder(payload.customer, lines, idempotencyKey);
+    // 6. Create pending Woo order with verified prices (delivery + surcharge
+    //    recorded as fee lines so the Woo order total matches the Pesapal charge)
+    const wcOrderId = await createWooOrder(payload.customer, lines, delivery, surcharge, idempotencyKey);
     const merchantRef = `KAF-${wcOrderId}`;
 
     // 7. Submit to Pesapal with the trusted amount
@@ -381,7 +460,7 @@ export async function POST(request: NextRequest) {
         first_name: payload.customer.firstName,
         last_name: payload.customer.lastName,
         line_1: payload.customer.address,
-        city: payload.customer.deliveryZone,
+        city: cityLabel(payload.customer),
       },
     };
 
@@ -435,6 +514,7 @@ export async function POST(request: NextRequest) {
       order_tracking_id: submitData.order_tracking_id,
       merchant_reference: merchantRef,
       wc_order_id: wcOrderId,
+      delivery_fee: deliveryFee,
     });
   } catch (err: unknown) {
     if (err instanceof CheckoutError) {

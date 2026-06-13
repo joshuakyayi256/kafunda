@@ -1,393 +1,1776 @@
 [
   {
-    "id": "1",
-    "name": "Macallan 18 Year Old Double Cask",
-    "brand": "The Macallan",
-    "category": "Whisky",
-    "price_ugx": 1250000,
-    "original_price_ugx": 1400000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "A perfectly balanced single malt whisky matured for 18 years in both American and European oak casks seasoned with sherry. Expect rich notes of dried fruits, ginger, and toffee, with a warm oak finish.",
-    "abv": "43%",
-    "volume": "700ml"
-  },
-  {
-    "id": "2",
-    "name": "Don Julio 1942 Anejo Tequila",
-    "brand": "Don Julio",
-    "category": "Tequila",
-    "price_ugx": 950000,
-    "original_price_ugx": 1100000,
-    "image_url": "/don julio1.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "Handcrafted in tribute to the year Don Julio González began his tequila-making journey. Aged in small batches for at least two and a half years.",
-    "abv": "40%",
-    "volume": "750ml"
-  },
-  {
-    "id": "3",
-    "name": "Hendrick's Gin",
-    "brand": "Hendrick's",
-    "category": "Gin",
-    "price_ugx": 185000,
-    "original_price_ugx": 210000,
-    "image_url": "/don julio1.webp",
-    "gallery_urls": [
-      "/don julio.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "A delightfully curious gin, infused with cucumber and rose for a uniquely refreshing taste.",
-    "abv": "44%",
-    "volume": "700ml"
-  },
-  {
-    "id": "4",
-    "name": "Veuve Clicquot Yellow Label Brut",
-    "brand": "Veuve Clicquot",
-    "category": "Champagne",
-    "price_ugx": 320000,
+    "id": "14625",
+    "name": "Savana Premium Cider Beer 330ml - 6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 44000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14623",
+    "name": "O.J 16% Beer Can 500 ML - 6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 44000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14621",
+    "name": "Bavaria Smalt Apple 0% Can 500ML -6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14619",
+    "name": "Bavaria (8.6) Extreme inteneseDark Beer Can 500ML -6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 38000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14617",
+    "name": "Bavaria (8.6) Extreme Original Can 500ML -6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 38000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14613",
+    "name": "Hollandia Super Strong Beer Can 500ml 6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 35000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14611",
+    "name": "Heineken Beer Bottle 500ml - 6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 47000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14607",
+    "name": "Heineken Beer Bottle 330ml - 6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 44000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14604",
+    "name": "Tusker Lite Can -500ml  6 Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 41000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14602",
+    "name": "Tusker Malt Can 500ml - 6 piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 41000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14600",
+    "name": "Tusker Larger Can 500ml - 6Piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 41000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14598",
+    "name": "Guiness Foreign Extra Stout Can 500ml -6 Piecec Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 41000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14596",
+    "name": "Smirnoff ice Guarana Can 330Ml -6 piece Pack",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 41000,
+    "original_price_ugx": null,
+    "image_url": "/product-placeholder.svg",
+    "gallery_urls": [],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "14039",
+    "name": "Wild Africa Cream - 750Ml + Cadbury Chocolate 32g + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 54000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/01592950-6ce5-4589-8a0d-a5e40eef15d4.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/01592950-6ce5-4589-8a0d-a5e40eef15d4.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "The signature champagne of the House. Dominated by Pinot Noir, it offers a perfect balance of structure and finesse.",
-    "abv": "12.5%",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "5",
-    "name": "Hennessy VSOP Privilège",
-    "brand": "Hennessy",
-    "category": "Cognac",
-    "price_ugx": 285000,
-    "original_price_ugx": 315000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "A balanced cognac, expressing 200 years of Hennessy's know-how. The fruit of a long maturation in oak casks.",
-    "abv": "40%",
-    "volume": "700ml"
-  },
-  {
-    "id": "6",
-    "name": "Grey Goose Vodka",
-    "brand": "Grey Goose",
-    "category": "Vodka",
-    "price_ugx": 165000,
+    "id": "14037",
+    "name": "Baileys Original Irish Cream -750Ml +Cadbury  Chocolate 32g + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 73000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/47977f1f-3a3d-48fb-b421-f162cf5cde02.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/47977f1f-3a3d-48fb-b421-f162cf5cde02.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "Crafted using only two ingredients from France: single-origin Winter Wheat and Picardie Spring Water.",
-    "abv": "40%",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "7",
-    "name": "Clouds & Air Sauvignon Blanc",
-    "brand": "Cloudy Bay",
-    "category": "Wines",
-    "price_ugx": 145000,
-    "original_price_ugx": null,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": false,
-    "description": "A vibrant and aromatic white wine with notes of lime, lemongrass, and stone fruit.",
-    "abv": "13%",
-    "volume": "750ml"
-  },
-  {
-    "id": "8",
-    "name": "Johnnie Walker Black Label",
-    "brand": "Johnnie Walker",
-    "category": "Whisky",
-    "price_ugx": 155000,
-    "original_price_ugx": 180000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "An award-winning blend of around 40 whiskies, each aged for at least 12 years.",
-    "abv": "40%",
-    "volume": "750ml"
-  },
-  {
-    "id": "9",
-    "name": "Captain Morgan Spiced Gold",
-    "brand": "Captain Morgan",
-    "category": "Rum",
+    "id": "14029",
+    "name": "Amarula Cream -750Ml +Cadbury Chocolate 32g +Free wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
     "price_ugx": 65000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/96a64195-15f5-489d-8be3-3a4e1d64542c.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/96a64195-15f5-489d-8be3-3a4e1d64542c.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "Smooth and medium-bodied, this spiced rum is a secret blend of Caribbean rums.",
-    "abv": "35%",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "10",
-    "name": "Baileys Irish Cream",
-    "brand": "Baileys",
-    "category": "Liqueur",
-    "price_ugx": 95000,
-    "original_price_ugx": 110000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "The perfect marriage of fresh Irish cream and fine Irish whiskey.",
-    "abv": "17%",
-    "volume": "1L"
-  },
-  {
-    "id": "11",
-    "name": "Jameson Irish Whiskey",
-    "brand": "Jameson",
-    "category": "Whisky",
-    "price_ugx": 115000,
+    "id": "14027",
+    "name": "Four Cousins Sweet Red Wine 750Ml + Cadbury Chocolate -32g + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 34000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/ebbfafa8-1c73-4338-b5ff-4f9f156d7f04.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/ebbfafa8-1c73-4338-b5ff-4f9f156d7f04.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "A triple-distilled blend of pot still and grain whiskey, as versatile as it is smooth.",
-    "abv": "40%",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "12",
-    "name": "Corona Extra (6-Pack)",
-    "brand": "Corona",
-    "category": "Beers",
-    "price_ugx": 48000,
-    "original_price_ugx": 55000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "description": "The perfect beer for any occasion, served cold with a slice of lime.",
-    "abv": "4.5%",
-    "volume": "355ml x 6"
-  },
-  {
-    "id": "13",
-    "name": "Belvedere Vodka",
-    "brand": "Belvedere",
-    "category": "Vodka",
-    "price_ugx": 175000,
+    "id": "14025",
+    "name": "Robertson Winery Sweet Rose Wine 750Ml +Cadbury Chocolate -32g  + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 42000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/9e41f023-ce77-4514-b52a-f9dc54b2458b.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/9e41f023-ce77-4514-b52a-f9dc54b2458b.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "Made from only Polski Dankowskie Rye and pristine water from its own artesian well.",
-    "abv": "40%",
-    "volume": "700ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "14",
-    "name": "Wild Turkey 101 Bourbon",
-    "brand": "Wild Turkey",
-    "category": "Whisky",
-    "price_ugx": 145000,
+    "id": "14009",
+    "name": "Four Cousins Sweet White Wine 750Ml + Cadbury Chocolate -32g + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 34000,
     "original_price_ugx": null,
-    "image_url": "/don julio.webp",
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/e8eb1cf1-c18d-4fa5-a416-6d286e08580c.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/e8eb1cf1-c18d-4fa5-a416-6d286e08580c.jpeg"
     ],
     "in_stock": true,
     "is_sale": false,
-    "description": "High-rye bourbon aged in heavily charred American White Oak barrels for a big, bold flavor.",
-    "abv": "50.5%",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "15",
-    "name": "Martell VS Single Distillery",
-    "brand": "Martell",
-    "category": "Cognac",
-    "price_ugx": 195000,
-    "original_price_ugx": 220000,
-    "image_url": "/don julio.webp",
+    "id": "14003",
+    "name": "Robertson Winery Sweet White Wine 750Ml +Cadbury Chocolate -32g + Free Wine Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 42000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/0b03ccc8-788b-4f34-aa14-c226f8bcd9e1.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/0b03ccc8-788b-4f34-aa14-c226f8bcd9e1.jpeg"
     ],
     "in_stock": true,
-    "is_sale": true,
-    "description": "A fine cognac distilled from a single source for a smoother, richer taste experience.",
-    "abv": "40%",
-    "volume": "700ml"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-1",
-    "name": "Robertson Sweet Wine Combo",
-    "brand": "Robertson",
-    "category": "Wines",
-    "price_ugx": 40000,
-    "original_price_ugx": 45000,
-    "image_url": "/don julio.webp",
-    "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
-    ],
-    "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Robertson sweet wine 750mls + Cadbury Dairy Milk Chocolate.",
-    "volume": "750ml"
-  },
-  {
-    "id": "offer-2",
-    "name": "Ballantine's 1L Chocolate Combo",
-    "brand": "Ballantine's",
-    "category": "Whisky",
+    "id": "14000",
+    "name": "Ballantines Blended Scotch Whisky 1L + Cadbury Chocolate Bar 32g + Free Whisky Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
     "price_ugx": 82000,
-    "original_price_ugx": 95000,
-    "image_url": "/don julio.webp",
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/ballanti.jpg-1.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/ballanti.jpg-1.jpeg"
     ],
     "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Ballantine's 1L + Cadbury Chocolate bar.",
-    "volume": "1L"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-3",
-    "name": "Black Label 750ml Combo",
-    "brand": "Johnnie Walker",
-    "category": "Whisky",
-    "price_ugx": 120000,
-    "original_price_ugx": 140000,
-    "image_url": "/don julio.webp",
+    "id": "13978",
+    "name": "Johnnie Walker Black Label Whisky -750Ml + Cadbury  Chocolate 32g + Free Whisky Glass",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 122000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/black-lab.jpg.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/black-lab.jpg.jpeg"
     ],
     "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Black Label- 750 ml + Cadbury Dairy Milk.",
-    "volume": "750ml"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-4",
-    "name": "Gibson's Gin Sparkling Combo",
-    "brand": "Gibson's",
-    "category": "Gin",
-    "price_ugx": 46000,
-    "original_price_ugx": 55000,
-    "image_url": "/don julio.webp",
+    "id": "13969",
+    "name": "Gibson London Dry Gin -1L + Wavah Sparkling Water - 500Ml",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 48500,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/gibs.jpg-1.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/gibs.jpg-1.jpeg"
     ],
     "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Gibson London Dry Gin-1L + Wavah Sparkling.",
-    "volume": "1L"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-5",
-    "name": "Uganda Waragi Lemon Combo",
-    "brand": "Uganda Waragi",
-    "category": "Gin",
-    "price_ugx": 35000,
-    "original_price_ugx": 40000,
-    "image_url": "/nilo.webp",
+    "id": "13963",
+    "name": "Uganda Waragi Lemon -750ml + Wavah Sparkling -500Ml",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 37000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/UG.-lem.jpg-1.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/UG.-lem.jpg-1.jpeg"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13960",
+    "name": "Captain Morgan Muck Pit Liqueur - 750Ml + Coca cola Soda - 330Ml x 2",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 34000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/captain-mu.jpg.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/captain-mu.jpg.jpeg"
+    ],
     "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Uganda Waragi Lemon-750ml + Wavah.",
-    "volume": "750ml"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-6",
-    "name": "Captain Morgan Muck Pit Combo",
-    "brand": "Captain Morgan",
-    "category": "Rum",
+    "id": "13957",
+    "name": "Captain Morgan -750ml +Coca cola  soda -330ml x 2",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 29000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/mo.jpg-1.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/mo.jpg-1.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13954",
+    "name": "Uganda Waragi Premium - 750ml + Sprite Soda 330ml x2",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 26500,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/U.jpg.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/U.jpg.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13950",
+    "name": "Bell Lager Beer Bottle - 4Pcs",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 15200,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/BEL.jpg.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/BEL.jpg.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13945",
+    "name": "Tusker Malt Beer Bottle -4Pcs",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 15200,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/TUSKER-M.jpg-1.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/TUSKER-M.jpg-1.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13942",
+    "name": "Tusker Lite Beer Bottle - 4Pcs",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 15200,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/TUSKER-LIT.jpg.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/TUSKER-LIT.jpg.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13939",
+    "name": "Nile Beer Bottle -6Pcs",
+    "brand": "Kafunda Selection",
+    "category": "offers",
+    "price_ugx": 25200,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/NIL.jpg-1.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/03/NIL.jpg-1.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13895",
+    "name": "Captain Morgan Muck Pit - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Liqueurs",
     "price_ugx": 33000,
-    "original_price_ugx": 38000,
-    "image_url": "/don julio.webp",
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/03/247728_main-new-one-.jpg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/03/247728_main-new-one-.jpg"
     ],
     "in_stock": true,
-    "is_sale": true,
-    "is_today_offer": true,
-    "description": "Captain Morgan Muck Pit -750ml + coca cola.",
-    "volume": "750ml"
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   },
   {
-    "id": "offer-7",
-    "name": "Captain Morgan Soda Combo",
-    "brand": "Captain Morgan",
-    "category": "Rum",
-    "price_ugx": 27000,
-    "original_price_ugx": 32000,
-    "image_url": "/don julio.webp",
+    "id": "13472",
+    "name": "Wavah Sparkling Water 500ml",
+    "brand": "Kafunda Selection",
+    "category": "Soft Drinks",
+    "price_ugx": 2500,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/WAVA_SPARKLING_WATER_500ml_3327158.jpeg",
     "gallery_urls": [
-      "/don julio.webp",
-      "/don julio1.webp"
+      "https://kafundawines.com/wp-content/uploads/2026/02/WAVA_SPARKLING_WATER_500ml_3327158.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13468",
+    "name": "Roe & Co Irish Whisky - 700mls",
+    "brand": "Kafunda Selection",
+    "category": "Whiskys",
+    "price_ugx": 113000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/Roe-and-co-New-700x700h.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/Roe-and-co-New-700x700h.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13437",
+    "name": "Casamigos Blanco Tequila - 700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 225000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/32985-0w470h470_Casamigos_Blanco_Tequila.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/32985-0w470h470_Casamigos_Blanco_Tequila.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13433",
+    "name": "Casamigos Blanco Tequila- 700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 225000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/101301_casamigos_reposado_700.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/101301_casamigos_reposado_700.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13430",
+    "name": "Perlino Prosecco Rose - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Proseccos",
+    "price_ugx": 72000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/perlino-prosecco-rose-extra-dry-075l.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/perlino-prosecco-rose-extra-dry-075l.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13427",
+    "name": "Perlino Prosecco D.O.C BRUT - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Proseccos",
+    "price_ugx": 72000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/34330-1667403399.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/34330-1667403399.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13424",
+    "name": "Canetelli Prosecco Extra Dry - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Proseccos",
+    "price_ugx": 72000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/free_sawacitif34b10f2dffd9c76bdf08f56bb75fe181722991220.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/free_sawacitif34b10f2dffd9c76bdf08f56bb75fe181722991220.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13421",
+    "name": "Veuve Clicquot Rose - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Champagnes",
+    "price_ugx": 323000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/1001362_1_504c6bfd-6578-41a0-8478-df39b81ef09e.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/1001362_1_504c6bfd-6578-41a0-8478-df39b81ef09e.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13410",
+    "name": "Annabelle Sweet Sparkling - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Sparkling Wines",
+    "price_ugx": 52000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/Annabelle-Sweet-Red-1000-x-1000.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/Annabelle-Sweet-Red-1000-x-1000.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13408",
+    "name": "Papillion Mimosa Orange Flavour - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Sparkling Wines",
+    "price_ugx": 50000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/silo-product-image-v2-24Sep2025-180038-6002269007541-Straight_on-354757-21_515Wx515H.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/silo-product-image-v2-24Sep2025-180038-6002269007541-Straight_on-354757-21_515Wx515H.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13406",
+    "name": "Napoleon Brandy - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Brandys",
+    "price_ugx": 45000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.02_PM-removebg-preview.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.02_PM-removebg-preview.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13403",
+    "name": "Safari Gin - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Gins",
+    "price_ugx": 30000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.53_PM-removebg-preview.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.53_PM-removebg-preview.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13400",
+    "name": "Roma Red Wine - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.54_PM-removebg-preview.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/WhatsApp_Image_2026-02-10_at_1.42.54_PM-removebg-preview.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13397",
+    "name": "Talisker Single Malt 10yrs Whisky - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Whiskys",
+    "price_ugx": 243000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/talisker-single-malt-scotch-whisky75cl__03714.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/talisker-single-malt-scotch-whisky75cl__03714.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13394",
+    "name": "Safari Whisky - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Whiskys",
+    "price_ugx": 35000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/42042_main.avif",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/42042_main.avif"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13391",
+    "name": "Blue Finest Whisky - 750ml",
+    "brand": "Kafunda Selection",
+    "category": "Whiskys",
+    "price_ugx": 30000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/0243054.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/0243054.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13388",
+    "name": "Bavaria Smalt Apple - 250ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 4000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/Screenshot_20250627-140039_685e8920a8b3c.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/Screenshot_20250627-140039_685e8920a8b3c.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "13385",
+    "name": "Bavaria Smalt Orange - 250ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 4000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2026/02/Bavaria-Smalt-Orange.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2026/02/Bavaria-Smalt-Orange.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "8565",
+    "name": "Zonin Prosecco -750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Proseccos",
+    "price_ugx": 95000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/12/download-3.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/12/download-3.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6604",
+    "name": "Rwenzori Drinking water - 18.7L",
+    "brand": "Kafunda Selection",
+    "category": "Soft Drinks",
+    "price_ugx": 14000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-3.37.49-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-3.37.49-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6597",
+    "name": "Nivana Drinking Water - 20L",
+    "brand": "Kafunda Selection",
+    "category": "Soft Drinks",
+    "price_ugx": 22000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-3.25.22-PM-Photoroom.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-3.25.22-PM-Photoroom.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6531",
+    "name": "Martell VS Cognac - 700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Cognacs",
+    "price_ugx": 195000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-1.59.28-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-1.59.28-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6498",
+    "name": "Magic Moment  Premium  Vodka  - 375Ml",
+    "brand": "Kafunda Selection",
+    "category": "Vodkas",
+    "price_ugx": 25000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/1045669.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/1045669.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6494",
+    "name": "Magic Moment  Green Apple  Vodka - 375Ml",
+    "brand": "Kafunda Selection",
+    "category": "Vodkas",
+    "price_ugx": 25000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/images-1-1.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/images-1-1.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "6491",
+    "name": "Magic Moment  Chocolate Vodka  - 375Ml",
+    "brand": "Kafunda Selection",
+    "category": "Vodkas",
+    "price_ugx": 25000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-12.56.42-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-12.56.42-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5973",
+    "name": "Rain Dance Sweet Red -5L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 140000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.37.43-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.37.43-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5974",
+    "name": "Bonne Esperance Sweet Red - 1L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.29.26-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.29.26-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5975",
+    "name": "Bonne Esperance Sweet Red - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Bonne-Esperance-Sweet-Red-750ml-600x600-1-1.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Bonne-Esperance-Sweet-Red-750ml-600x600-1-1.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5971",
+    "name": "Gato Negro Sweet Red - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Gato-negro-semi-sweet-750ml-1-1.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Gato-negro-semi-sweet-750ml-1-1.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5972",
+    "name": "Rain Dance Sweet Red -1L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.37.43-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.37.43-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5969",
+    "name": "Black Tower Smooth Red - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 35000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/blacktowersmoothred-1.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/blacktowersmoothred-1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5970",
+    "name": "Penasol Sangaria - 1L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 35000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/35047_main.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/35047_main.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5967",
+    "name": "Rain Dance Dry Red  -1L",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.33.01-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.33.01-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5968",
+    "name": "Rain Dance Dry Red -5L",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 140000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.33.58-PM-400x398-Photoroom.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.33.58-PM-400x398-Photoroom.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5963",
+    "name": "Bavaria Smalt Original Red 0.0% - 500Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 7500,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-2.27.04-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-2.27.04-PM.jpeg"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5964",
+    "name": "Bavaria Smalt Orange 0.0% - 500Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 6000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-2025-03-04T103555.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-2025-03-04T103555.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5965",
+    "name": "Bavaria Smalt Pineapple 0.0% - 500Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 6000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-2025-03-04T104212.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-2025-03-04T104212.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5966",
+    "name": "Bavaria Smalt Apple 0.0% - 500Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 6000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-27-2-1.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Copy-of-Copy-of-Social-Media-Product-Ad-800-x-800-px-27-2-1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5959",
+    "name": "Hennessy V.S.O.P - 1L",
+    "brand": "Kafunda Selection",
+    "category": "Cognacs",
+    "price_ugx": 380000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Untitled.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Untitled.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5960",
+    "name": "African Original Honey & Lemon  Cider -330Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 10000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/honeyandlemon.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/honeyandlemon.jpg"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5961",
+    "name": "African Original Tropical Mix Cider - 330Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 10000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/AfricanOriginalsorange_afc0c12d-c626-4bd5-a28d-249c5325eff2.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/AfricanOriginalsorange_afc0c12d-c626-4bd5-a28d-249c5325eff2.webp"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5962",
+    "name": "African Original Pineapple & Mint Cider - 330Ml",
+    "brand": "Kafunda Selection",
+    "category": "Beers",
+    "price_ugx": 10000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/african-originals-ko-pineapple-mint-cider.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/african-originals-ko-pineapple-mint-cider.webp"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5958",
+    "name": "Hennessy XO - 700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Cognacs",
+    "price_ugx": 1650000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/hennessyxo.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/hennessyxo.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5954",
+    "name": "Botanist Gin - 1L",
+    "brand": "Kafunda Selection",
+    "category": "Gins",
+    "price_ugx": 260000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/2071076632_1.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/2071076632_1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5957",
+    "name": "Sinclair Gin - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Gins",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-11.46.51-AM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-11.46.51-AM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5949",
+    "name": "High Commissioner -1L",
+    "brand": "Kafunda Selection",
+    "category": "Whiskys",
+    "price_ugx": 53000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/HC-Blended.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/HC-Blended.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5946",
+    "name": "Camino Gold -750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 60000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/images-6.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/images-6.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5947",
+    "name": "EL Jimador Gold -1L",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 125000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/el-jimador-reposado-tequila-1.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/el-jimador-reposado-tequila-1.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5948",
+    "name": "EL Jimador Silver -1L",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 125000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/04/CopyofWebGraphicEditor_43_851540a8-40d7-40c7-a1c2-d3306249f334-300x300-1.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/04/CopyofWebGraphicEditor_43_851540a8-40d7-40c7-a1c2-d3306249f334-300x300-1.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5942",
+    "name": "Patriarche Sparkling Brut -750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sparkling Wines",
+    "price_ugx": 48000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/466513-mainProductPicture-ProductDetailsPage-ConversionMediaFormat.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/466513-mainProductPicture-ProductDetailsPage-ConversionMediaFormat.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5943",
+    "name": "Baileys Strawberry Cream -750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Creams",
+    "price_ugx": 70000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/BaileysStrawberries_Cream700ml_800x_f1b1fd5d-1b0e-4a34-98a6-d21fd8e88e57.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/BaileysStrawberries_Cream700ml_800x_f1b1fd5d-1b0e-4a34-98a6-d21fd8e88e57.webp"
+    ],
+    "in_stock": false,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5944",
+    "name": "1800 Gold Anejo Tequila -700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 190000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/46cf0c06-16ba-4ee6-8ec9-9bb9e5a25e54__56569.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/46cf0c06-16ba-4ee6-8ec9-9bb9e5a25e54__56569.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5945",
+    "name": "1800 Silver Tequila -700Ml",
+    "brand": "Kafunda Selection",
+    "category": "Tequilas",
+    "price_ugx": 190000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/1800-silver-tequila__68288_grande.webp",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/1800-silver-tequila__68288_grande.webp"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5940",
+    "name": "Altar Wine Tanzania - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Altar Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Altar-wine-750ml-online-in-Nairobi.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Altar-wine-750ml-online-in-Nairobi.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5939",
+    "name": "Lambrusco Rosato - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Rose Wines",
+    "price_ugx": 45000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.40.15-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.40.15-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5935",
+    "name": "Rain Dance Sweet Red -5L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 140000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.23.50-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.23.50-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5936",
+    "name": "Bonne Esperance Sweet Red - 1L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/BonneEsperance-0000.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/BonneEsperance-0000.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5937",
+    "name": "Namaqua Sweet Red - 3L",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Red Wines",
+    "price_ugx": 95000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.26.30-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.26.30-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5938",
+    "name": "Lambrusco Rosso - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet Rose Wines",
+    "price_ugx": 45000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.40.14-PM.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.40.14-PM.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5932",
+    "name": "Serengeti Sweet White -750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet White Wines",
+    "price_ugx": 39000,
+    "original_price_ugx": 43000,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Serengeti-Sunset-Natural-Sweet-White-Wine-750Ml-300x300-Photoroom.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Serengeti-Sunset-Natural-Sweet-White-Wine-750Ml-300x300-Photoroom.png"
     ],
     "in_stock": true,
     "is_sale": true,
-    "is_today_offer": true,
-    "description": "Captain Morgan -750ml + coca cola soda -330ml.",
-    "volume": "750ml"
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5933",
+    "name": "Gato Negro Semi Sweet White - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet White Wines",
+    "price_ugx": 32000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Gato-negro-semi-sweet-white-wine-online-in-Nairobi.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Gato-negro-semi-sweet-white-wine-online-in-Nairobi.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5934",
+    "name": "Saint Mary Sweet White - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Sweet White Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/checkers515Wx515H-medias-10140074EA-en-shopriteGlobalProductCatalog-20250210012323.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/checkers515Wx515H-medias-10140074EA-en-shopriteGlobalProductCatalog-20250210012323.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5931",
+    "name": "Image Dry White - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry White Wines, Wines",
+    "price_ugx": 33000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Image-Dry-White-Wine-750ml-online-in-Nairobi-Kenya.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/Buy-Image-Dry-White-Wine-750ml-online-in-Nairobi-Kenya.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5927",
+    "name": "Twiga Hill Cabernet Sauvignon - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 45000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.19.04-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.19.04-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5928",
+    "name": "Twiga Hill Merlot - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 45000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/216534_main.jpg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/216534_main.jpg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5929",
+    "name": "Namaqua Smooth Dry Red - 3L",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 95000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.21.10-PM.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-22-at-5.21.10-PM.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5930",
+    "name": "Mucyo Dry White - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry White Wines, Wines",
+    "price_ugx": 58000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/images-9.jpeg",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/images-9.jpeg"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
+  },
+  {
+    "id": "5924",
+    "name": "Mucho Mas Dry Red - 750Ml",
+    "brand": "Kafunda Selection",
+    "category": "Dry Red Wines",
+    "price_ugx": 58000,
+    "original_price_ugx": null,
+    "image_url": "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp_Image_2025-09-22_at_2.46.48_PM-removebg-preview.png",
+    "gallery_urls": [
+      "https://kafundawines.com/wp-content/uploads/2025/09/WhatsApp_Image_2025-09-22_at_2.46.48_PM-removebg-preview.png"
+    ],
+    "in_stock": true,
+    "is_sale": false,
+    "description": "No description available.",
+    "abv": "N/A",
+    "volume": "750ml",
+    "stock_count": 5
   }
 ]

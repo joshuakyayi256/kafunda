@@ -19,7 +19,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const PESAPAL_BASE = "https://pay.pesapal.com/v3";
+const PESAPAL_BASE = "https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN";
 const MERCHANT_REF_PATTERN = /^KAF-(\d+)$/i;
 
 const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
+import { ToastProvider } from "@/context/ToastContext";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -61,17 +62,19 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className="min-h-full flex flex-col font-sans text-zinc-900 overflow-x-hidden"
+        className="min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-hidden"
         suppressHydrationWarning
       >
-        <CartProvider>
-          <AgeVerification />
-          <Navbar />
-          <main className="grow pb-16 md:pb-0">
-            {children}
-          </main>
-          <Footer />
-        </CartProvider>
+        <ToastProvider>
+          <CartProvider>
+            <AgeVerification />
+            <Navbar />
+            <main className="grow pb-16 md:pb-0">
+              {children}
+            </main>
+            <Footer />
+          </CartProvider>
+        </ToastProvider>
       </body>
     </html>
   );

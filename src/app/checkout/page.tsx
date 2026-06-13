@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -9,9 +9,9 @@ import {
   MapPin, User, ChevronRight,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { createOrder } from "@/lib/api";
 import { formatUGX } from "@/lib/utils";
-import { DELIVERY_ZONES } from "@/lib/constants";
+import { PESAPAL_SURCHARGE_RATE } from "@/lib/constants";
+import LocationPicker, { PickedLocation } from "@/components/shared/LocationPicker";
 
 type PaymentMethod = "pesapal" | "cod";
 
@@ -21,7 +21,6 @@ interface FormData {
   phone: string;
   email: string;
   address: string;
-  deliveryZone: string;
   notes: string;
   paymentMethod: PaymentMethod;
 }
@@ -32,8 +31,16 @@ interface FormErrors {
   phone?: string;
   email?: string;
   address?: string;
-  deliveryZone?: string;
 }
+
+interface DeliveryQuote {
+  feeUgx: number;
+  distanceKm: number;
+  durationMin: number;
+  storeName: string;
+}
+
+type QuoteState = "idle" | "loading" | "ok" | "fallback";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -109,10 +116,17 @@ export default function CheckoutPage() {
 
   const [form, setForm] = useState<FormData>({
     firstName: "", lastName: "", phone: "", email: "",
-    address: "", deliveryZone: "", notes: "",
+    address: "", notes: "",
     paymentMethod: "pesapal",
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Pinned delivery location + live quote
+  const [pin, setPin] = useState<PickedLocation | null>(null);
+  const [pinLabel, setPinLabel] = useState("");
+  const [quote, setQuote] = useState<DeliveryQuote | null>(null);
+  const [quoteState, setQuoteState] = useState<QuoteState>("idle");
+  const [codFeeAtOrder, setCodFeeAtOrder] = useState(0);
 
   // Idempotency key — regenerated on mount, after errors, and after success
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
@@ -122,10 +136,49 @@ export default function CheckoutPage() {
     setIdempotencyKey(newIdempotencyKey());
   }, []);
 
-  const selectedZone = DELIVERY_ZONES.find((z) => z.id === form.deliveryZone);
-  // Delivery fare is quoted per location on the confirmation call, so the
-  // amount charged here is the goods subtotal only.
-  const total = subtotal;
+  // ── Live delivery quote whenever the pin moves ──────────────────────────────
+  useEffect(() => {
+    if (!pin) return;
+    let cancelled = false;
+    setQuoteState("loading");
+
+    (async () => {
+      try {
+        const res = await fetch("/api/delivery/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: pin.lat, lng: pin.lng }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.ok && data.quote) {
+          setQuote(data.quote);
+          setQuoteState("ok");
+        } else {
+          setQuote(null);
+          setQuoteState("fallback"); // out of range / engine unavailable → fee on call
+        }
+      } catch {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteState("fallback");
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [pin]);
+
+  // The quote shown here is display-only — the server recomputes the fee from
+  // the pinned coordinates and its figure is authoritative. Online (Pesapal)
+  // payments carry the 3.5% processing charge on goods + delivery, folded
+  // into the amount due; cash on delivery never does.
+  const deliveryFee = quoteState === "ok" && quote ? quote.feeUgx : 0;
+  const surcharge =
+    form.paymentMethod === "pesapal"
+      ? Math.round((subtotal + deliveryFee) * PESAPAL_SURCHARGE_RATE)
+      : 0;
+  const total = subtotal + deliveryFee + surcharge;
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -142,36 +195,49 @@ export default function CheckoutPage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       e.email = "Enter a valid email address.";
     }
-    if (!form.address.trim())      e.address      = "Delivery address is required.";
-    if (!form.deliveryZone)        e.deliveryZone = "Please select your area.";
+    if (!form.address.trim()) e.address = "Delivery address is required.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
     if (errors[name as keyof FormErrors]) setErrors((p) => ({ ...p, [name]: undefined }));
     if (serverError) setServerError("");
   };
 
-  // ── COD ─────────────────────────────────────────────────────────────────────
-  async function handleCOD() {
-    const data = await createOrder(
-      {
+  /** Shared payload for both payment routes — server re-verifies everything. */
+  function buildPayload() {
+    return {
+      customer: {
         firstName: form.firstName, lastName: form.lastName,
         phone: form.phone, email: form.email,
-        address: form.address, city: selectedZone?.name || form.deliveryZone,
+        address: form.address,
+        location: pin,            // { lat, lng } | null — server re-quotes the fee
+        locationLabel: pinLabel,  // human-readable pin (rider context / Woo city)
         notes: form.notes,
       },
-      cart.map((item) => ({ product: item, quantity: item.quantity })),
-      0 // delivery fee settled on the confirmation call
-    );
-    if (!data?.id) {
-      throw new Error("Order could not be created. Please try again or contact support.");
+      // Server re-fetches each product's price from Woo. We only send id + qty.
+      cart: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+      idempotencyKey,
+    };
+  }
+
+  // ── COD (server route — Woo credentials never touch the browser) ───────────
+  async function handleCOD() {
+    const res = await fetch("/api/checkout/cod", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildPayload()),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.wc_order_id) {
+      throw new Error(data.error || "Order could not be created. Please try again or contact support.");
     }
     clearCart();
-    setOrderNumber(`KAF-${data.id}`);
+    setCodFeeAtOrder(typeof data.delivery_fee === "number" ? data.delivery_fee : 0);
+    setOrderNumber(data.order_number || `KAF-${data.wc_order_id}`);
     setIsSuccess(true);
   }
 
@@ -180,19 +246,7 @@ export default function CheckoutPage() {
     const res = await fetch("/api/checkout/pesapal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer: {
-          firstName: form.firstName, lastName: form.lastName,
-          phone: form.phone, email: form.email,
-          address: form.address,
-          // Zone is sent as delivery info for the rider, not a priced choice.
-          deliveryZone: form.deliveryZone,
-          notes: form.notes,
-        },
-        // Server re-fetches each product's price from Woo. We only send id + qty.
-        cart: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
-        idempotencyKey,
-      }),
+      body: JSON.stringify(buildPayload()),
     });
     const data = await res.json();
     if (!res.ok || !data.redirect_url) {
@@ -248,7 +302,11 @@ export default function CheckoutPage() {
           Order <span className="font-black text-zinc-900">{orderNumber}</span> received.
         </p>
         <p className="text-zinc-500 mb-8 font-medium">
-          Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order and the delivery fee for your area.
+          {codFeeAtOrder > 0 ? (
+            <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order. Your total, including the <span className="font-bold text-zinc-900">{formatUGX(codFeeAtOrder)}</span> delivery fee, is paid in cash on arrival.</>
+          ) : (
+            <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order and the delivery fee for your area.</>
+          )}
         </p>
         <a href={`https://wa.me/256785498279?text=Hi! I just placed order ${orderNumber} on the Kafunda website.`}
           target="_blank" rel="noopener noreferrer"
@@ -304,41 +362,47 @@ export default function CheckoutPage() {
                     placeholder="Plot 14, Acacia Ave, Kololo" required
                     value={form.address} onChange={handleChange} error={errors.address} />
 
-                  {/* Delivery zones — informational, no fee charged here */}
+                  {/* Pin location → instant delivery fee */}
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                      Your Area <span className="text-primary-red">*</span>
+                      Pin Your Location <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(for an instant delivery fee)</span>
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {DELIVERY_ZONES.map((zone) => {
-                        const active = form.deliveryZone === zone.id;
-                        return (
-                          <label key={zone.id}
-                            className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                              active ? "border-primary-red bg-red-50/40" : "border-gray-100 hover:border-gray-200 bg-white"
-                            }`}>
-                            <input type="radio" name="deliveryZone" value={zone.id}
-                              checked={active} onChange={handleChange}
-                              className="mt-0.5 accent-primary-red shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-zinc-900 leading-none">{zone.name}</p>
-                              <p className="text-[10px] text-zinc-400 mt-1 leading-relaxed">{zone.areas}</p>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {errors.deliveryZone && (
-                      <p className="mt-1.5 text-[11px] text-primary-red font-medium">{errors.deliveryZone}</p>
-                    )}
+                    <LocationPicker
+                      onChange={(loc, label) => {
+                        setPin(loc);
+                        if (label) setPinLabel(label);
+                      }}
+                    />
 
-                    {/* Fare-on-call explainer */}
-                    <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-amber-50/70 border border-amber-100 px-3.5 py-3">
-                      <Truck className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                      <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
-                        We deliver across Kampala. Your delivery fee depends on your exact location, so our team confirms it by phone after you order and it&apos;s paid to the rider on arrival.
-                      </p>
-                    </div>
+                    {/* Quote status */}
+                    {quoteState === "loading" && (
+                      <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-gray-50 border border-gray-100 px-3.5 py-3">
+                        <Loader2 className="h-4 w-4 text-zinc-400 animate-spin shrink-0" />
+                        <p className="text-[11px] text-zinc-500 font-medium">Calculating your delivery fee…</p>
+                      </div>
+                    )}
+                    {quoteState === "ok" && quote && (
+                      <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-kafunda-green-tint border border-kafunda-green/20 px-3.5 py-3">
+                        <Truck className="h-4 w-4 text-kafunda-green mt-0.5 shrink-0" />
+                        <p className="text-[11px] leading-relaxed text-kafunda-green-deep font-medium">
+                          Delivery to your pin: <span className="font-black">{formatUGX(quote.feeUgx)}</span> — {quote.distanceKm} km
+                          (~{quote.durationMin} min ride) from {quote.storeName}.{" "}
+                          {form.paymentMethod === "cod"
+                            ? "Paid in cash with your order on arrival."
+                            : "Included in your payment below."}
+                        </p>
+                      </div>
+                    )}
+                    {(quoteState === "idle" || quoteState === "fallback") && (
+                      <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-amber-50/70 border border-amber-100 px-3.5 py-3">
+                        <Truck className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
+                          {quoteState === "fallback"
+                            ? "Your pin is outside our instant-quote area (or the map service is busy), so our team will confirm your delivery fee by phone after you order — paid to the rider on arrival."
+                            : "We deliver across Kampala. Pin your location above to see your delivery fee instantly — or skip it and our team will confirm the fee by phone after you order."}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -368,7 +432,11 @@ export default function CheckoutPage() {
                         <CreditCard className={`h-4 w-4 ${form.paymentMethod === "pesapal" ? "text-primary-red" : "text-gray-400"}`} />
                         <p className="text-sm font-bold text-zinc-900">Pay Online via Pesapal</p>
                       </div>
-                      <p className="text-xs text-zinc-500 mb-2">Pay for your items now. Delivery is settled separately on the confirmation call.</p>
+                      <p className="text-xs text-zinc-500 mb-2">
+                        {quoteState === "ok"
+                          ? "Pay for your items and delivery now — nothing to settle on arrival."
+                          : "Pay for your items now. Delivery is settled separately on the confirmation call."}
+                      </p>
                       <div className="flex flex-wrap gap-1.5">
                         {["MTN MoMo", "Airtel Money", "Visa", "Mastercard"].map((b) => (
                           <span key={b} className="text-[9px] font-black uppercase tracking-wider bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded">
@@ -432,15 +500,27 @@ export default function CheckoutPage() {
                     <span className="font-bold text-zinc-800">{formatUGX(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-zinc-500 font-medium">
-                    <span>Delivery{selectedZone ? ` · ${selectedZone.name}` : ""}</span>
-                    <span className="text-zinc-400 italic text-xs text-right">Quoted on confirmation call</span>
+                    <span>Delivery{quoteState === "ok" && quote ? ` · ${quote.distanceKm} km` : ""}</span>
+                    {quoteState === "ok" && quote ? (
+                      <span className="font-bold text-zinc-800">{formatUGX(quote.feeUgx)}</span>
+                    ) : (
+                      <span className="text-zinc-400 italic text-xs text-right">Quoted on confirmation call</span>
+                    )}
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
                     <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total Due Now</span>
-                    <span className="text-2xl font-black text-primary-red">{formatUGX(total)}</span>
+                    <span className="text-2xl font-black text-primary-red">
+                      {formatUGX(form.paymentMethod === "cod" ? subtotal : total)}
+                    </span>
                   </div>
                   <p className="text-[10px] text-zinc-400 leading-relaxed">
-                    Total shown is for your items. Delivery is added when our team confirms your order by phone.
+                    {form.paymentMethod === "pesapal"
+                      ? quoteState === "ok"
+                        ? "Includes your delivery fee and a 3.5% online payment processing charge. Nothing more to pay on arrival."
+                        : "Includes a 3.5% online payment processing charge. Delivery is added when our team confirms your order by phone."
+                      : quoteState === "ok" && quote
+                        ? `Pay ${formatUGX(subtotal + quote.feeUgx)} in cash on arrival (items + ${formatUGX(quote.feeUgx)} delivery).`
+                        : "Total shown is for your items. Delivery is added when our team confirms your order by phone."}
                   </p>
                 </div>
 
@@ -453,7 +533,7 @@ export default function CheckoutPage() {
 
                 {/* Submit */}
                 <div className="px-6 pb-6 pt-4">
-                  <button type="submit" disabled={isSubmitting || !idempotencyKey}
+                  <button type="submit" disabled={isSubmitting || !idempotencyKey || quoteState === "loading"}
                     className={`w-full py-4 font-bold text-sm tracking-widest uppercase rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed
                       ${form.paymentMethod === "cod"
                         ? "bg-zinc-900 hover:bg-black text-white"
@@ -466,7 +546,7 @@ export default function CheckoutPage() {
                     ) : form.paymentMethod === "pesapal" ? (
                       <>{formatUGX(total)} · Pay via Pesapal</>
                     ) : (
-                      `Place Order · ${formatUGX(total)}`
+                      `Place Order${quoteState === "ok" ? ` · ${formatUGX(subtotal + deliveryFee)} on arrival` : ""}`
                     )}
                   </button>
 
