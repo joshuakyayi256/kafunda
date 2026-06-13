@@ -33,13 +33,15 @@ export default async function Home() {
   // homepage, so we throw — Next.js then keeps serving the last good version
   // and retries later, making Woo downtime invisible to shoppers.
   //
-  // At BUILD / FIRST RENDER there is no "last good version" to fall back to, so
-  // throwing would abort the deploy. In that case we render whatever we have
-  // (often nothing yet); the next revalidation fills it once Woo is reachable.
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-  if (products.length === 0 && !isBuildPhase) {
-    throw new Error("Product catalogue unavailable — keeping previous page.");
-  }
+  // ── Empty-catalogue handling ───────────────────────────────────────────────
+  // The catalogue can come back empty if WooCommerce is briefly unreachable
+  // (SSL/WAF/host hiccup). We do NOT hard-throw a 500 here: a storefront that
+  // shows a server-error screen on a backend blip is worse than one that loads
+  // its shell and tells the shopper products are on the way. The page renders
+  // normally; CategoryShelf already handles empty arrays, and we surface a
+  // single friendly notice. ISR (revalidate=300) retries automatically, so the
+  // catalogue fills itself the moment Woo is reachable again — no redeploy.
+  const catalogueEmpty = products.length === 0;
 
   // Filter out the "Offers" pseudo-category from the tile grid
   const displayCategories = (wpCategories || []).filter(
@@ -66,6 +68,29 @@ export default async function Home() {
       <Hero />
 
       <BrandMarquee />
+
+      {catalogueEmpty && (
+        <div className="max-w-3xl mx-auto px-4 py-10 text-center">
+          <div className="rounded-2xl border border-kafunda-cream-soft bg-white/60 px-6 py-8">
+            <p className="text-sm font-black uppercase tracking-widest text-kafunda-burgundy mb-1">
+              Our shelves are being restocked
+            </p>
+            <p className="text-xs text-kafunda-burgundy/60 leading-relaxed max-w-md mx-auto">
+              We&apos;re loading the latest products and prices. Please check back
+              in a moment — or reach us on WhatsApp and we&apos;ll take your order
+              right away.
+            </p>
+            <a
+              href="https://wa.me/256785498279"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-4 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-colors"
+            >
+              Order on WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* 2 ── Today's Offers */}
       <CategoryShelf
