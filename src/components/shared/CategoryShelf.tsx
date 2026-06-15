@@ -1,25 +1,30 @@
+"use client";
+
+import { useRef } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "@/components/shared/ProductCard";
 import { Product } from "@/types";
 
 /**
- * Reusable product shelf: section heading + 5-column product grid.
- * Used for every category band on the landing page (Beers, Champagnes, ...).
+ * Reusable product shelf: section heading + HORIZONTALLY SCROLLING product row.
  *
- * Grid: 2-up mobile, 3-up tablet, 5-up desktop (the "5 column" requirement).
- * `limit` defaults to 10 (two desktop rows). Pass limit={25} for the full
- * 5 x 5 block per category if the client insists - it makes a long page.
+ * - Mobile: swipe sideways (no buttons needed - touch is natural).
+ * - Desktop: left/right arrow buttons (hidden on mobile) scroll the row, since
+ *   mouse users have no obvious sideways-scroll affordance.
+ *
+ * Cards are equal height (items-stretch + flex wrapper + h-full card) and fixed
+ * width, so the row overflows and scrolls instead of wrapping.
+ *
+ * textured -> transparent so the site-wide body texture shows through.
  */
 interface CategoryShelfProps {
   title: string;
-  /** Word in the title to render in the accent colour. */
   accentWord?: string;
   eyebrow?: string;
   products: Product[];
   viewAllHref: string;
   limit?: number;
-  /** Renders the section on the textured bone band instead of white. */
   textured?: boolean;
 }
 
@@ -29,12 +34,22 @@ export default function CategoryShelf({
   eyebrow,
   products,
   viewAllHref,
-  limit = 10,
+  limit = 12,
   textured = false,
 }: CategoryShelfProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
   if (!products || products.length === 0) return null;
 
   const items = products.slice(0, limit);
+
+  // Scroll by roughly one "page" of the visible row width.
+  const scrollByAmount = (dir: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = Math.max(el.clientWidth * 0.8, 240);
+    el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  };
 
   // Split the title around the accent word so it can be coloured.
   let before = title;
@@ -48,7 +63,7 @@ export default function CategoryShelf({
   }
 
   return (
-    <section className={`py-10 md:py-12 ${textured ? "bg-kafunda-texture" : "bg-white"} border-t border-kafunda-bone-soft`}>
+    <section className={`py-10 md:py-12 ${textured ? "bg-transparent" : "bg-white"} border-t border-kafunda-bone-soft`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-end mb-6 md:mb-8">
           <div>
@@ -63,17 +78,56 @@ export default function CategoryShelf({
               {after}
             </h2>
           </div>
-          <Link
-            href={viewAllHref}
-            className="text-primary-red font-bold uppercase tracking-widest text-[10px] md:text-xs hover:underline flex items-center shrink-0"
-          >
-            View All <ArrowRight className="ml-1 h-3 w-3" />
-          </Link>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Desktop scroll buttons - hidden on mobile (md:flex) */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollByAmount("left")}
+                aria-label={`Scroll ${title} left`}
+                className="w-9 h-9 rounded-full border border-kafunda-bone-soft bg-white text-kafunda-ink flex items-center justify-center hover:border-kafunda-green hover:text-kafunda-green active:scale-90 transition-all"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollByAmount("right")}
+                aria-label={`Scroll ${title} right`}
+                className="w-9 h-9 rounded-full border border-kafunda-bone-soft bg-white text-kafunda-ink flex items-center justify-center hover:border-kafunda-green hover:text-kafunda-green active:scale-90 transition-all"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <Link
+              href={viewAllHref}
+              className="text-primary-red font-bold uppercase tracking-widest text-[10px] md:text-xs hover:underline flex items-center"
+            >
+              View All <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        {/*
+          Horizontal scroll row.
+          - flex items-stretch -> equal-height cards
+          - overflow-x-auto, snap -> sideways scroll/swipe with snap
+          - scrollbar hidden (see globals.css)
+          - negative margin + padding -> cards peek to the screen edge on mobile
+        */}
+        <div
+          ref={scrollRef}
+          className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <div
+              key={product.id}
+              className="snap-start shrink-0 flex w-[150px] sm:w-[200px] lg:w-[230px]"
+            >
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
       </div>

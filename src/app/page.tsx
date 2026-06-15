@@ -28,20 +28,15 @@ export default async function Home() {
 
   const products = liveProducts || [];
 
-  // ── Serve-stale-on-error guard ─────────────────────────────────────────────
+  // ── Serve-stale-on-error guard ───────────────────────────────────────────
   // At RUNTIME: if WooCommerce is unreachable during a background revalidation,
   // the fetch layer returns an empty list. Rendering that would cache an EMPTY
-  // homepage, so we throw — Next.js then keeps serving the last good version
-  // and retries later, making Woo downtime invisible to shoppers.
+  // homepage, so we keep serving the last good version and retry later.
   //
-  // ── Empty-catalogue handling ───────────────────────────────────────────────
-  // The catalogue can come back empty if WooCommerce is briefly unreachable
-  // (SSL/WAF/host hiccup). We do NOT hard-throw a 500 here: a storefront that
-  // shows a server-error screen on a backend blip is worse than one that loads
-  // its shell and tells the shopper products are on the way. The page renders
-  // normally; CategoryShelf already handles empty arrays, and we surface a
-  // single friendly notice. ISR (revalidate=300) retries automatically, so the
-  // catalogue fills itself the moment Woo is reachable again — no redeploy.
+  // ── Empty-catalogue handling ──────────────────────────────────────────────
+  // The catalogue can come back empty if WooCommerce is briefly unreachable.
+  // We do NOT hard-throw a 500: the page renders its shell and shows a friendly
+  // notice; ISR (revalidate=300) refills the catalogue automatically.
   const catalogueEmpty = products.length === 0;
 
   // Filter out the "Offers" pseudo-category from the tile grid
@@ -68,8 +63,7 @@ export default async function Home() {
       {/* 1 ── Hero: image-led, minimal copy */}
       <Hero />
 
-      <BrandMarquee />
-
+      {/* Empty-catalogue notice (only when Woo is briefly unreachable) */}
       {catalogueEmpty && (
         <div className="max-w-3xl mx-auto px-4 py-10 text-center">
           <div className="rounded-2xl border border-kafunda-cream-soft bg-white/60 px-6 py-8">
@@ -93,7 +87,7 @@ export default async function Home() {
         </div>
       )}
 
-      {/* 2 ── Today's Offers */}
+      {/* 2 ── Today's Offers (moved up: first thing after the hero) */}
       <CategoryShelf
         title="Today's Offers"
         accentWord="Offers"
@@ -103,7 +97,7 @@ export default async function Home() {
         textured
       />
 
-      {/* 3 ── Categories grid (replaces the marquee) */}
+      {/* 3 ── Shop by Category grid */}
       <CategoryGrid categories={displayCategories} />
 
       {/* 4 ── Beers */}
@@ -131,7 +125,7 @@ export default async function Home() {
         textured
       />
 
-      {/* Promo banner between shelves */}
+      {/* ── Promo banner: mid-page break ── */}
       <PromoBanner
         eyebrow="Limited Time"
         line1="Up to"
@@ -141,7 +135,7 @@ export default async function Home() {
         href="/shop?filter=offers"
       />
 
-      {/* 7 ── The other drink types */}
+      {/* 7 ── The remaining drink types */}
       <CategoryShelf
         title="Fine Wines"
         accentWord="Wines"
@@ -174,6 +168,10 @@ export default async function Home() {
         viewAllHref="/shop?category=Creams"
       />
 
+      {/* 8 ── Brands marquee (moved down: near the footer) */}
+      <BrandMarquee />
+
+      {/* 9 ── Recently viewed */}
       <RecentlyViewed />
     </main>
   );

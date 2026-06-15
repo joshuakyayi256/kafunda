@@ -22,10 +22,15 @@ function trackView(product: Product) {
 
 /**
  * Product card - refreshed (June 2026).
- * Less black: the heavy bottom "Add to Cart" bar is replaced by a green
- * circular + button that floats on the image (per the look the client liked),
- * with a brief check-tick confirmation on add. The card is white and light;
- * category, name, and price sit clean underneath. Sale tag uses crimson.
+ * Green circular + button floats on the image; brief check-tick on add.
+ *
+ * CONSISTENCY FIX: every card is now the SAME height regardless of how long
+ * the product name is. Key changes:
+ *  - the card fills its cell:           h-full
+ *  - the product name ALWAYS reserves   min-h-[2.5rem] (room for 2 lines),
+ *    so a 1-line name and a 2-line name take identical vertical space
+ *  - the price row is pinned to bottom  (mt-auto, unchanged)
+ * Result: image boxes align, names align, prices align across the whole row.
  */
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const { addToCart } = useCart();
@@ -52,10 +57,12 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
     return (
         <>
-            <div className="group relative bg-white rounded-2xl overflow-hidden border border-kafunda-bone-soft hover:border-kafunda-green/30 hover:shadow-[0_12px_32px_rgba(27,122,67,0.10)] transition-all duration-300 flex flex-col">
+            {/* h-full so the card fills its (now fixed-width) shelf cell and all
+                cards in a row share one height. */}
+            <div className="group relative h-full w-full bg-white rounded-2xl overflow-hidden border border-kafunda-bone-soft hover:border-kafunda-green/30 hover:shadow-[0_12px_32px_rgba(27,122,67,0.10)] transition-all duration-300 flex flex-col">
 
-                {/* Image */}
-                <div className="relative aspect-square bg-white overflow-hidden">
+                {/* Image — fixed square box; identical height on every card */}
+                <div className="relative aspect-square bg-white overflow-hidden shrink-0">
                     <Link
                         href={`/product/${product.id}`}
                         className="absolute inset-0 z-10"
@@ -71,14 +78,12 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         className={`object-contain p-4 transition-transform duration-500 group-hover:scale-105 ${!product.in_stock ? "opacity-40 grayscale" : ""}`}
                     />
 
-                    {/* Sale badge (crimson accent only) */}
                     {product.is_sale && (
                         <span className="absolute top-3 left-3 z-20 bg-kafunda-crimson text-white text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-md shadow-sm">
                             Sale
                         </span>
                     )}
 
-                    {/* Quick View - hover on desktop, tucked top-right */}
                     <button
                         onClick={handleQuickView}
                         className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-kafunda-bone-soft flex items-center justify-center text-zinc-400 hover:text-kafunda-green active:scale-90 transition-all md:opacity-0 md:scale-90 md:group-hover:opacity-100 md:group-hover:scale-100"
@@ -87,7 +92,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         <Eye className="h-3.5 w-3.5" />
                     </button>
 
-                    {/* Out of stock label */}
                     {!product.in_stock && (
                         <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-3">
                             <span className="bg-white/90 backdrop-blur-sm text-[9px] font-black uppercase tracking-widest text-zinc-500 px-3 py-1 rounded-full border border-gray-200">
@@ -96,7 +100,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         </div>
                     )}
 
-                    {/* Floating add button - the green +, bottom-right of the image */}
                     {product.in_stock && (
                         <button
                             onClick={handleAdd}
@@ -114,7 +117,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                     )}
                 </div>
 
-                {/* Info */}
+                {/* Info — grows to fill remaining height; price pinned to bottom */}
                 <div className="px-3.5 pt-3 pb-4 flex flex-col grow">
                     <p className="text-[9px] font-bold text-kafunda-green uppercase tracking-widest mb-1 truncate">
                         {category}
@@ -125,7 +128,9 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         onClick={() => trackView(product)}
                         className="mb-2"
                     >
-                        <h3 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2 hover:text-kafunda-green transition-colors">
+                        {/* min-h reserves room for 2 lines so short and long names
+                            take the SAME vertical space -> prices line up. */}
+                        <h3 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2 min-h-[2.5rem] hover:text-kafunda-green transition-colors">
                             {product.name}
                         </h3>
                     </Link>

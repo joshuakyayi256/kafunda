@@ -6,6 +6,7 @@ import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
+import SmoothScroll from "@/components/providers/SmoothScroll";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -61,17 +62,21 @@ export default function RootLayout({
       className={`${inter.variable} ${manrope.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      {/* kafunda-textured-site puts the barkcloth texture behind the whole
+          site; sections float on top of it (see globals.css). */}
       <body
-        className="min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-hidden"
+        className="kafunda-textured-site min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-hidden"
         suppressHydrationWarning
       >
         <ToastProvider>
           <CartProvider>
             <AgeVerification />
             <Navbar />
-            <main className="grow pb-16 md:pb-0">
-              {children}
-            </main>
+            <SmoothScroll>
+              <main className="grow pb-16 md:pb-0">
+                {children}
+              </main>
+            </SmoothScroll>
             <Footer />
           </CartProvider>
         </ToastProvider>

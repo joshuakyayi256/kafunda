@@ -85,30 +85,55 @@ body {
   }
 }
 
-/* ── Textured background utility ──────────────────────────────────────────────
-   Subtle bottle + wine-glass watermark on bone. Apply to <body>, a section
-   band, or the hero wrapper: <section className="bg-kafunda-texture"> .
-   The SVG lives at /public/kafunda-texture.svg. */
-.bg-kafunda-texture {
+/* ============================================================
+   SITE-WIDE TEXTURE BACKGROUND
+   Add these rules to src/app/globals.css (alongside the existing
+   .bg-kafunda-texture rules). They make the whole site sit on the
+   barkcloth/wine-glass texture, with sections floating on top.
+   ============================================================ */
+
+/* The whole page sits on the texture, held fixed so it feels like the
+   site rests on a textured surface (stays put as you scroll). Cheap:
+   it's the same repeating SVG, just attached to the body. */
+body.kafunda-textured-site {
   background-color: var(--color-kafunda-bone);
   background-image: url('/kafunda-texture.svg');
   background-repeat: repeat;
   background-size: 160px 160px;
+  background-attachment: fixed; /* texture stays put while content scrolls */
 }
 
-/* A slightly stronger band, e.g. for the hero or a feature strip */
-.bg-kafunda-texture-soft {
-  background-color: var(--color-kafunda-bone-soft);
-  background-image: url('/kafunda-texture.svg');
-  background-repeat: repeat;
-  background-size: 200px 200px;
+/* For sections that previously painted their OWN texture band: now they
+   should be TRANSPARENT so the body texture shows through (no double
+   texture, no muddiness). Use this in place of bg-kafunda-texture on the
+   shelf "textured" variant. */
+.bg-kafunda-show-through {
+  background-color: transparent;
 }
 
-/* Pause marquee animations on hover so users can read */
-.marquee-paused:hover .animate-marquee,
-.marquee-paused:hover .animate-marquee2,
-.marquee-paused:hover .animate-marquee-slow,
-.marquee-paused:hover .animate-marquee-reverse,
-.marquee-paused:hover .animate-marquee-reverse-2 {
-  animation-play-state: paused;
+/* Mobile: background-attachment: fixed can stutter on some mobile browsers.
+   Fall back to scroll there — still looks great, just not parallax-fixed. */
+@media (max-width: 768px) {
+  body.kafunda-textured-site {
+    background-attachment: scroll;
+  }
+}
+
+/* Accessibility: if the texture ever reduces text contrast for someone,
+   reduced-data / high-contrast users get a clean bone background. */
+@media (prefers-contrast: more) {
+  body.kafunda-textured-site {
+    background-image: none;
+  }
+}
+/* Add to src/app/globals.css (once).
+  Hides the horizontal scrollbar on the CategoryShelf rows in
+  Chrome/Safari/Edge (WebKit). Firefox + IE are handled by inline styles
+   on the element itself. Scrolling/swiping still works — only the bar is hidden. */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
 }
