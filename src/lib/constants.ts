@@ -54,11 +54,30 @@ export const PESAPAL_SURCHARGE_RATE = 0.035;
  */
 export const STORES = [
   {
+    id: "makindye",
+    name: "Kafunda — Makindye",
+    address: "27-29 Mobutu Road, Makindye, Kampala",
+    phone: "0701 813618",
+    // Approximate (Makindye / Mobutu Rd). Refine: right-click the shop in
+    // Google Maps -> the first two numbers are lat, lng.
+    lat: 0.2856,
+    lng: 32.5811,
+  },
+  {
+    id: "kawempe",
+    name: "Kafunda — Kawempe",
+    address: "Kawempe, Kampala",
+    phone: "0701 813618",
+    lat: 0.3781,
+    lng: 32.5569,
+  },
+  {
     id: "mpererwe",
     name: "Kafunda — Mpererwe",
-    address: "Mpererwe, Lusanja-Kiteezi Road, Kampala",
-    lat: 0.3946,  // TODO: replace with exact pin
-    lng: 32.5742, // TODO: replace with exact pin
+    address: "Mpererwe, Kampala",
+    phone: "0762 190594",
+    lat: 0.3886,
+    lng: 32.5811,
   },
 ] as const;
 

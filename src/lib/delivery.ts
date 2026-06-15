@@ -64,12 +64,20 @@ export async function getDeliveryQuote(lat: number, lng: number): Promise<QuoteR
 
   // Mapbox rejects coordinates with excessive precision; 6 dp is ~0.1m, plenty.
   const fmt = (n: number) => Number(n.toFixed(6));
-  const coords = [
-    ...STORES.map((s) => `${fmt(s.lng)},${fmt(s.lat)}`),
-    `${fmt(lng)},${fmt(lat)}`,
-  ].join(";");
-  const sources = STORES.map((_, i) => i).join(";");
-  const destination = STORES.length; // customer is the last coordinate
+
+  // The Matrix API requires a MINIMUM of 2 coordinate elements. With a single
+  // store that would be [store, customer] = 1 source + 1 destination, which
+  // Mapbox counts as 1 matrix element and rejects (422: "minimum number of
+  // matrix elements is 2"). To stay robust regardless of store count, with a
+  // single store we add a throwaway second source so the element count is >= 2,
+  // then ignore it when picking the nearest store.
+  const storeCoords = STORES.map((s) => `${fmt(s.lng)},${fmt(s.lat)}`);
+  if (STORES.length < 2) {
+    storeCoords.push("0,0"); // far-away dummy; never selected as nearest
+  }
+  const coords = [...storeCoords, `${fmt(lng)},${fmt(lat)}`].join(";");
+  const sources = storeCoords.map((_, i) => i).join(";");
+  const destination = storeCoords.length; // customer is the last coordinate
 
   const url =
     `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coords}` +
