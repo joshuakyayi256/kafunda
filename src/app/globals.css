@@ -86,54 +86,63 @@ body {
 }
 
 /* ============================================================
-   SITE-WIDE TEXTURE BACKGROUND
-   Add these rules to src/app/globals.css (alongside the existing
-   .bg-kafunda-texture rules). They make the whole site sit on the
-   barkcloth/wine-glass texture, with sections floating on top.
+   GLOBAL HORIZONTAL-OVERFLOW LOCK
+   Fixes the mobile "page narrower / shifted, bone strip on the right,
+   nav bars full width but body short" glitch. Some element is wider than
+   the screen; these rules make sideways page scroll impossible, so every
+   band lines up to the same width on every page.
    ============================================================ */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
 
-/* The whole page sits on the texture, held fixed so it feels like the
-   site rests on a textured surface (stays put as you scroll). Cheap:
-   it's the same repeating SVG, just attached to the body. */
+main {
+  max-width: 100vw;
+  overflow-x: clip; /* locks the page; inner overflow-x-auto rows still scroll */
+}
+
+/* ============================================================
+   SITE-WIDE TEXTURE BACKGROUND
+   The whole site sits on the barkcloth/wine-glass texture, with sections
+   floating on top.
+   ============================================================ */
 body.kafunda-textured-site {
   background-color: var(--color-kafunda-bone);
   background-image: url('/kafunda-texture.svg');
   background-repeat: repeat;
   background-size: 160px 160px;
-  background-attachment: fixed; /* texture stays put while content scrolls */
+  background-attachment: fixed;
 }
 
-/* For sections that previously painted their OWN texture band: now they
-   should be TRANSPARENT so the body texture shows through (no double
-   texture, no muddiness). Use this in place of bg-kafunda-texture on the
-   shelf "textured" variant. */
 .bg-kafunda-show-through {
   background-color: transparent;
 }
 
-/* Mobile: background-attachment: fixed can stutter on some mobile browsers.
-   Fall back to scroll there — still looks great, just not parallax-fixed. */
+/* Mobile: fixed attachment can stutter; fall back to scroll. */
 @media (max-width: 768px) {
   body.kafunda-textured-site {
     background-attachment: scroll;
   }
 }
 
-/* Accessibility: if the texture ever reduces text contrast for someone,
-   reduced-data / high-contrast users get a clean bone background. */
+/* High-contrast users get a clean bone background. */
 @media (prefers-contrast: more) {
   body.kafunda-textured-site {
     background-image: none;
   }
 }
-/* Add to src/app/globals.css (once).
-  Hides the horizontal scrollbar on the CategoryShelf rows in
-  Chrome/Safari/Edge (WebKit). Firefox + IE are handled by inline styles
-   on the element itself. Scrolling/swiping still works — only the bar is hidden. */
+
+/* ============================================================
+   SCROLLBAR HIDE (CategoryShelf horizontal rows)
+   Hides the bar in Chrome/Safari/Edge; Firefox + IE handled inline.
+   Scrolling/swiping still works.
+   ============================================================ */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE/Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
