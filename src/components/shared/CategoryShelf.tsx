@@ -114,17 +114,19 @@ export default function CategoryShelf({
           - flex items-stretch -> equal-height cards
           - overflow-x-auto, snap -> sideways scroll/swipe with snap
           - scrollbar hidden (see globals.css)
-          - negative margin + padding -> cards peek to the screen edge on mobile
+          NOTE: no negative margins here - they caused page-level horizontal
+          overflow on mobile (content shifted off the left edge). The row
+          scrolls fine within the container padding.
         */}
         <div
           ref={scrollRef}
-          className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scrollbar-hide"
+          className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {items.map((product) => (
             <div
               key={product.id}
-              className="snap-start shrink-0 flex w-[150px] sm:w-[200px] lg:w-[230px]"
+              className="snap-start shrink-0 flex w-37.5 sm:w-50 lg:w-57.5"
             >
               <ProductCard product={product} />
             </div>
