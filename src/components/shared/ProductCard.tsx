@@ -130,7 +130,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                     >
                         {/* min-h reserves room for 2 lines so short and long names
                             take the SAME vertical space -> prices line up. */}
-                        <h3 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2 min-h-[2.5rem] hover:text-kafunda-green transition-colors">
+                        <h3 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2 min-h-10 hover:text-kafunda-green transition-colors">
                             {product.name}
                         </h3>
                     </Link>

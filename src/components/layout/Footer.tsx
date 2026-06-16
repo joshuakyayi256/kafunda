@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Apple, Play, ArrowRight } from "lucide-react";
+import { Apple, Play } from "lucide-react";
 import { CONTACT, SOCIAL, SITE } from "@/lib/constants";
 
 /**
@@ -106,7 +106,7 @@ export default function Footer() {
             element as atmosphere). aria-hidden: decorative only. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none select-none absolute inset-x-0 bottom-0 z-0 text-center font-heading font-black uppercase tracking-tighter leading-none text-white/[0.05] text-[26vw] md:text-[20vw] whitespace-nowrap"
+          className="pointer-events-none select-none absolute inset-x-0 bottom-0 z-0 text-center font-heading font-black uppercase tracking-tighter leading-none text-white/5 text-[26vw] md:text-[20vw] whitespace-nowrap"
         >
           Kafunda
         </span>
@@ -121,7 +121,7 @@ export default function Footer() {
                 Kafunda
               </span>
             </Link>
-            <p className="text-sm text-white/55 mt-3 leading-relaxed max-w-[14rem]">
+            <p className="text-sm text-white/55 mt-3 leading-relaxed max-w-56">
               Kampala&apos;s premium wines &amp; spirits, delivered.
             </p>
           </div>
