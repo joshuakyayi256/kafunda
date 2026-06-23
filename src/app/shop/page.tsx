@@ -9,6 +9,7 @@ import ShopFilters from "@/components/shared/ShopFilters";
 import { getAllProducts, getCategories } from "@/lib/api";
 import { Product } from "@/types";
 import type { Metadata } from "next";
+import { smartSearch } from "@/lib/search-intent";
 
 export const metadata: Metadata = {
     title: "Shop All Products",
@@ -57,13 +58,7 @@ export default async function ShopPage({
     if (currentFilter === "offers")
         filteredProducts = filteredProducts.filter(p => p.is_sale);
     if (currentSearch) {
-        const q = currentSearch.toLowerCase();
-        filteredProducts = filteredProducts.filter(p =>
-            p.name.toLowerCase().includes(q) ||
-            p.category.toLowerCase().includes(q) ||
-            p.brand.toLowerCase().includes(q) ||
-            p.description.toLowerCase().includes(q)
-        );
+        filteredProducts = smartSearch(filteredProducts, currentSearch);
     }
     if (currentInStock)           filteredProducts = filteredProducts.filter(p => p.in_stock);
     if (currentMinPrice !== null) filteredProducts = filteredProducts.filter(p => p.price_ugx >= currentMinPrice);

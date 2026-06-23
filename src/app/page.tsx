@@ -12,6 +12,7 @@ import CategoryShelf from "@/components/shared/CategoryShelf";
 import PromoBanner from "@/components/shared/PromoBanner";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
 import { getAllProducts, getCategories } from "@/lib/api";
+import RecommendedForYou from "@/components/shared/RecommendedForYou";
 import { Product } from "@/types";
 
 /** Case-insensitive: does the product's category string contain any keyword? */
@@ -167,6 +168,8 @@ export default async function Home() {
         products={creams}
         viewAllHref="/shop?category=Creams"
       />
+
+      <RecommendedForYou />
 
       {/* 8 ── Brands marquee (moved down: near the footer) */}
       <BrandMarquee />

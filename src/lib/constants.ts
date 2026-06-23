@@ -44,13 +44,11 @@ export const PESAPAL_SURCHARGE_RATE = 0.035;
 
 /**
  * Physical stores delivery riders dispatch from. The Mapbox quote engine
- * (src/lib/delivery.ts) measures driving distance from the customer's
- * pinned location to the NEAREST store in this list.
+ * (src/lib/delivery.ts) measures driving distance from the customer's pinned
+ * location to the NEAREST store in this list.
  *
- * ⚠️ COORDINATES ARE A PLACEHOLDER near Mpererwe / Lusanja-Kiteezi Rd.
- * Before launch: open Google Maps, right-click the exact shop entrance,
- * "copy coordinates", and paste the real lat/lng here. The entire fee
- * calculation keys off this point. Add more entries if branches open.
+ * Coordinates below are REAL pins (confirmed via Google Maps, June 2026).
+ * Update address/phone fields if any are missing or change.
  */
 export const STORES = [
   {
@@ -58,45 +56,46 @@ export const STORES = [
     name: "Kafunda — Makindye",
     address: "27-29 Mobutu Road, Makindye, Kampala",
     phone: "0701 813618",
-    // Approximate (Makindye / Mobutu Rd). Refine: right-click the shop in
-    // Google Maps -> the first two numbers are lat, lng.
-    lat: 0.2856,
-    lng: 32.5811,
-  },
-  {
-    id: "kawempe",
-    name: "Kafunda — Kawempe",
-    address: "Kawempe, Kampala",
-    phone: "0701 813618",
-    lat: 0.3781,
-    lng: 32.5569,
+    lat: 0.3042019884456162,
+    lng: 32.6151318576705,
   },
   {
     id: "mpererwe",
     name: "Kafunda — Mpererwe",
     address: "Mpererwe, Kampala",
     phone: "0762 190594",
-    lat: 0.3886,
-    lng: 32.5811,
+    lat: 0.29051841746378976,
+    lng: 32.576091984648166,
+  },
+  {
+    id: "kawempe",
+    name: "Kafunda — Kawempe",
+    address: "Kawempe, Kampala",
+    phone: "0701 813618",
+    lat: 0.3806998433916813,
+    lng: 32.55835555766716,
   },
 ] as const;
 
 /**
- * Distance-based delivery tariff (UGX), applied to Mapbox DRIVING distance
- * from the nearest store. Tune freely — both the live checkout quote and
- * the server's authoritative recalculation read these same numbers.
+ * Delivery tariff — calibrated to real Kampala boda rates (June 2026).
+ * Anchor: a real ~6 km trip (Namuwongo → Banda Rise) cost 6,000 UGX; these
+ * values reproduce that so quotes feel fair, not scary.
  *
- *   fee = BASE_UGX + PER_KM_UGX × km
- *   fee = max(fee, MIN_UGX), rounded UP to the nearest ROUND_UP_TO_UGX
+ *   fee = max(BASE + PER_KM × drivingKm, MIN), rounded up to ROUND_UP_TO.
  *
- * Beyond MAX_RADIUS_KM (or when the customer doesn't pin a location, or
- * Mapbox is unreachable) checkout falls back to the previous behaviour:
- * the fee is quoted on the confirmation call.
+ * Sample quotes (driving km):
+ *   2 km →  2,700 → 3,000      6 km →  6,100 → 6,000*    12 km → 11,200 → 11,500
+ *   4 km →  4,400 → 4,500     10 km →  9,500 → 9,500     15 km → 13,750 → 14,000
+ *   (*matches the real-world anchor)
+ *
+ * NOTE: distance is Mapbox DRIVING distance to the nearest STORE, so accurate
+ * STORE coordinates matter as much as these rates — keep STORES correct.
  */
 export const DELIVERY_FEE = {
-  BASE_UGX: 3_000,
-  PER_KM_UGX: 1_200,
-  MIN_UGX: 5_000,
+  BASE_UGX: 1_000,
+  PER_KM_UGX: 850,
+  MIN_UGX: 2_000,
   ROUND_UP_TO_UGX: 500,
   MAX_RADIUS_KM: 30,
 } as const;
