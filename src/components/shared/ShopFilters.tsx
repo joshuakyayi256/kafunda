@@ -54,17 +54,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function ShopFilters({ categories, currentCategory, currentFilter, currentSearch, totalProducts }: Props) {
+// currentSearch is part of Props (passed by the shop page) but not used for
+// rendering filters here, so it is intentionally not destructured.
+export default function ShopFilters({ categories, currentCategory, currentFilter, totalProducts }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const currentMinPrice = searchParams.get("minPrice");
+  const currentMaxPrice = searchParams.get("maxPrice");
+  const currentInStock = searchParams.get("inStock") === "true";
+
   const activeCount = [
     currentCategory !== "All",
     currentFilter === "offers",
-    searchParams.get("minPrice"),
-    searchParams.get("inStock") === "true",
+    currentMinPrice,
+    currentInStock,
   ].filter(Boolean).length;
 
   function navigate(updates: Record<string, string | null>) {
@@ -83,11 +89,32 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
     setDrawerOpen(false);
   }
 
-  const currentMinPrice = searchParams.get("minPrice");
-  const currentMaxPrice = searchParams.get("maxPrice");
-  const currentInStock = searchParams.get("inStock") === "true";
+  // Visible, removable chips for whatever is currently narrowing results.
+  const activeChips: { key: string; label: string; clear: () => void }[] = [];
+  if (currentCategory !== "All") {
+    activeChips.push({ key: "cat", label: currentCategory, clear: () => navigate({ category: null }) });
+  }
+  if (currentMinPrice !== null) {
+    const min = Number(currentMinPrice);
+    const max = currentMaxPrice !== null ? Number(currentMaxPrice) : null;
+    activeChips.push({
+      key: "price",
+      label: max !== null
+        ? `UGX ${min.toLocaleString()}–${max.toLocaleString()}`
+        : `Over ${min.toLocaleString()}`,
+      clear: () => navigate({ minPrice: null, maxPrice: null }),
+    });
+  }
+  if (currentInStock) {
+    activeChips.push({ key: "stock", label: "In Stock", clear: () => navigate({ inStock: null }) });
+  }
+  if (currentFilter === "offers") {
+    activeChips.push({ key: "offers", label: "On Sale", clear: () => navigate({ filter: null }) });
+  }
 
-  const FilterContent = () => (
+  // Plain JSX element (NOT a nested component) — avoids the
+  // react-hooks/static-components error and preserves <Section> state.
+  const filterContent = (
     <div className="space-y-0">
       {/* Active filter count + clear */}
       {activeCount > 0 && (
@@ -187,6 +214,38 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
 
   return (
     <>
+      {/* ── ACTIVE FILTER CHIPS (visible on ALL breakpoints) ──
+          Makes it obvious which filters are narrowing results — e.g. when
+          "Under 50,000" is picked while still inside a category, the shopper
+          sees [Beers ✕] [UGX 0–50,000 ✕] and can drop either in one tap.
+          This fixes the "under 50k only showed beers" confusion. */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">
+            Filtering by:
+          </span>
+          {activeChips.map((chip) => (
+            <button
+              key={chip.key}
+              onClick={chip.clear}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-full transition-colors ${
+                chip.key === "offers"
+                  ? "bg-primary-red text-white hover:opacity-90"
+                  : "bg-zinc-900 text-white hover:bg-zinc-700"
+              }`}
+            >
+              {chip.label} <X className="h-3 w-3" />
+            </button>
+          ))}
+          <button
+            onClick={clearAll}
+            className="text-[11px] font-bold text-gray-400 hover:text-zinc-900 uppercase tracking-widest underline ml-1"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {/* ── Mobile: Filter trigger button ── */}
       <div className="lg:hidden mb-6">
         <button
@@ -214,7 +273,7 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
               {totalProducts} items
             </span>
           </div>
-          <FilterContent />
+          {filterContent}
         </div>
       </aside>
 
@@ -250,7 +309,7 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
                 </button>
               </div>
               <div className="px-6 py-6 space-y-2">
-                <FilterContent />
+                {filterContent}
               </div>
               <div className="sticky bottom-0 px-6 py-6 bg-white border-t border-gray-100">
                 <button

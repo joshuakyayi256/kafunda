@@ -8,15 +8,16 @@
      NOTE: the token is still named `primary-red` so the ~27 components that
      reference `bg-primary-red` / `text-primary-red` flip to green with no edits.
      Despite the name, this is now the brand GREEN. Use `kafunda-green` in new code. */
-  --color-primary-red: #1b7a43;
-  --color-primary-red-hover: #0f5a30;
+  --color-primary-red: #228f22;
+  --color-primary-red-hover: #1c7a1c;
 
   /* ── Brand greens (canonical names for new code) ────────────────────────── */
-  --color-kafunda-green: #1b7a43;
-  --color-kafunda-green-deep: #0f5a30;
-  --color-kafunda-green-tint: #ebf3ec;
-  --color-brand-green: #1b7a43;
-  --color-brand-green-hover: #0f5a30;
+  --color-kafunda-green: #228f22;
+  --color-kafunda-green-deep: #1c7a1c;
+  --color-kafunda-green-tint: #eaf6ea;
+  --color-brand-green: #228f22;
+  --color-brand-green-hover: #1c7a1c;
+
 
   /* ── Red accent — sale badges, discounts, urgency only ──────────────────── */
   --color-kafunda-crimson: #c8362b;
@@ -145,4 +146,33 @@ body.kafunda-textured-site {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ============================================================
+   BRAND MARQUEE (single-track seamless loop)
+   Append to src/app/globals.css. Moved out of the component's inline
+   styled-jsx so server and client generate identical markup (no styled-jsx
+   hash -> no hydration mismatch). Two copies of the brand set + translateX(-50%)
+   = seamless loop.
+   ============================================================ */
+.kafunda-marquee-track {
+  animation: kafunda-marquee 40s linear infinite;
+  will-change: transform;
+}
+
+/* Pause on hover (wrapper has the `group` class) */
+.group:hover .kafunda-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes kafunda-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kafunda-marquee-track {
+    animation: none;
+    transform: translateX(0);
+  }
 }

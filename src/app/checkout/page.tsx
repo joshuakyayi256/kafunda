@@ -86,7 +86,7 @@ function SectionCard({ number, title, icon: Icon, children }: {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-        <div className="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center text-xs font-black shrink-0">
+        <div className="w-7 h-7 rounded-full bg-kafunda-green text-white flex items-center justify-center text-xs font-black shrink-0">
           {number}
         </div>
         <Icon className="h-4 w-4 text-zinc-400" />
@@ -100,8 +100,37 @@ function SectionCard({ number, title, icon: Icon, children }: {
 /** Generate a fresh UUID for the idempotency key (server uses this to dedupe). */
 function newIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-  // Fallback for environments without crypto.randomUUID
   return `kaf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// ── Processing overlay (shows while we hand off to Pesapal) ─────────────────────
+function ProcessingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-kafunda-green-deep/95 backdrop-blur-sm px-6">
+      <div className="text-center max-w-sm">
+        <div className="relative mx-auto mb-8 h-20 w-20">
+          {/* spinning ring */}
+          <div className="absolute inset-0 rounded-full border-4 border-white/15" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-kafunda-mustard animate-spin" />
+          {/* pulsing card icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <CreditCard className="h-8 w-8 text-white animate-pulse" />
+          </div>
+        </div>
+        <h2 className="text-xl font-black uppercase tracking-tight text-white mb-2">
+          {message}
+        </h2>
+        <p className="text-sm text-white/70 leading-relaxed">
+          Please don&apos;t close or refresh this page — we&apos;re taking you to Pesapal
+          to complete your payment securely.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-[10px] font-bold text-white/50 uppercase tracking-widest">
+          <ShieldCheck className="h-4 w-4 text-kafunda-mustard" />
+          Secure &amp; Encrypted
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -110,6 +139,7 @@ export default function CheckoutPage() {
   const { cart, subtotal, itemsCount, clearCart } = useCart();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false); // Pesapal hand-off overlay
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [serverError, setServerError] = useState("");
@@ -128,7 +158,6 @@ export default function CheckoutPage() {
   const [quoteState, setQuoteState] = useState<QuoteState>("idle");
   const [codFeeAtOrder, setCodFeeAtOrder] = useState(0);
 
-  // Idempotency key — regenerated on mount, after errors, and after success
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
 
   useEffect(() => {
@@ -156,7 +185,7 @@ export default function CheckoutPage() {
           setQuoteState("ok");
         } else {
           setQuote(null);
-          setQuoteState("fallback"); // out of range / engine unavailable → fee on call
+          setQuoteState("fallback");
         }
       } catch {
         if (!cancelled) {
@@ -169,10 +198,6 @@ export default function CheckoutPage() {
     return () => { cancelled = true; };
   }, [pin]);
 
-  // The quote shown here is display-only — the server recomputes the fee from
-  // the pinned coordinates and its figure is authoritative. Online (Pesapal)
-  // payments carry the 3.5% processing charge on goods + delivery, folded
-  // into the amount due; cash on delivery never does.
   const deliveryFee = quoteState === "ok" && quote ? quote.feeUgx : 0;
   const surcharge =
     form.paymentMethod === "pesapal"
@@ -207,24 +232,22 @@ export default function CheckoutPage() {
     if (serverError) setServerError("");
   };
 
-  /** Shared payload for both payment routes — server re-verifies everything. */
   function buildPayload() {
     return {
       customer: {
         firstName: form.firstName, lastName: form.lastName,
         phone: form.phone, email: form.email,
         address: form.address,
-        location: pin,            // { lat, lng } | null — server re-quotes the fee
-        locationLabel: pinLabel,  // human-readable pin (rider context / Woo city)
+        location: pin,
+        locationLabel: pinLabel,
         notes: form.notes,
       },
-      // Server re-fetches each product's price from Woo. We only send id + qty.
       cart: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       idempotencyKey,
     };
   }
 
-  // ── COD (server route — Woo credentials never touch the browser) ───────────
+  // ── COD ─────────────────────────────────────────────────────────────────────
   async function handleCOD() {
     const res = await fetch("/api/checkout/cod", {
       method: "POST",
@@ -252,14 +275,14 @@ export default function CheckoutPage() {
     if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
     }
+    // Keep the processing overlay up through the browser navigation.
+    setIsRedirecting(true);
     window.location.href = data.redirect_url;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-    // Delivery fee must be computed before checkout (no confirmation-call
-    // fallback): require a pinned, in-range location.
     if (quoteState !== "ok" || !quote) {
       setServerError(
         quoteState === "fallback"
@@ -276,8 +299,8 @@ export default function CheckoutPage() {
       else                                  await handleCOD();
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-      // Fresh key on retry — otherwise the server replays the failed attempt.
       setIdempotencyKey(newIdempotencyKey());
+      setIsRedirecting(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -296,7 +319,7 @@ export default function CheckoutPage() {
         <h1 className="text-2xl font-black uppercase tracking-tighter mb-4">Your Cart is Empty</h1>
         <p className="text-zinc-500 mb-8">Add products before checking out.</p>
         <Link href="/shop"
-          className="inline-flex items-center bg-primary-red hover:bg-black text-white px-8 py-4 text-sm font-bold tracking-widest uppercase transition-colors rounded-full">
+          className="inline-flex items-center bg-kafunda-green hover:bg-kafunda-green-deep text-white px-8 py-4 text-sm font-bold tracking-widest uppercase transition-colors rounded-full">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Shop
         </Link>
       </div>
@@ -334,6 +357,9 @@ export default function CheckoutPage() {
   // ── Main checkout form ───────────────────────────────────────────────────────
   return (
     <div className="bg-gray-50 min-h-screen">
+      {/* Processing overlay during Pesapal hand-off */}
+      {isRedirecting && <ProcessingOverlay message="Processing your payment…" />}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
 
         {/* Header */}
@@ -433,14 +459,14 @@ export default function CheckoutPage() {
 
                   {/* Pesapal */}
                   <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    form.paymentMethod === "pesapal" ? "border-primary-red bg-red-50/30" : "border-gray-100 hover:border-gray-200 bg-white"
+                    form.paymentMethod === "pesapal" ? "border-kafunda-green bg-kafunda-green-tint/40" : "border-gray-100 hover:border-gray-200 bg-white"
                   }`}>
                     <input type="radio" name="paymentMethod" value="pesapal"
                       checked={form.paymentMethod === "pesapal"} onChange={handleChange}
-                      className="mt-1 accent-primary-red shrink-0" />
+                      className="mt-1 accent-kafunda-green shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <CreditCard className={`h-4 w-4 ${form.paymentMethod === "pesapal" ? "text-primary-red" : "text-gray-400"}`} />
+                        <CreditCard className={`h-4 w-4 ${form.paymentMethod === "pesapal" ? "text-kafunda-green" : "text-gray-400"}`} />
                         <p className="text-sm font-bold text-zinc-900">Pay Online via Pesapal</p>
                       </div>
                       <p className="text-xs text-zinc-500 mb-2">
@@ -520,17 +546,10 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
                     <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total Due Now</span>
-                    <span className="text-2xl font-black text-primary-red">
+                    <span className="text-2xl font-black text-kafunda-green">
                       {formatUGX(form.paymentMethod === "cod" ? subtotal : total)}
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 leading-relaxed">
-                    {form.paymentMethod === "pesapal"
-                      ? "Includes your delivery fee and a 3.5% online payment processing charge. Nothing more to pay on arrival."
-                      : quote
-                        ? `Pay ${formatUGX(subtotal + quote.feeUgx)} in cash on arrival (items + ${formatUGX(quote.feeUgx)} delivery).`
-                        : "Pin your location to see your delivery fee and total."}
-                  </p>
                 </div>
 
                 {/* Error */}
@@ -546,7 +565,7 @@ export default function CheckoutPage() {
                     className={`w-full py-4 font-bold text-sm tracking-widest uppercase rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed
                       ${form.paymentMethod === "cod"
                         ? "bg-zinc-900 hover:bg-black text-white"
-                        : "bg-primary-red hover:bg-primary-red-hover text-white"
+                        : "bg-kafunda-green hover:bg-kafunda-green-deep text-white"
                     }`}>
                     {isSubmitting ? (
                       <><Loader2 className="h-5 w-5 animate-spin" />
