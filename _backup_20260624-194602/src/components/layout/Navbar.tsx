@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Search, ShoppingCart, X, MessageCircle,
   Flame, Sparkles, Home, Store, Menu,
-  Zap, ArrowRight, User, Loader2, Truck, Clock,
+  Zap, ArrowRight, User, Loader2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
@@ -16,25 +16,21 @@ import { formatUGX } from "@/lib/utils";
 // Config
 const SALE_END = new Date("2026-04-30T23:59:59");
 
-// Announcement ticker. Each item pairs a lucide icon with a message -- NO emoji
-// (unicode emoji was corrupting into mojibake on save). Icons are real SVGs.
 const TICKER = [
-  { Icon: Zap, text: "1-2 Hour Delivery across Kampala" },
-  { Icon: Truck, text: "Free Delivery on orders over UGX 500,000" },
-  { Icon: MessageCircle, text: "Order directly via WhatsApp: +256 785 498 279" },
+  { emoji: "⚡", text: "1-2 Hour Delivery across Kampala" },
+  { emoji: "🚚", text: "Free Delivery on orders over UGX 500,000" },
+  { emoji: "💬", text: "Order directly via WhatsApp: +256 785 498 279" },
 ];
 
-// Top-bar categories -- NO emoji (encoding-safe). category= values match the
-// real WooCommerce names; the shop page also normalises spaces/hyphens.
 const CATEGORIES = [
-  { label: "Wines",       href: "/shop?category=Wines" },
-  { label: "Whiskys",     href: "/shop?category=Whiskys" },
-  { label: "Creams",      href: "/shop?category=Creams" },
-  { label: "Cognacs",     href: "/shop?category=Cognacs" },
-  { label: "Vodkas",      href: "/shop?category=Vodkas" },
-  { label: "Champagnes",  href: "/shop?category=Champagnes" },
-  { label: "Beers",       href: "/shop?category=Beers" },
-  { label: "Soft Drinks", href: "/shop?category=Soft Drinks" },
+  { label: "Wines",       href: "/shop?category=Wines",       emoji: "🍷" },
+  { label: "Whiskies",    href: "/shop?category=Whisky",      emoji: "🥃" },
+  { label: "Creams",      href: "/shop?category=Creams",      emoji: "🍶" },
+  { label: "Cognacs",     href: "/shop?category=Cognacs",     emoji: "🥃" },
+  { label: "Vodkas",      href: "/shop?category=Vodkas",      emoji: "🍸" },
+  { label: "Champagnes",  href: "/shop?category=Champagne",   emoji: "🥂" },
+  { label: "Beers",       href: "/shop?category=Beers",       emoji: "🍺" },
+  { label: "Soft Drinks", href: "/shop?category=Soft-Drinks", emoji: "🥤" },
 ];
 
 // Helpers
@@ -71,20 +67,20 @@ function InlineCountdown() {
   if (!time || time.expired) return null;
 
   return (
-    <div className="flex items-center gap-2.5 shrink-0 ml-auto pl-4 border-l border-white/20">
+    <div className="flex items-center gap-3 shrink-0 ml-auto pl-4 border-l border-white/20">
       <div className="hidden sm:flex items-center gap-1.5">
-        <Clock className="h-3 w-3 text-kafunda-mustard" />
+        <Zap className="h-3 w-3 text-kafunda-mustard fill-kafunda-mustard" />
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
           Flash Sale
         </span>
       </div>
 
       <div className="flex items-center gap-0.5 font-black tabular-nums text-white text-sm">
-        <span className="bg-black/25 rounded px-1.5 py-0.5">{pad(time.h)}</span>
-        <span className="text-kafunda-mustard text-xs">:</span>
-        <span className="bg-black/25 rounded px-1.5 py-0.5">{pad(time.m)}</span>
-        <span className="text-kafunda-mustard text-xs">:</span>
-        <span className="bg-black/25 rounded px-1.5 py-0.5">{pad(time.s)}</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.h)}</span>
+        <span className="text-kafunda-mustard text-xs animate-pulse">:</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.m)}</span>
+        <span className="text-kafunda-mustard text-xs animate-pulse">:</span>
+        <span className="bg-black/30 rounded px-1.5 py-0.5">{pad(time.s)}</span>
       </div>
 
       <Link
@@ -108,7 +104,6 @@ function AnnouncementBar() {
   }, []);
 
   const msg = TICKER[idx];
-  const Icon = msg.Icon;
 
   return (
     <div className="relative w-full bg-kafunda-burgundy text-white py-2 px-4 overflow-hidden">
@@ -122,8 +117,8 @@ function AnnouncementBar() {
           transition={{ duration: 0.35 }}
           className="flex items-center justify-center gap-2 text-[11px] font-medium tracking-wide"
         >
-          <Icon className="h-3.5 w-3.5 text-kafunda-mustard shrink-0" />
-          <span className="text-white/90">{msg.text}</span>
+          <span>{msg.emoji}</span>
+          <span className="text-white/85">{msg.text}</span>
           <a
             href="https://wa.me/256785498279"
             className="text-kafunda-mustard font-bold hover:text-amber-300 underline underline-offset-2 transition-colors ml-1"
@@ -136,7 +131,9 @@ function AnnouncementBar() {
   );
 }
 
-//  Search suggestions 
+// ── Search suggestions (#6) ──────────────────────────────────────────────────
+// Backed by /api/search, which rides the 1h tagged product cache — suggestion
+// keystrokes never hit WordPress live (same architecture as the catalogue).
 
 interface SearchSuggestion {
   id: string;
@@ -172,14 +169,14 @@ function SearchSuggestionsList({
   if (loading && suggestions.length === 0) {
     return (
       <div className="px-4 py-4 flex items-center gap-2 text-xs text-kafunda-burgundy/50 font-medium">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching the cellar...
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching the cellar…
       </div>
     );
   }
   if (suggestions.length === 0) {
     return (
       <div className="px-4 py-4 text-xs text-kafunda-burgundy/50 font-medium">
-        No matches for &ldquo;{query}&rdquo; -- press Enter to search the full shop.
+        No matches for &ldquo;{query}&rdquo; — press Enter to search the full shop.
       </div>
     );
   }
@@ -242,6 +239,7 @@ const Navbar = () => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
+  // Search suggestions
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -271,6 +269,7 @@ const Navbar = () => {
     };
   }, [isSearchOpen, isMoreOpen]);
 
+  // Close menus on route change (deferred to avoid synchronous setState in effect)
   useEffect(() => {
     const t = setTimeout(() => {
       setIsSearchOpen(false);
@@ -280,6 +279,8 @@ const Navbar = () => {
     return () => clearTimeout(t);
   }, [pathname]);
 
+  // Debounced suggestion fetch — every setState lives in timer/promise
+  // callbacks (react-hooks/set-state-in-effect safe).
   useEffect(() => {
     const q = searchValue.trim();
     if (q.length < 2) {
@@ -302,7 +303,7 @@ const Navbar = () => {
         setActiveIdx(-1);
         setIsSuggesting(false);
       } catch {
-        // Aborted or offline -- leave previous list alone.
+        // Aborted (user kept typing) or offline — leave previous list alone.
       }
     }, 220);
     return () => {
@@ -311,6 +312,7 @@ const Navbar = () => {
     };
   }, [searchValue]);
 
+  // Close the desktop dropdown on outside click
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (desktopFormRef.current && !desktopFormRef.current.contains(e.target as Node)) {
@@ -342,6 +344,9 @@ const Navbar = () => {
     router.push(`/product/${s.id}`);
   };
 
+  // Keyboard navigation: arrows cycle suggestions + the "see all" row,
+  // Enter picks the active row (or submits the form when none is active),
+  // Escape closes whatever is open.
   const totalRows = suggestions.length > 0 ? suggestions.length + 1 : 0;
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
@@ -361,12 +366,6 @@ const Navbar = () => {
       if (activeIdx < suggestions.length) selectSuggestion(suggestions[activeIdx]);
       else handleSearch(e);
     }
-  };
-
-  // Active category test for the strip highlight
-  const activeCategoryHref = (href: string) => {
-    if (typeof window === "undefined") return false;
-    return false; // active state handled per-link below via pathname+search
   };
 
   return (
@@ -438,6 +437,7 @@ const Navbar = () => {
                 </div>
               )}
 
+              {/* Suggestions dropdown */}
               {desktopOpen && query.length >= 2 && (
                 <div
                   id="navbar-search-suggestions"
@@ -509,20 +509,14 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/*  Category sub-nav strip (redesigned) 
-            Deeper green, clearer active/hover states, an underline accent on
-            hover, and a right-aligned flash-sale countdown. No emojis. */}
-        <div className="relative bg-kafunda-green border-t border-white/10">
-          <div className="absolute top-0 inset-x-0 h-px bg-kafunda-mustard/40" />
+        {/* Category sub-nav strip */}
+        <div className="relative bg-brand-green border-t border-brand-green-hover">
+          <div className="absolute top-0 inset-x-0 h-px bg-kafunda-mustard/30" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-11 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               <Link
                 href="/shop"
-                className={`flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest shrink-0 transition-colors ${
-                  pathname === "/shop"
-                    ? "bg-white/15 text-white"
-                    : "text-white hover:bg-white/10"
-                }`}
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-black uppercase tracking-widest text-white bg-kafunda-burgundy/40 hover:bg-kafunda-burgundy/60 transition-colors shrink-0"
               >
                 <Flame className="h-3 w-3" />
                 All Products
@@ -532,15 +526,16 @@ const Navbar = () => {
                 <Link
                   key={cat.label}
                   href={cat.href}
-                  className="flex items-center px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-white/85 hover:text-white hover:bg-white/10 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
+                  className="flex items-center gap-1.5 px-4 h-full text-[11px] font-semibold uppercase tracking-widest text-white/85 hover:text-white hover:bg-kafunda-burgundy/30 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
                 >
+                  <span className="text-sm leading-none">{cat.emoji}</span>
                   {cat.label}
                 </Link>
               ))}
 
               <Link
                 href="/shop?filter=offers"
-                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-kafunda-mustard hover:text-white hover:bg-white/10 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
+                className="flex items-center gap-1.5 px-4 h-full text-[11px] font-bold uppercase tracking-widest text-kafunda-mustard hover:text-white hover:bg-kafunda-burgundy/30 transition-colors border-b-2 border-transparent hover:border-kafunda-mustard shrink-0"
               >
                 <Sparkles className="h-3 w-3" />
                 Today&apos;s Offers
@@ -685,8 +680,9 @@ const Navbar = () => {
                       key={cat.label}
                       href={cat.href}
                       onClick={closeAll}
-                      className="flex items-center px-3 py-1.5 bg-kafunda-cream/50 hover:bg-kafunda-cream rounded-full text-xs font-semibold text-kafunda-burgundy hover:text-kafunda-burgundy-hover transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-kafunda-cream/50 hover:bg-kafunda-cream rounded-full text-xs font-semibold text-kafunda-burgundy hover:text-kafunda-burgundy-hover transition-colors"
                     >
+                      <span>{cat.emoji}</span>
                       {cat.label}
                     </Link>
                   ))}
@@ -754,14 +750,15 @@ const Navbar = () => {
                     </Link>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {CATEGORIES.map((cat) => (
+                    {CATEGORIES.slice(0, 9).map((cat) => (
                       <Link
                         key={cat.label}
                         href={cat.href}
                         onClick={closeAll}
-                        className="flex items-center justify-center text-center py-5 px-2 rounded-2xl bg-kafunda-cream/40 border border-kafunda-cream-soft active:scale-95 transition-all"
+                        className="flex flex-col items-center gap-2 py-5 px-2 rounded-2xl bg-kafunda-cream/40 border border-kafunda-cream-soft active:scale-95 transition-all text-center"
                       >
-                        <span className="text-[10px] font-black uppercase tracking-tight text-kafunda-burgundy leading-tight">
+                        <span className="text-2xl leading-none">{cat.emoji}</span>
+                        <span className="text-[9px] font-black uppercase tracking-tight text-kafunda-burgundy leading-tight">
                           {cat.label}
                         </span>
                       </Link>

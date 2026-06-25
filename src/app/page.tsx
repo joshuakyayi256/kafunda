@@ -7,11 +7,10 @@ export const revalidate = 300;
 
 import Hero from "@/components/shared/Hero";
 import BrandMarquee from "@/components/shared/BrandMarquee";
-import CategoryGrid from "@/components/shared/CategoryGrid";
 import CategoryShelf from "@/components/shared/CategoryShelf";
 import PromoBanner from "@/components/shared/PromoBanner";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
-import { getAllProducts, getCategories } from "@/lib/api";
+import { getAllProducts } from "@/lib/api";
 import RecommendedForYou from "@/components/shared/RecommendedForYou";
 import { Product } from "@/types";
 
@@ -22,10 +21,7 @@ function inCategory(p: Product, keywords: string[]): boolean {
 }
 
 export default async function Home() {
-  const [liveProducts, wpCategories] = await Promise.all([
-    getAllProducts(),
-    getCategories(),
-  ]);
+  const liveProducts = await getAllProducts();
 
   const products = liveProducts || [];
 
@@ -40,19 +36,11 @@ export default async function Home() {
   // notice; ISR (revalidate=300) refills the catalogue automatically.
   const catalogueEmpty = products.length === 0;
 
-  // Filter out the "Offers" pseudo-category from the tile grid
-  const displayCategories = (wpCategories || []).filter(
-    (cat) => !["offers", "offer"].includes(cat.name.toLowerCase())
-  );
-
   // ── Section datasets (one fetch, filtered in memory) ──────────────────────
   const offerPicks = products.filter((p) => p.is_sale);
 
   const beers       = products.filter((p) => inCategory(p, ["beer", "cider"]));
   const champagnes  = products.filter((p) => inCategory(p, ["champagne", "sparkling", "prosecco"]));
-  const softDrinks  = products.filter((p) =>
-    inCategory(p, ["soft drink", "juice", "water", "soda", "mixer", "energy", "non-alcoholic", "accessor", "disposable"])
-  );
   const wines       = products.filter((p) => inCategory(p, ["wine"]) && !inCategory(p, ["sparkling", "champagne"]));
   const whiskies    = products.filter((p) => inCategory(p, ["whisk", "bourbon", "scotch"]));
   const ginsVodkas  = products.filter((p) => inCategory(p, ["gin", "vodka"]));
@@ -98,10 +86,7 @@ export default async function Home() {
         textured
       />
 
-      {/* 3 ── Shop by Category grid */}
-      <CategoryGrid categories={displayCategories} />
-
-      {/* 4 ── Beers */}
+      {/* 3 ── Beers */}
       <CategoryShelf
         title="Beers & Ciders"
         accentWord="Beers"
@@ -109,21 +94,12 @@ export default async function Home() {
         viewAllHref="/shop?category=Beers"
       />
 
-      {/* 5 ── Champagnes */}
+      {/* 4 ── Champagnes */}
       <CategoryShelf
         title="Champagnes & Sparkling"
         accentWord="Champagnes"
         products={champagnes}
-        viewAllHref="/shop?category=Champagne"
-      />
-
-      {/* 6 ── Soft drinks & accessories */}
-      <CategoryShelf
-        title="Soft Drinks & Accessories"
-        accentWord="Soft Drinks"
-        products={softDrinks}
-        viewAllHref="/shop?category=Soft-Drinks"
-        textured
+        viewAllHref="/shop?category=Champagnes"
       />
 
       {/* ── Promo banner: mid-page break ── */}
@@ -136,7 +112,7 @@ export default async function Home() {
         href="/shop?filter=offers"
       />
 
-      {/* 7 ── The remaining drink types */}
+      {/* 5 ── The remaining drink types */}
       <CategoryShelf
         title="Fine Wines"
         accentWord="Wines"
@@ -147,7 +123,7 @@ export default async function Home() {
         title="Whiskies & Bourbons"
         accentWord="Whiskies"
         products={whiskies}
-        viewAllHref="/shop?category=Whisky"
+        viewAllHref="/shop?category=Whiskys"
       />
       <CategoryShelf
         title="Gins & Vodkas"
@@ -171,10 +147,10 @@ export default async function Home() {
 
       <RecommendedForYou />
 
-      {/* 8 ── Brands marquee (moved down: near the footer) */}
+      {/* 6 ── Brands marquee (moved down: near the footer) */}
       <BrandMarquee />
 
-      {/* 9 ── Recently viewed */}
+      {/* 7 ── Recently viewed */}
       <RecentlyViewed />
     </main>
   );

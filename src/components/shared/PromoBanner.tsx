@@ -1,23 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 /**
- * PromoBanner — a soft, editorial promo strip placed between product shelves
- * on the homepage (matches the "Up to 30% off" banner the client liked).
+ * PromoBanner - soft editorial promo strip between homepage shelves.
  *
- * Cream card, organic blurred circles for warmth, a black eyebrow pill, a
- * two-line headline with one accent word in crimson, and a dark pill CTA.
- * Restrained — it punctuates the shelves without shouting.
+ * Cream card with organic circles that GENTLY DRIFT on a continuous Framer
+ * loop (premium, not distracting). Black eyebrow/CTA replaced with brand GREEN
+ * per client (less black overall). Accent word stays crimson.
  *
  * Reusable: pass different copy/href to place more than one down the page.
  */
 interface PromoBannerProps {
   eyebrow?: string;
-  /** Headline line 1 (plain). */
   line1: string;
-  /** The accent fragment rendered in crimson (usually within line 1). */
   accent?: string;
-  /** Headline line 2 (plain). */
   line2: string;
   ctaLabel: string;
   href: string;
@@ -34,12 +33,29 @@ export default function PromoBanner({
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <div className="relative overflow-hidden rounded-3xl bg-kafunda-bone border border-kafunda-bone-soft px-8 py-10 md:px-14 md:py-14">
-        {/* Organic accent shapes (decorative) */}
-        <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-kafunda-green/10" />
-        <div className="pointer-events-none absolute right-24 bottom-[-3rem] h-40 w-40 rounded-full bg-kafunda-mustard/20" />
+
+        {/* Organic accent shapes - continuous gentle drift */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-kafunda-green/10"
+          animate={{ y: [0, 18, 0], x: [0, -10, 0], scale: [1, 1.06, 1] }}
+          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute right-24 -bottom-12 h-40 w-40 rounded-full bg-kafunda-mustard/20"
+          animate={{ y: [0, -16, 0], x: [0, 12, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+        />
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-kafunda-green/8"
+          animate={{ y: [0, 14, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 13, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+        />
 
         <div className="relative">
-          <span className="inline-block bg-kafunda-ink text-white text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-4">
+          <span className="inline-block bg-kafunda-green text-white text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-4">
             {eyebrow}
           </span>
 
@@ -58,9 +74,10 @@ export default function PromoBanner({
 
           <Link
             href={href}
-            className="inline-flex items-center gap-2 mt-7 bg-kafunda-ink hover:bg-kafunda-green text-white px-6 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-colors"
+            className="inline-flex items-center gap-2 mt-7 bg-kafunda-green hover:bg-kafunda-green-deep text-white px-6 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-colors group"
           >
-            {ctaLabel} <ArrowRight className="h-3.5 w-3.5" />
+            {ctaLabel}
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </div>
