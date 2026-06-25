@@ -16,6 +16,7 @@ import {
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import CompleteYourOrder from "@/components/shared/CompleteYourOrder";
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, itemsCount, subtotal } =
@@ -163,6 +164,9 @@ const CartPage = () => {
               ))}
             </div>
           </div>
+
+          {/* Smart bundle suggestions — "Complete your order" (zero-AI, rule-based) */}
+          <CompleteYourOrder />
 
           <Link
             href="/shop"
