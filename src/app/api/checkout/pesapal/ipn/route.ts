@@ -11,15 +11,22 @@
  *      the one in the IPN query string. This stops attackers from passing
  *      a real tracking id with a forged merchant ref to mark someone else's
  *      order as paid.
- *   5. Update the WooCommerce order accordingly.
+ *   5. Update the WooCommerce order accordingly — but NEVER downgrade an
+ *      order back to "pending" (late/duplicate IPNs with PENDING status
+ *      must not undo a completed payment).
  *
  * Pesapal will retry until we return a 200 with the expected body shape,
  * so always return 200 — even on errors — to avoid retry storms.
+ *
+ * FIX 2026-07-11: PESAPAL_BASE previously had the full RegisterIPN path
+ * baked in ("https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN"), which
+ * made every token request and status check hit a 404. Result: no IPN was
+ * ever processed, orders never left "pending", and no Woo emails fired.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
-const PESAPAL_BASE = "https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN";
+const PESAPAL_BASE = "https://pay.pesapal.com/v3";
 const MERCHANT_REF_PATTERN = /^KAF-(\d+)$/i;
 
 const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
@@ -42,9 +49,27 @@ async function getPesapalToken(): Promise<string> {
     body: JSON.stringify({ consumer_key: key, consumer_secret: secret }),
   });
 
-  const data = await res.json();
-  if (!data.token) throw new Error("Pesapal did not return a token.");
-  return data.token as string;
+  const text = await res.text();
+
+  if (!res.ok) {
+    console.error("[IPN] Token request non-OK:", res.status, text.slice(0, 1500));
+    throw new Error(`Pesapal token request failed (${res.status}).`);
+  }
+
+  let data: { token?: string; message?: string; error?: { message?: string } };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error("[IPN] Token response not JSON:", text.slice(0, 1500));
+    throw new Error("Pesapal returned a non-JSON token response.");
+  }
+
+  if (!data.token) {
+    const reason = data.message || data.error?.message || JSON.stringify(data).slice(0, 300);
+    throw new Error(`Pesapal token refused: ${reason}`);
+  }
+
+  return data.token;
 }
 
 /** Map Pesapal payment_status_description → WooCommerce order status. */
@@ -59,9 +84,20 @@ function mapStatus(pesapalStatus: string): string {
 }
 
 async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string): Promise<void> {
-  const wcKey = process.env.WC_CONSUMER_KEY;
-  const wcSecret = process.env.WC_CONSUMER_SECRET;
-  if (!wcKey || !wcSecret) throw new Error("Missing WooCommerce credentials.");
+  // Same credential fallback as the checkout init route — the two MUST stay
+  // in sync or the IPN silently fails while order creation succeeds.
+  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
+  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
+  if (!wcKey || !wcSecret) {
+    const state = {
+      WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
+      WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
+      WP_APP_USER:        !!process.env.WP_APP_USER,
+      WP_APP_PASS:        !!process.env.WP_APP_PASS,
+    };
+    console.error("[IPN] WC creds state:", state);
+    throw new Error("Missing WooCommerce credentials.");
+  }
 
   const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
   const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}`, {
@@ -151,9 +187,16 @@ export async function GET(request: NextRequest) {
       return ipnAck(orderTrackingId, merchantRef, notificationType, "400", "Merchant reference mismatch.");
     }
 
-    // 5. Map status and update Woo
+    // 5. Map status and update Woo. Never write "pending" — a late or
+    //    duplicate IPN carrying PENDING/INITIATED must not downgrade an
+    //    order that has already been marked processing/failed/refunded.
     const pesapalStatus = String(txn.payment_status_description || "PENDING");
     const wcStatus = mapStatus(pesapalStatus);
+
+    if (wcStatus === "pending") {
+      console.log(`[IPN] Order ${merchantRef} still ${pesapalStatus} — no Woo update.`);
+      return ipnAck(orderTrackingId, merchantRef, notificationType, "200", "IPN received; payment not final yet.");
+    }
 
     await updateWooOrder(wcOrderId, wcStatus, orderTrackingId);
 
