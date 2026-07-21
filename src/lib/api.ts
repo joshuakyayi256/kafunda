@@ -35,6 +35,35 @@ const USE_FALLBACK =
   process.env.FALLBACK_CATALOGUE === "1" ||
   (process.env.NODE_ENV === "development" && process.env.FALLBACK_CATALOGUE !== "0");
 
+/**
+ * TRANSPORT RETRY POLICY
+ * ----------------------------------------------------------------------
+ * Production logs show intermittent ETIMEDOUT / ECONNRESET / socket-closed
+ * failures on server-to-server calls to Cloudflare (172.67.x.x). These are
+ * transport-layer drops, not application errors — the same request usually
+ * succeeds moments later.
+ *
+ * Retry ONLY on transport failures (status 0) and 5xx / 429. Never retry a
+ * 4xx: a 401/403/404 will fail identically on the second attempt and just
+ * doubles latency. Jittered backoff so concurrent page renders don't
+ * retry in lockstep and hammer the origin.
+ *
+ * NOTE: this is mitigation, not a cure. The real fix is setting
+ * WP_ORIGIN_IP in Vercel so these calls bypass Cloudflare entirely.
+ */
+const RETRY_DELAYS_MS = [300, 900]; // 2 retries → 3 attempts total
+const REQUEST_TIMEOUT_MS = 12_000;
+
+function shouldRetry(status: number): boolean {
+  return status === 0 || status === 429 || status >= 500;
+}
+
+function sleep(ms: number): Promise<void> {
+  // ±25% jitter to avoid synchronized retry storms across concurrent renders.
+  const jittered = ms * (0.75 + Math.random() * 0.5);
+  return new Promise((r) => setTimeout(r, jittered));
+}
+
 function getFallbackProducts(): Product[] {
   // products.json already matches the Product shape; just ensure stock_count.
   return (fallbackProducts as Product[]).map((p) => ({ stock_count: 5, ...p }));
@@ -59,11 +88,62 @@ interface RawResult {
 }
 
 /**
+ * Single HTTP attempt. Never throws — transport failures come back as
+ * { ok: false, status: 0 } so the retry layer can distinguish them from
+ * real HTTP errors.
+ */
+async function attemptWooREST(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  body: unknown,
+  opts: { noStore?: boolean; tags?: string[] }
+): Promise<RawResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      signal: controller.signal,
+      ...(opts.noStore
+        ? { cache: "no-store" as const }
+        : { next: { revalidate: 3600, tags: opts.tags ?? ["products"] } }),
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    let data: unknown = null;
+    const text = await res.text();
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      const log = USE_FALLBACK ? console.warn : console.error;
+      log(`[api] WooCommerce HTTP ${res.status} on ${url.split("/wp-json/")[1] ?? url}`, text.slice(0, 400));
+    }
+
+    return { ok: res.ok, status: res.status, data };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`[api] WooCommerce transport failure: ${reason}`);
+    return { ok: false, status: 0, data: null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
  * Low-level WooCommerce REST call that ALWAYS reports what happened.
  * Returns { ok, status, data } so callers can tell the difference between
  * "the request failed" and "the request succeeded but returned nothing".
  *
- * By default responses are cached for 60s (good for the catalogue). Pass
+ * Retries transport failures and 5xx/429 with jittered backoff.
+ *
+ * By default responses are cached for 1h (good for the catalogue). Pass
  * { noStore: true } for anything that must read live data (checkout, stock).
  */
 async function fetchWooRESTRaw(
@@ -114,45 +194,21 @@ async function fetchWooRESTRaw(
     ...(ORIGIN_IP ? { "Host": HOSTNAME } : {}),
   };
 
-  try {
-    const res = await fetch(url, {
-      method,
-      headers,
-      ...(opts.noStore
-        ? { cache: "no-store" as const }
-        : { next: { revalidate: 3600, tags: opts.tags ?? ["products"] } }),
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  let result = await attemptWooREST(url, method, headers, body, opts);
 
-    let data: unknown = null;
-    const text = await res.text();
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      // While the dev fallback is active, log as a warning so Next's dev
-      // error overlay stays quiet; in production this stays a real error.
-      const log = USE_FALLBACK ? console.warn : console.error;
-      log(
-        `WooCommerce API Error (HTTP ${res.status}) on endpoint: ${endpoint}`,
-        text.slice(0, 600)
-      );
-    }
-
-    return { ok: res.ok, status: res.status, data };
-  } catch (error) {
-    console.error("WooCommerce Fetch Error:", error);
-    return { ok: false, status: 0, data: null };
+  for (let i = 0; i < RETRY_DELAYS_MS.length && !result.ok && shouldRetry(result.status); i++) {
+    await sleep(RETRY_DELAYS_MS[i]);
+    console.warn(`[api] Retry ${i + 1}/${RETRY_DELAYS_MS.length} for ${endpoint} (last status ${result.status}).`);
+    result = await attemptWooREST(url, method, headers, body, opts);
   }
+
+  return result;
 }
 
 /**
- * Convenience wrapper that preserves the old behaviour: returns the parsed
- * body on success, or null on any failure. Used by the catalogue / category
- * calls where a graceful empty fallback is fine.
+ * Convenience wrapper: returns the parsed body on success, or null on any
+ * failure. Callers MUST distinguish "null because it failed" from "empty
+ * because there's nothing there" — see getAllProducts / getCategories.
  */
 async function fetchWooREST(
   endpoint: string,
@@ -169,6 +225,19 @@ export interface WPCategory {
   name: string;
   slug: string;
   image: { sourceUrl: string } | null;
+}
+
+/**
+ * Thrown when the catalogue genuinely cannot be reached after retries.
+ * Callers (page components) should let this bubble so Next renders an
+ * error boundary — serving an empty shop with HTTP 200 hides the outage
+ * from both the customer and from monitoring.
+ */
+export class CatalogueUnavailableError extends Error {
+  constructor(message = "The product catalogue is temporarily unavailable.") {
+    super(message);
+    this.name = "CatalogueUnavailableError";
+  }
 }
 
 // --- Internal helper: map a raw Woo product node to our Product type ---
@@ -200,14 +269,26 @@ function mapProduct(node: any): Product {
 
 // 1. FETCH CATEGORIES
 export async function getCategories(): Promise<WPCategory[]> {
-  const data = await fetchWooREST("products/categories?hide_empty=true&per_page=100", "GET", undefined, { tags: ["categories"] });
-  if (!data || !Array.isArray(data)) {
+  const { ok, data } = await fetchWooRESTRaw(
+    "products/categories?hide_empty=true&per_page=100",
+    "GET",
+    undefined,
+    { tags: ["categories"] }
+  );
+
+  if (!ok) {
     if (USE_FALLBACK) {
       console.warn("[api] WooCommerce unreachable — serving FALLBACK categories (dev only).");
       return getFallbackCategories();
     }
+    // Categories failing is survivable (the shop can render without the
+    // filter rail), so return empty rather than blowing up the page —
+    // but log loudly so it shows up in Vercel error logs.
+    console.error("[api] Categories fetch failed after retries — rendering without categories.");
     return [];
   }
+
+  if (!Array.isArray(data)) return [];
 
   return data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,16 +302,38 @@ export async function getCategories(): Promise<WPCategory[]> {
     }));
 }
 
-// 2. FETCH ALL PRODUCTS (Paginated for 500+ products)
+/**
+ * 2. FETCH ALL PRODUCTS (paginated)
+ * ----------------------------------------------------------------------
+ * CHANGED: previously returned [] whenever the fetch failed, which is why
+ * production served HTTP 200 pages with an empty shop during Cloudflare
+ * drops. Now:
+ *   - page 1 failing → THROW (the page shows an error, not a fake empty shop)
+ *   - a LATER page failing → return what we have + log (partial catalogue
+ *     beats no catalogue, and page 1 has already proved the origin is up)
+ */
 export async function getAllProducts(): Promise<Product[]> {
   let allRawProducts: unknown[] = [];
   let page = 1;
   let hasMorePages = true;
 
   while (hasMorePages) {
-    const data = await fetchWooREST(`products?status=publish&per_page=100&page=${page}`);
+    const { ok, data } = await fetchWooRESTRaw(`products?status=publish&per_page=100&page=${page}`);
 
-    if (!data || !Array.isArray(data) || data.length === 0) {
+    if (!ok) {
+      if (page === 1) {
+        if (USE_FALLBACK) {
+          console.warn("[api] WooCommerce unreachable — serving FALLBACK catalogue (dev only).");
+          return getFallbackProducts();
+        }
+        throw new CatalogueUnavailableError();
+      }
+      // Partial success: keep what we fetched instead of failing the page.
+      console.error(`[api] Products page ${page} failed after retries — returning ${allRawProducts.length} products.`);
+      break;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
       hasMorePages = false;
       break;
     }
@@ -244,32 +347,58 @@ export async function getAllProducts(): Promise<Product[]> {
     }
   }
 
-  if (allRawProducts.length === 0 && USE_FALLBACK) {
-    console.warn("[api] WooCommerce unreachable — serving FALLBACK catalogue (dev only).");
-    return getFallbackProducts();
+  // A genuinely empty published catalogue is possible but should never
+  // happen here — treat it as a failure rather than rendering an empty shop.
+  if (allRawProducts.length === 0) {
+    if (USE_FALLBACK) return getFallbackProducts();
+    throw new CatalogueUnavailableError("The catalogue returned no products.");
   }
 
   return allRawProducts.map(mapProduct);
 }
 
 // 3a. PREVIEW SET (smaller, avoids full pagination)
+// Used on the homepage. A failure here degrades gracefully (the section
+// just doesn't render) rather than taking down the whole landing page.
 export async function getProductsPreview(limit: number = 8): Promise<Product[]> {
-  const data = await fetchWooREST(`products?status=publish&per_page=${limit}&page=1`);
-  if (!data || !Array.isArray(data)) return [];
+  const { ok, data } = await fetchWooRESTRaw(`products?status=publish&per_page=${limit}&page=1`);
+  if (!ok) {
+    if (USE_FALLBACK) return getFallbackProducts().slice(0, limit);
+    console.error("[api] Product preview fetch failed after retries — section will render empty.");
+    return [];
+  }
+  if (!Array.isArray(data)) return [];
   return data.map(mapProduct);
 }
 
-// 3. SINGLE PRODUCT BY ID OR SLUG
+/**
+ * 3. SINGLE PRODUCT BY ID OR SLUG
+ * ----------------------------------------------------------------------
+ * CHANGED: now distinguishes "product doesn't exist" (404 → return null →
+ * your notFound() path) from "we couldn't reach the catalogue" (transport
+ * failure → THROW). Previously both returned null, so a Cloudflare drop
+ * showed customers a 404 for a product that exists — actively misleading.
+ *
+ * Also uses the `products?include=` query form rather than `products/{id}`,
+ * which the WAF has been observed blocking.
+ */
 export async function getProductBySlug(idOrSlug: string): Promise<Product | null> {
   const isNumericId = /^\d+$/.test(idOrSlug);
 
-  const data = isNumericId
-    ? await fetchWooREST(`products/${idOrSlug}`)
-    : await fetchWooREST(`products?slug=${idOrSlug}`);
+  const endpoint = isNumericId
+    ? `products?include=${idOrSlug}&per_page=1`
+    : `products?slug=${idOrSlug}`;
 
-  if (!data) return null;
+  const { ok, status, data } = await fetchWooRESTRaw(endpoint);
 
-  const node = isNumericId ? data : (Array.isArray(data) && data.length > 0 ? data[0] : null);
+  if (!ok) {
+    // 404 / 400 from Woo means the product genuinely isn't there.
+    if (status >= 400 && status < 500) return null;
+    // Transport failure or 5xx after retries — don't lie and say "not found".
+    throw new CatalogueUnavailableError();
+  }
+
+  const node = Array.isArray(data) && data.length > 0 ? data[0] : null;
   if (!node) return null;
 
   return mapProduct(node);
@@ -287,9 +416,8 @@ export async function getProductBySlug(idOrSlug: string): Promise<Product | null
  * - Cache is disabled (no-store): checkout must always read live data.
  * - THROWS on a real transport / HTTP failure, so the caller can show
  *   "please try again" instead of falsely claiming a product is gone.
- * - Returns only the products WooCommerce actually has; a genuinely
- *   missing id simply won't be in the result, and the caller decides
- *   how to report that.
+ * - Retries are now handled inside fetchWooRESTRaw (2 retries, jittered),
+ *   so the ad-hoc single retry that used to live here is gone.
  */
 export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   const unique = Array.from(new Set(ids.map((i) => String(i).trim()).filter(Boolean)));
@@ -297,15 +425,7 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
 
   const endpoint = `products?include=${unique.join(",")}&per_page=100`;
 
-  // One automatic retry with a short backoff: papers over one-off network
-  // blips at the moment of payment without weakening live verification.
-  let result = await fetchWooRESTRaw(endpoint, "GET", undefined, { noStore: true });
-  if (!result.ok) {
-    await new Promise((r) => setTimeout(r, 700));
-    result = await fetchWooRESTRaw(endpoint, "GET", undefined, { noStore: true });
-  }
-
-  const { ok, status, data } = result;
+  const { ok, status, data } = await fetchWooRESTRaw(endpoint, "GET", undefined, { noStore: true });
 
   if (!ok) {
     throw new Error(`Catalogue fetch failed (HTTP ${status}).`);
@@ -342,6 +462,14 @@ export interface WooOrderResponse {
   [key: string]: unknown;
 }
 
+/**
+ * NOTE ON RETRIES AND ORDER CREATION: fetchWooRESTRaw only retries on
+ * transport failures and 5xx. A transport failure on a POST /orders could
+ * in principle mean the order WAS created and the response was lost — i.e.
+ * a retry could duplicate it. This is an accepted, low-probability trade
+ * for COD (duplicates are visible in wp-admin and easy to void). The
+ * Pesapal path is protected separately by its idempotency key.
+ */
 export async function createOrder(
   customerData: CheckoutFormData,
   cartItems: CartItem[],

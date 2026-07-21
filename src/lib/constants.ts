@@ -91,6 +91,13 @@ export const STORES = [
  *
  * NOTE: distance is Mapbox DRIVING distance to the nearest STORE, so accurate
  * STORE coordinates matter as much as these rates — keep STORES correct.
+ *
+ * FREE_DELIVERY_THRESHOLD_UGX: orders whose GOODS SUBTOTAL (before surcharge)
+ * is >= this value ship free — the distance-based fee is waived entirely.
+ * Set to 0 to disable free delivery. The website currently advertises free
+ * delivery over 100,000 UGX, so this matches that promise. To raise it to
+ * 200,000, change ONLY this number (and update the marketing copy to match —
+ * see FREE_DELIVERY note below).
  */
 export const DELIVERY_FEE = {
   BASE_UGX: 1_000,
@@ -98,7 +105,31 @@ export const DELIVERY_FEE = {
   MIN_UGX: 2_000,
   ROUND_UP_TO_UGX: 500,
   MAX_RADIUS_KM: 30,
+  FREE_DELIVERY_THRESHOLD_UGX: 100_000,
 } as const;
+
+/**
+ * Marketing-facing copy for the free-delivery promise. Kept next to the
+ * threshold so the words and the number can never drift apart again — this
+ * exact drift (copy said one thing, checkout did another) is what caused
+ * the "free delivery not applied" complaint. Any component that renders the
+ * promise should read FREE_DELIVERY.label rather than hardcoding "100k".
+ */
+export const FREE_DELIVERY = {
+  thresholdUgx: DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX,
+  label: `Free delivery on orders over UGX ${DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX.toLocaleString()}`,
+  shortLabel: `Free delivery over UGX ${(DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX / 1000).toFixed(0)}k`,
+} as const;
+
+/**
+ * Single source of truth for whether an order qualifies for free delivery.
+ * Both the live quote endpoint and the authoritative checkout recalculation
+ * MUST use this — never inline the comparison — so the rule stays in one place.
+ */
+export function qualifiesForFreeDelivery(goodsSubtotalUgx: number): boolean {
+  const threshold = DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX;
+  return threshold > 0 && goodsSubtotalUgx >= threshold;
+}
 
 export const DELIVERY = {
   estimatedTime: "1-2 hours",

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
-import { PESAPAL_SURCHARGE_RATE } from "@/lib/constants";
+import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery, DELIVERY_FEE } from "@/lib/constants";
 import LocationPicker, { PickedLocation } from "@/components/shared/LocationPicker";
 
 type PaymentMethod = "pesapal" | "cod";
@@ -106,7 +106,7 @@ function newIdempotencyKey(): string {
 // ── Processing overlay (shows while we hand off to Pesapal) ─────────────────────
 function ProcessingOverlay({ message }: { message: string }) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-kafunda-green-deep/95 backdrop-blur-sm px-6">
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-kafunda-green-deep/95 backdrop-blur-sm px-6">
       <div className="text-center max-w-sm">
         <div className="relative mx-auto mb-8 h-20 w-20">
           {/* spinning ring */}
@@ -198,7 +198,18 @@ export default function CheckoutPage() {
     return () => { cancelled = true; };
   }, [pin]);
 
-  const deliveryFee = quoteState === "ok" && quote ? quote.feeUgx : 0;
+  // ── Free delivery over the threshold ────────────────────────────────────────
+  // Mirrors the server (constants.ts / qualifiesForFreeDelivery) so the price
+  // the customer SEES matches what Pesapal actually charges. Without this the
+  // summary showed a delivery fee the server had already waived.
+  const freeDelivery = qualifiesForFreeDelivery(subtotal);
+  const rawDeliveryFee = quoteState === "ok" && quote ? quote.feeUgx : 0;
+  const deliveryFee = freeDelivery ? 0 : rawDeliveryFee;
+  const amountToFreeDelivery = Math.max(
+    0,
+    DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX - subtotal
+  );
+
   const surcharge =
     form.paymentMethod === "pesapal"
       ? Math.round((subtotal + deliveryFee) * PESAPAL_SURCHARGE_RATE)
@@ -339,7 +350,7 @@ export default function CheckoutPage() {
           {codFeeAtOrder > 0 ? (
             <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order. Your total, including the <span className="font-bold text-zinc-900">{formatUGX(codFeeAtOrder)}</span> delivery fee, is paid in cash on arrival.</>
           ) : (
-            <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order and the delivery fee for your area.</>
+            <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order{freeDelivery ? " — your order qualifies for free delivery." : " and the delivery fee for your area."}</>
           )}
         </p>
         <a href={`https://wa.me/256785498279?text=Hi! I just placed order ${orderNumber} on the Kafunda website.`}
@@ -422,11 +433,20 @@ export default function CheckoutPage() {
                       <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-kafunda-green-tint border border-kafunda-green/20 px-3.5 py-3">
                         <Truck className="h-4 w-4 text-kafunda-green mt-0.5 shrink-0" />
                         <p className="text-[11px] leading-relaxed text-kafunda-green-deep font-medium">
-                          Delivery to your pin: <span className="font-black">{formatUGX(quote.feeUgx)}</span> — {quote.distanceKm} km
-                          (~{quote.durationMin} min ride) from {quote.storeName}.{" "}
-                          {form.paymentMethod === "cod"
-                            ? "Paid in cash with your order on arrival."
-                            : "Included in your payment below."}
+                          {freeDelivery ? (
+                            <>
+                              Delivery is <span className="font-black uppercase">free</span> on this order —
+                              {" "}{quote.distanceKm} km (~{quote.durationMin} min ride) from {quote.storeName}.
+                            </>
+                          ) : (
+                            <>
+                              Delivery to your pin: <span className="font-black">{formatUGX(quote.feeUgx)}</span> — {quote.distanceKm} km
+                              (~{quote.durationMin} min ride) from {quote.storeName}.{" "}
+                              {form.paymentMethod === "cod"
+                                ? "Paid in cash with your order on arrival."
+                                : "Included in your payment below."}
+                            </>
+                          )}
                         </p>
                       </div>
                     )}
@@ -537,13 +557,31 @@ export default function CheckoutPage() {
                     <span className="font-bold text-zinc-800">{formatUGX(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-zinc-500 font-medium">
-                    <span>Delivery{quoteState === "ok" && quote ? ` · ${quote.distanceKm} km` : ""}</span>
-                    {quoteState === "ok" && quote ? (
+                    <span>Delivery{quoteState === "ok" && quote && !freeDelivery ? ` · ${quote.distanceKm} km` : ""}</span>
+                    {freeDelivery ? (
+                      <span className="font-black text-kafunda-green uppercase text-xs">Free</span>
+                    ) : quoteState === "ok" && quote ? (
                       <span className="font-bold text-zinc-800">{formatUGX(quote.feeUgx)}</span>
                     ) : (
                       <span className="text-zinc-400 italic text-xs text-right">Pin location to calculate</span>
                     )}
                   </div>
+
+                  {/* Nudge: how much more to unlock free delivery */}
+                  {!freeDelivery && subtotal > 0 && amountToFreeDelivery > 0 && (
+                    <p className="text-[10px] text-kafunda-green font-semibold">
+                      Add {formatUGX(amountToFreeDelivery)} more to get free delivery.
+                    </p>
+                  )}
+
+                  {/* Online payment charge line (Pesapal only) */}
+                  {form.paymentMethod === "pesapal" && surcharge > 0 && (
+                    <div className="flex justify-between text-sm text-zinc-500 font-medium">
+                      <span>Online payment charge (3.5%)</span>
+                      <span className="font-bold text-zinc-800">{formatUGX(surcharge)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
                     <span className="text-sm font-bold uppercase tracking-widest text-zinc-500">Total Due Now</span>
                     <span className="text-2xl font-black text-kafunda-green">

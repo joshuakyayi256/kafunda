@@ -4,6 +4,8 @@
  * Server-side only. Trusts NO pricing data from the client.
  * Delivery: if the customer pinned a location, the fee is recomputed HERE
  * from the coordinates (src/lib/delivery.ts) and charged with the order.
+ * Orders whose goods subtotal clears FREE_DELIVERY_THRESHOLD_UGX ship free —
+ * the distance/store info is kept for the rider but the fee is zeroed.
  * If there's no pin (or the quote engine can't price it), the fee falls
  * back to being quoted per location on the confirmation call, so the
  * amount sent to Pesapal is the goods subtotal only.
@@ -11,7 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getProductsByIds } from "@/lib/api";
-import { PESAPAL_SURCHARGE_RATE } from "@/lib/constants";
+import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery } from "@/lib/constants";
 import { getDeliveryQuote, isInUganda, type DeliveryQuote } from "@/lib/delivery";
 
 // -- Constants --------------------------------------------------------------
@@ -296,7 +298,8 @@ async function createWooOrder(
   lines: VerifiedLine[],
   delivery: DeliveryQuote | null,
   surcharge: number,
-  idempotencyKey: string | undefined
+  idempotencyKey: string | undefined,
+  freeDelivery: boolean
 ): Promise<number> {
   const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
   const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
@@ -314,11 +317,15 @@ async function createWooOrder(
   const feeLines: { name: string; total: string }[] = [];
   // Delivery fee (when auto-quoted from the pin) is recorded as a fee line so
   // the Woo order total exactly matches the amount charged via Pesapal. When
-  // there's no quote, the fee is settled on the confirmation call instead.
+  // the order qualifies for free delivery the distance/store label is kept for
+  // the rider but the CHARGE is zeroed, so the Woo total still reconciles with
+  // the Pesapal amount. When there's no quote, the fee is settled on the call.
   if (delivery) {
     feeLines.push({
-      name: `Delivery (${delivery.distanceKm} km · ${delivery.storeName})`,
-      total: delivery.feeUgx.toString(),
+      name: freeDelivery
+        ? `Delivery (${delivery.distanceKm} km · ${delivery.storeName}) — FREE (order over threshold)`
+        : `Delivery (${delivery.distanceKm} km · ${delivery.storeName})`,
+      total: freeDelivery ? "0" : delivery.feeUgx.toString(),
     });
   }
   if (surcharge > 0) {
@@ -337,7 +344,9 @@ async function createWooOrder(
         lng: customer.location.lng,
         label: customer.locationLabel || "",
         distanceKm: delivery?.distanceKm ?? null,
-        feeUgx: delivery?.feeUgx ?? null,
+        // Record the fee actually charged (0 when waived), not the raw quote.
+        feeUgx: freeDelivery ? 0 : (delivery?.feeUgx ?? null),
+        freeDelivery,
         store: delivery?.storeId ?? null,
         maps: `https://www.google.com/maps?q=${customer.location.lat},${customer.location.lng}`,
       }),
@@ -431,7 +440,16 @@ export async function POST(request: NextRequest) {
     //    actually moves through Pesapal. Computed from verified prices —
     //    the client's figures are display-only. Whole UGX shillings.
     const delivery = await quoteDeliveryFee(payload.customer);
-    const deliveryFee = delivery?.feeUgx ?? 0;
+
+    // Free delivery over the threshold (constants.ts). The distance/store
+    // metadata from the quote is still kept for the rider — only the CHARGE
+    // is waived. Uses the SERVER-verified subtotal, never the client's.
+    const freeDelivery = qualifiesForFreeDelivery(subtotal);
+    const deliveryFee = freeDelivery ? 0 : (delivery?.feeUgx ?? 0);
+
+    // Surcharge is 3.5% of what actually moves through Pesapal (goods + any
+    // delivery fee). With free delivery the fee is 0, so the surcharge drops
+    // accordingly — the customer is never charged 3.5% on a waived fee.
     const surcharge = Math.round((subtotal + deliveryFee) * PESAPAL_SURCHARGE_RATE);
     const total = subtotal + deliveryFee + surcharge;
 
@@ -441,7 +459,9 @@ export async function POST(request: NextRequest) {
 
     // 6. Create pending Woo order with verified prices (delivery + surcharge
     //    recorded as fee lines so the Woo order total matches the Pesapal charge)
-    const wcOrderId = await createWooOrder(payload.customer, lines, delivery, surcharge, idempotencyKey);
+    const wcOrderId = await createWooOrder(
+      payload.customer, lines, delivery, surcharge, idempotencyKey, freeDelivery
+    );
     const merchantRef = `KAF-${wcOrderId}`;
 
     // 7. Submit to Pesapal with the trusted amount
@@ -515,6 +535,7 @@ export async function POST(request: NextRequest) {
       merchant_reference: merchantRef,
       wc_order_id: wcOrderId,
       delivery_fee: deliveryFee,
+      free_delivery: freeDelivery,
     });
   } catch (err: unknown) {
     if (err instanceof CheckoutError) {
