@@ -28,7 +28,7 @@ const values = [
   {
     title: "Fair Pricing",
     body:
-      "No hidden fees. What you see is what you pay — including free delivery on orders over UGX 500,000.",
+      "No hidden fees. What you see is what you pay — including free delivery on orders over UGX 200,000.",
   },
   {
     title: "Responsible Service",

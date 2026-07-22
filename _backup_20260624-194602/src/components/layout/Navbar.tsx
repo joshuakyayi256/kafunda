@@ -18,7 +18,7 @@ const SALE_END = new Date("2026-04-30T23:59:59");
 
 const TICKER = [
   { emoji: "⚡", text: "1-2 Hour Delivery across Kampala" },
-  { emoji: "🚚", text: "Free Delivery on orders over UGX 500,000" },
+  { emoji: "🚚", text: "Free Delivery on orders over UGX 200,000" },
   { emoji: "💬", text: "Order directly via WhatsApp: +256 785 498 279" },
 ];
 

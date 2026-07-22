@@ -20,7 +20,7 @@ const SALE_END = new Date("2026-04-30T23:59:59");
 // (unicode emoji was corrupting into mojibake on save). Icons are real SVGs.
 const TICKER = [
   { Icon: Zap, text: "1-2 Hour Delivery across Kampala" },
-  { Icon: Truck, text: "Free Delivery on orders over UGX 500,000" },
+  { Icon: Truck, text: "Free Delivery on orders over UGX 200,000" },
   { Icon: MessageCircle, text: "Order directly via WhatsApp: +256 785 498 279" },
 ];
 

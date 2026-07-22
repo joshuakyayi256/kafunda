@@ -21,7 +21,7 @@ const deliveryAreas = [
 const faqs = [
   {
     q: "What is the delivery fee?",
-    a: "Delivery is UGX 5,000 flat across all covered areas. Orders above UGX 500,000 qualify for free delivery.",
+    a: "Delivery is UGX 5,000 flat across all covered areas. Orders above UGX 200,000 qualify for free delivery.",
   },
   {
     q: "How long does delivery take?",
@@ -61,7 +61,7 @@ export default function DeliveryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             { icon: Clock, title: "1–2 Hour Delivery", body: "From order confirmation to your door." },
-            { icon: Truck, title: "UGX 5,000 Fee", body: "Free on orders over UGX 500,000." },
+            { icon: Truck, title: "UGX 5,000 Fee", body: "Free on orders over UGX 200,000." },
             { icon: MapPin, title: "Kampala-Wide", body: "All major areas in and around Kampala." },
           ].map((item) => (
             <div key={item.title} className="bg-zinc-50 border border-gray-100 rounded-2xl p-6">

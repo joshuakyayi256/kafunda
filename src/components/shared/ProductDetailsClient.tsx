@@ -181,7 +181,7 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
                             toggle={() => toggleAccordion("shipping")}
                         >
                             <p className="text-sm leading-relaxed text-zinc-600">
-                                Free shipping on orders over UGX 500,000. Under normal circumstances,
+                                Free shipping on orders over UGX 200,000. Under normal circumstances,
                                 deliveries within Kampala take 1-2 hours. Returns accepted within
                                 24 hours if the seal is unbroken.
                             </p>
