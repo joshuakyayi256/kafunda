@@ -33,7 +33,6 @@ export default async function ShopPage({
     const currentBrand    = typeof params.brand    === "string" ? params.brand    : null;
     const currentFilter   = typeof params.filter   === "string" ? params.filter   : null;
     const currentSearch   = typeof params.search   === "string" ? params.search   : null;
-    const currentInStock  = params.inStock === "true";
     const currentMinPrice = typeof params.minPrice === "string" ? Number(params.minPrice) : null;
     const currentMaxPrice = typeof params.maxPrice === "string" ? Number(params.maxPrice) : null;
     const currentPage     = typeof params.page     === "string" ? parseInt(params.page) : 1;
@@ -60,7 +59,6 @@ export default async function ShopPage({
     if (currentSearch) {
         filteredProducts = smartSearch(filteredProducts, currentSearch);
     }
-    if (currentInStock)           filteredProducts = filteredProducts.filter(p => p.in_stock);
     if (currentMinPrice !== null) filteredProducts = filteredProducts.filter(p => p.price_ugx >= currentMinPrice);
     if (currentMaxPrice !== null) filteredProducts = filteredProducts.filter(p => p.price_ugx <= currentMaxPrice);
 
@@ -77,7 +75,6 @@ export default async function ShopPage({
         if (currentBrand)              query.set("brand", currentBrand);
         if (currentFilter)             query.set("filter", currentFilter);
         if (currentSearch)             query.set("search", currentSearch);
-        if (currentInStock)            query.set("inStock", "true");
         if (currentMinPrice !== null)  query.set("minPrice", String(currentMinPrice));
         if (currentMaxPrice !== null)  query.set("maxPrice", String(currentMaxPrice));
         query.set("page", pageNumber.toString());

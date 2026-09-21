@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PaymentConfirmer — polls /api/checkout/pesapal/confirm after the customer
+ * PaymentConfirmer — polls /api/checkout/confirm after the customer
  * lands back from Pesapal.
  * ─────────────────────────────────────────────────────────────────────────
  * Drop into the existing success page WITHOUT replacing your current UI:
@@ -80,7 +80,7 @@ export default function PaymentConfirmer({ onConfirmed }: PaymentConfirmerProps)
       attemptsRef.current += 1;
 
       try {
-        const res = await fetch("/api/checkout/pesapal/confirm", {
+        const res = await fetch("/api/checkout/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orderTrackingId: trackingId }),

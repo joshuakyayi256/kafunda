@@ -1,5 +1,5 @@
 /**
- * /api/checkout/pesapal/confirm — Client-triggered payment confirmation
+ * /api/checkout/confirm — Client-triggered payment confirmation
  * ─────────────────────────────────────────────────────────────────────────
  * Belt-and-braces fallback for the IPN. The success page polls this endpoint
  * after Pesapal redirects the customer back. If the IPN was delayed, dropped,
@@ -18,7 +18,7 @@
  * Race with the IPN is harmless: both write the same terminal status, and
  * WooCommerce treats a same-status PUT as a no-op (no duplicate emails).
  *
- * File location: src/app/api/checkout/pesapal/confirm/route.ts
+ * File location: src/app/api/checkout/confirm/route.ts
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -122,7 +122,16 @@ async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string
       Authorization: `Basic ${base64Auth}`,
       ...WC_HEADERS,
     },
-    body: JSON.stringify({ status: wcStatus, transaction_id: txnId }),
+    // set_paid on a completed payment is what makes Woo record the order as
+    // PAID (date_paid, payment_complete, stock reduction) instead of merely
+    // relabelling it — without it the shop keeps seeing an unpaid order
+    // sitting in processing. Woo ignores it once an order is already paid, so
+    // the IPN/confirm race stays harmless.
+    body: JSON.stringify({
+      status: wcStatus,
+      transaction_id: txnId,
+      ...(wcStatus === "processing" ? { set_paid: true } : {}),
+    }),
   });
 
   if (!res.ok) {

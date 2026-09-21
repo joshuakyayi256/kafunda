@@ -66,7 +66,21 @@ function sleep(ms: number): Promise<void> {
 
 function getFallbackProducts(): Product[] {
   // products.json already matches the Product shape; just ensure stock_count.
-  return (fallbackProducts as Product[]).map((p) => ({ stock_count: 5, ...p }));
+  return inStockOnly((fallbackProducts as Product[]).map((p) => ({ stock_count: 5, ...p })));
+}
+
+/**
+ * Out-of-stock products are not shown anywhere in the catalogue — a customer
+ * finding a bottle, adding it and being told at checkout that it's gone is a
+ * worse experience than never seeing it. The Woo queries already ask for
+ * `stock_status=instock`; this is the belt-and-braces pass that also covers
+ * the dev fallback catalogue and any plugin that reports stock differently.
+ *
+ * Deliberately NOT applied to getProductsByIds: checkout must still be able
+ * to see that a cart line went out of stock and say so.
+ */
+function inStockOnly(products: Product[]): Product[] {
+  return products.filter((p) => p.in_stock);
 }
 
 function getFallbackCategories(): WPCategory[] {
@@ -318,7 +332,7 @@ export async function getAllProducts(): Promise<Product[]> {
   let hasMorePages = true;
 
   while (hasMorePages) {
-    const { ok, data } = await fetchWooRESTRaw(`products?status=publish&per_page=100&page=${page}`);
+    const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=100&page=${page}`);
 
     if (!ok) {
       if (page === 1) {
@@ -354,21 +368,21 @@ export async function getAllProducts(): Promise<Product[]> {
     throw new CatalogueUnavailableError("The catalogue returned no products.");
   }
 
-  return allRawProducts.map(mapProduct);
+  return inStockOnly(allRawProducts.map(mapProduct));
 }
 
 // 3a. PREVIEW SET (smaller, avoids full pagination)
 // Used on the homepage. A failure here degrades gracefully (the section
 // just doesn't render) rather than taking down the whole landing page.
 export async function getProductsPreview(limit: number = 8): Promise<Product[]> {
-  const { ok, data } = await fetchWooRESTRaw(`products?status=publish&per_page=${limit}&page=1`);
+  const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=${limit}&page=1`);
   if (!ok) {
     if (USE_FALLBACK) return getFallbackProducts().slice(0, limit);
     console.error("[api] Product preview fetch failed after retries — section will render empty.");
     return [];
   }
   if (!Array.isArray(data)) return [];
-  return data.map(mapProduct);
+  return inStockOnly(data.map(mapProduct));
 }
 
 /**

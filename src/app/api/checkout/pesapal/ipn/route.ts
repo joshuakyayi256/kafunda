@@ -108,7 +108,14 @@ async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string
       Authorization: `Basic ${base64Auth}`,
       ...WC_HEADERS,
     },
-    body: JSON.stringify({ status: wcStatus, transaction_id: txnId }),
+    // set_paid marks the order genuinely PAID in Woo (date_paid, stock
+    // reduction) rather than just moving its status label. Woo ignores it on
+    // an already-paid order, so a duplicate IPN is still a no-op.
+    body: JSON.stringify({
+      status: wcStatus,
+      transaction_id: txnId,
+      ...(wcStatus === "processing" ? { set_paid: true } : {}),
+    }),
   });
 
   if (!res.ok) {

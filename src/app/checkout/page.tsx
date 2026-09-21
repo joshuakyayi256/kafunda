@@ -12,8 +12,67 @@ import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
 import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery, DELIVERY_FEE } from "@/lib/constants";
 import LocationPicker, { PickedLocation } from "@/components/shared/LocationPicker";
+import PesapalModal from "@/components/checkout/PesapalModal";
 
 type PaymentMethod = "pesapal" | "cod";
+
+/** Open Pesapal payment session, rendered in the on-page modal. */
+interface PesapalSession {
+  paymentUrl: string;
+  orderRef: string;
+  trackingId: string;
+  amount: number;
+}
+
+/**
+ * Unfinished payments are the biggest bucket of lost sales here: the customer
+ * starts a payment, the browser or the network eats it, and the order sits
+ * pending in Woo with nobody chasing it. The session is parked in
+ * localStorage so the next visit to checkout offers it back in one tap
+ * instead of asking them to build the whole order again.
+ */
+const PENDING_PAYMENT_KEY = "kafunda:pending-payment";
+/** A Pesapal payment page goes stale; past this we stop offering to resume. */
+const PENDING_PAYMENT_TTL_MS = 45 * 60 * 1000;
+
+interface StoredPayment extends PesapalSession {
+  savedAt: number;
+}
+
+function readPendingPayment(): StoredPayment | null {
+  try {
+    const raw = window.localStorage.getItem(PENDING_PAYMENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredPayment>;
+    if (!parsed.paymentUrl || !parsed.orderRef || !parsed.trackingId) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > PENDING_PAYMENT_TTL_MS) {
+      window.localStorage.removeItem(PENDING_PAYMENT_KEY);
+      return null;
+    }
+    return parsed as StoredPayment;
+  } catch {
+    return null;
+  }
+}
+
+function writePendingPayment(session: PesapalSession) {
+  try {
+    window.localStorage.setItem(
+      PENDING_PAYMENT_KEY,
+      JSON.stringify({ ...session, savedAt: Date.now() })
+    );
+  } catch {
+    // Private mode / storage full — resuming is a bonus, never a requirement.
+  }
+}
+
+function clearPendingPayment() {
+  try {
+    window.localStorage.removeItem(PENDING_PAYMENT_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 interface FormData {
   firstName: string;
@@ -103,44 +162,17 @@ function newIdempotencyKey(): string {
   return `kaf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// ── Processing overlay (shows while we hand off to Pesapal) ─────────────────────
-function ProcessingOverlay({ message }: { message: string }) {
-  return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-kafunda-green-deep/95 backdrop-blur-sm px-6">
-      <div className="text-center max-w-sm">
-        <div className="relative mx-auto mb-8 h-20 w-20">
-          {/* spinning ring */}
-          <div className="absolute inset-0 rounded-full border-4 border-white/15" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-kafunda-mustard animate-spin" />
-          {/* pulsing card icon */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <CreditCard className="h-8 w-8 text-white animate-pulse" />
-          </div>
-        </div>
-        <h2 className="text-xl font-black uppercase tracking-tight text-white mb-2">
-          {message}
-        </h2>
-        <p className="text-sm text-white/70 leading-relaxed">
-          Please don&apos;t close or refresh this page — we&apos;re taking you to Pesapal
-          to complete your payment securely.
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-[10px] font-bold text-white/50 uppercase tracking-widest">
-          <ShieldCheck className="h-4 w-4 text-kafunda-mustard" />
-          Secure &amp; Encrypted
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
   const { cart, subtotal, itemsCount, clearCart } = useCart();
   const [isMounted, setIsMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false); // Pesapal hand-off overlay
+  const [pesapal, setPesapal] = useState<PesapalSession | null>(null); // on-page payment modal
+  const [resumable, setResumable] = useState<StoredPayment | null>(null); // unfinished payment from a previous visit
+  const [offerCod, setOfferCod] = useState(false); // shown after a payment falls over
   const [isSuccess, setIsSuccess] = useState(false);
+  const [paidOnline, setPaidOnline] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [serverError, setServerError] = useState("");
 
@@ -163,6 +195,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     setIsMounted(true);
     setIdempotencyKey(newIdempotencyKey());
+    setResumable(readPendingPayment());
   }, []);
 
   // ── Live delivery quote whenever the pin moves ──────────────────────────────
@@ -258,6 +291,45 @@ export default function CheckoutPage() {
     };
   }
 
+  /** Abandoned or declined payment: clear the session and let them retry with
+   *  a fresh order (the old idempotency key is spent on the dead attempt).
+   *  The cart is left untouched and cash on delivery is offered right there —
+   *  a failed card is not a reason to lose the order. */
+  function endPesapalSession(message: string) {
+    setPesapal(null);
+    clearPendingPayment();
+    setResumable(null);
+    setServerError(message);
+    setOfferCod(true);
+    setIdempotencyKey(newIdempotencyKey());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /** One tap out of a failed online payment: same cart, same details, paid on
+   *  arrival. Validation still runs — the form may have been edited since. */
+  async function placeCodInstead() {
+    if (isSubmitting) return;
+    if (!validate()) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (quoteState !== "ok" || !quote) {
+      setServerError("Please pin your delivery location so we can calculate your delivery fee.");
+      return;
+    }
+
+    setForm((p) => ({ ...p, paymentMethod: "cod" }));
+    setIsSubmitting(true);
+    setServerError("");
+    setOfferCod(false);
+    try {
+      await handleCOD();
+    } catch (err: unknown) {
+      setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setIdempotencyKey(newIdempotencyKey());
+      setOfferCod(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   // ── COD ─────────────────────────────────────────────────────────────────────
   async function handleCOD() {
     const res = await fetch("/api/checkout/cod", {
@@ -276,19 +348,39 @@ export default function CheckoutPage() {
   }
 
   // ── Pesapal ─────────────────────────────────────────────────────────────────
+  // Payment happens in a modal over this page — the customer is never sent
+  // away, so the form, the cart and the pinned location all survive a cancelled
+  // or failed attempt. The tracking id is what lets the modal verify the
+  // payment with Pesapal; without it there is nothing to confirm against, so
+  // we fall back to the old hand-off rather than showing an unverifiable modal.
   async function handlePesapal() {
     const res = await fetch("/api/checkout/pesapal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildPayload()),
+      body: JSON.stringify({ ...buildPayload(), embedded: true }),
     });
     const data = await res.json();
     if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
     }
-    // Keep the processing overlay up through the browser navigation.
-    setIsRedirecting(true);
-    window.location.href = data.redirect_url;
+
+    if (!data.order_tracking_id) {
+      window.location.href = data.redirect_url;
+      return;
+    }
+
+    const session: PesapalSession = {
+      paymentUrl: data.redirect_url,
+      orderRef: data.merchant_reference || `KAF-${data.wc_order_id}`,
+      trackingId: data.order_tracking_id,
+      amount: total,
+    };
+    // Parked before the modal opens: if the browser dies mid-payment, the next
+    // visit can pick this exact payment back up instead of losing the order.
+    writePendingPayment(session);
+    setResumable(null);
+    setOfferCod(false);
+    setPesapal(session);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,7 +403,7 @@ export default function CheckoutPage() {
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setIdempotencyKey(newIdempotencyKey());
-      setIsRedirecting(false);
+      setPesapal(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -337,23 +429,27 @@ export default function CheckoutPage() {
     </div>
   );
 
-  // ── COD success screen ───────────────────────────────────────────────────────
+  // ── Success screen (COD placed, or Pesapal payment confirmed in the modal) ───
   if (isSuccess) return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
         <CheckCircle className="h-20 w-20 text-success-green mx-auto mb-6" />
-        <h1 className="text-3xl font-black uppercase tracking-tighter mb-3">Order Placed!</h1>
+        <h1 className="text-3xl font-black uppercase tracking-tighter mb-3">
+          {paidOnline ? "Payment Confirmed!" : "Order Placed!"}
+        </h1>
         <p className="text-zinc-500 mb-2 font-medium">
           Order <span className="font-black text-zinc-900">{orderNumber}</span> received.
         </p>
         <p className="text-zinc-500 mb-8 font-medium">
-          {codFeeAtOrder > 0 ? (
+          {paidOnline ? (
+            <>Your payment went through and your order is being prepared. Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> to confirm delivery.</>
+          ) : codFeeAtOrder > 0 ? (
             <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order. Your total, including the <span className="font-bold text-zinc-900">{formatUGX(codFeeAtOrder)}</span> delivery fee, is paid in cash on arrival.</>
           ) : (
             <>Our team will call <span className="font-bold text-zinc-900">{form.phone}</span> within 1-2 hours to confirm your order{freeDelivery ? " — your order qualifies for free delivery." : " and the delivery fee for your area."}</>
           )}
         </p>
-        <a href={`https://wa.me/256785498279?text=Hi! I just placed order ${orderNumber} on the Kafunda website.`}
+        <a href={`https://wa.me/256785498279?text=Hi! I just ${paidOnline ? `paid for order ${orderNumber}` : `placed order ${orderNumber}`} on the Kafunda website.`}
           target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-sm tracking-widest uppercase transition-colors mb-4 w-full justify-center">
           <MessageCircle className="h-4 w-4" /> Confirm on WhatsApp
@@ -368,8 +464,31 @@ export default function CheckoutPage() {
   // ── Main checkout form ───────────────────────────────────────────────────────
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* Processing overlay during Pesapal hand-off */}
-      {isRedirecting && <ProcessingOverlay message="Processing your payment…" />}
+      {/* Pesapal payment, on this page — no redirect away from checkout. */}
+      {pesapal && (
+        <PesapalModal
+          paymentUrl={pesapal.paymentUrl}
+          orderRef={pesapal.orderRef}
+          trackingId={pesapal.trackingId}
+          amountLabel={formatUGX(pesapal.amount)}
+          onCompleted={() => {
+            clearCart();
+            clearPendingPayment();
+            setResumable(null);
+            setOfferCod(false);
+            setOrderNumber(pesapal.orderRef);
+            setPaidOnline(true);
+            setPesapal(null);
+            setIsSuccess(true);
+          }}
+          onFailed={(message) => endPesapalSession(message)}
+          onDismiss={() =>
+            endPesapalSession(
+              "Payment window closed before the payment was completed. Your cart is saved — you can try again or choose cash on delivery."
+            )
+          }
+        />
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
 
@@ -382,6 +501,42 @@ export default function CheckoutPage() {
           <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
           <span className="text-xs font-black uppercase tracking-widest text-zinc-900">Checkout</span>
         </div>
+
+        {/* Unfinished payment from an earlier attempt — one tap back into it. */}
+        {resumable && !pesapal && !isSuccess && (
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border-2 border-kafunda-green/30 bg-kafunda-green-tint/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+                <CreditCard className="h-4 w-4 text-kafunda-green" />
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-tight text-zinc-900">
+                  Finish your payment
+                </p>
+                <p className="text-xs font-medium text-zinc-600">
+                  Order <span className="font-bold">{resumable.orderRef}</span> ·{" "}
+                  {formatUGX(resumable.amount)} was never completed.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setOfferCod(false); setPesapal(resumable); setResumable(null); }}
+                className="rounded-xl bg-kafunda-green px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-kafunda-green-deep"
+              >
+                Resume Payment
+              </button>
+              <button
+                type="button"
+                onClick={() => { clearPendingPayment(); setResumable(null); }}
+                className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition-colors hover:text-zinc-700"
+              >
+                Start Over
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
@@ -597,6 +752,32 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {/* A failed online payment should cost us the payment, not the
+                    order — same cart, same details, settled on the doorstep. */}
+                {offerCod && !isSuccess && (
+                  <div className="mx-6 mt-3 rounded-xl border-2 border-zinc-900/10 bg-zinc-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-tight text-zinc-900">
+                      Still want your order?
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      Keep everything as it is and pay cash when the rider arrives — no card, no
+                      mobile money needed.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={placeCodInstead}
+                      disabled={isSubmitting || quoteState !== "ok"}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmitting ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order...</>
+                      ) : (
+                        <><Package className="h-4 w-4" /> Pay Cash on Delivery Instead</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 {/* Submit */}
                 <div className="px-6 pb-6 pt-4">
                   <button type="submit" disabled={isSubmitting || !idempotencyKey || quoteState !== "ok"}
@@ -607,7 +788,7 @@ export default function CheckoutPage() {
                     }`}>
                     {isSubmitting ? (
                       <><Loader2 className="h-5 w-5 animate-spin" />
-                        {form.paymentMethod === "pesapal" ? "Redirecting to Pesapal..." : "Placing Order..."}
+                        {form.paymentMethod === "pesapal" ? "Opening secure payment..." : "Placing Order..."}
                       </>
                     ) : form.paymentMethod === "pesapal" ? (
                       <>{formatUGX(total)} · Pay via Pesapal</>
@@ -618,7 +799,7 @@ export default function CheckoutPage() {
 
                   {form.paymentMethod === "pesapal" && (
                     <p className="mt-2 text-center text-[10px] text-zinc-400 font-medium">
-                      You&apos;ll be securely redirected to Pesapal to complete payment.
+                      Pesapal opens securely on this page — you won&apos;t be redirected away.
                     </p>
                   )}
 

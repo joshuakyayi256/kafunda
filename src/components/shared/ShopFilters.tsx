@@ -64,13 +64,10 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
 
   const currentMinPrice = searchParams.get("minPrice");
   const currentMaxPrice = searchParams.get("maxPrice");
-  const currentInStock = searchParams.get("inStock") === "true";
-
   const activeCount = [
     currentCategory !== "All",
     currentFilter === "offers",
     currentMinPrice,
-    currentInStock,
   ].filter(Boolean).length;
 
   function navigate(updates: Record<string, string | null>) {
@@ -104,9 +101,6 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
         : `Over ${min.toLocaleString()}`,
       clear: () => navigate({ minPrice: null, maxPrice: null }),
     });
-  }
-  if (currentInStock) {
-    activeChips.push({ key: "stock", label: "In Stock", clear: () => navigate({ inStock: null }) });
   }
   if (currentFilter === "offers") {
     activeChips.push({ key: "offers", label: "On Sale", clear: () => navigate({ filter: null }) });
@@ -182,19 +176,8 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
         </ul>
       </Section>
 
-      {/* Availability */}
-      <Section title="Availability">
-        <button
-          onClick={() => navigate({ inStock: currentInStock ? null : "true" })}
-          className="flex items-center gap-3 w-full"
-        >
-          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${currentInStock ? "bg-zinc-900 border-zinc-900" : "border-gray-300"
-            }`}>
-            {currentInStock && <Check className="h-3 w-3 text-white" />}
-          </div>
-          <span className="text-xs font-semibold text-zinc-600">In Stock Only</span>
-        </button>
-      </Section>
+      {/* No availability filter: the catalogue only ever lists in-stock
+          products now, so "In Stock Only" would filter nothing. */}
 
       {/* Offers */}
       <Section title="Promotions">

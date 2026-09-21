@@ -53,6 +53,12 @@ interface CheckoutPayload {
   customer: IncomingCustomer;
   cart: IncomingCartItem[];
   idempotencyKey?: string;
+  /**
+   * True when the customer is paying inside the on-page modal, in which case
+   * Pesapal must return them to the lightweight /checkout/pesapal-return page
+   * (which signals the parent window) rather than the standalone success page.
+   */
+  embedded?: boolean;
 }
 
 interface VerifiedLine {
@@ -470,7 +476,9 @@ export async function POST(request: NextRequest) {
       currency: "UGX",
       amount: total,
       description: `Kafunda Wines Order ${merchantRef}`,
-      callback_url: `${BASE_URL}/checkout/success?order=${merchantRef}`,
+      callback_url: payload.embedded
+        ? `${BASE_URL}/checkout/pesapal-return?order=${merchantRef}`
+        : `${BASE_URL}/checkout/success?order=${merchantRef}`,
       notification_id: notificationId,
       branch: "Mpererwe Branch",
       billing_address: {
