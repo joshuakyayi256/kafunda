@@ -7,6 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
 import SmoothScroll from "@/components/providers/SmoothScroll";
+import { SITE, CONTACT, SOCIAL, STORES } from "@/lib/constants";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,7 +22,39 @@ const manrope = Manrope({
 });
 
 const SITE_URL = "https://kafundawines.com";
-const OG_IMAGE = `${SITE_URL}/og-default.jpg`;
+// Was /og-default.jpg, which doesn't exist — shared links showed no image.
+const OG_IMAGE = `${SITE_URL}/kafunda-logo-full.png`;
+
+/** schema.org store data — helps "liquor store near me" / Google Maps results. */
+const STORE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "LiquorStore",
+  name: SITE.name,
+  url: SITE_URL,
+  logo: `${SITE_URL}/kafunda-icon.png`,
+  image: OG_IMAGE,
+  description: SITE.description,
+  telephone: CONTACT.phoneDial,
+  email: CONTACT.email,
+  priceRange: "UGX",
+  currenciesAccepted: "UGX",
+  paymentAccepted: "Cash, Mobile Money, Credit Card",
+  areaServed: { "@type": "City", name: "Kampala" },
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: CONTACT.address,
+    addressLocality: "Kampala",
+    addressCountry: "UG",
+  },
+  sameAs: Object.values(SOCIAL),
+  department: STORES.map((s) => ({
+    "@type": "LiquorStore",
+    name: s.name,
+    telephone: s.phone,
+    address: { "@type": "PostalAddress", streetAddress: s.address, addressLocality: "Kampala", addressCountry: "UG" },
+    geo: { "@type": "GeoCoordinates", latitude: s.lat, longitude: s.lng },
+  })),
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -31,8 +64,19 @@ export const metadata: Metadata = {
   },
   description:
     "Kampala's premium online liquor store. Shop 500+ wines, whiskies, gins, and spirits with 1–2 hour delivery to your door.",
-  keywords: ["wine delivery kampala", "whisky uganda", "spirits delivery", "kafunda wines", "alcohol delivery kampala"],
+  keywords: [
+    "wine delivery kampala", "whisky uganda", "spirits delivery", "kafunda wines",
+    "alcohol delivery kampala", "buy wine online uganda", "liquor store kampala",
+    "gin uganda", "champagne kampala", "beer delivery kampala",
+  ],
   authors: [{ name: "Kafunda Wines & Spirits" }],
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  icons: { icon: "/kafunda-icon.png", apple: "/kafunda-icon.png" },
   openGraph: {
     type: "website",
     siteName: "Kafunda Wines & Spirits",
@@ -40,7 +84,8 @@ export const metadata: Metadata = {
     title: "Kafunda Wines & Spirits | Premium Liquor Delivery in Kampala",
     description:
       "Kampala's premium online liquor store. Shop 500+ wines, whiskies, gins, and spirits with 1–2 hour delivery.",
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Kafunda Wines & Spirits" }],
+    images: [{ url: OG_IMAGE, alt: "Kafunda Wines & Spirits" }],
+    locale: "en_UG",
   },
   twitter: {
     card: "summary_large_image",
@@ -68,6 +113,10 @@ export default function RootLayout({
         className="kafunda-textured-site min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-hidden"
         suppressHydrationWarning
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(STORE_JSON_LD).replace(/</g, "\\u003c") }}
+        />
         <ToastProvider>
           <CartProvider>
             <AgeVerification />

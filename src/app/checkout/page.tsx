@@ -75,8 +75,7 @@ function clearPendingPayment() {
 }
 
 interface FormData {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   phone: string;
   email: string;
   address: string;
@@ -85,11 +84,19 @@ interface FormData {
 }
 
 interface FormErrors {
-  firstName?: string;
-  lastName?: string;
+  fullName?: string;
   phone?: string;
   email?: string;
   address?: string;
+}
+
+/** Field order on the page — the first invalid one gets focus. */
+const FIELD_ORDER: (keyof FormErrors)[] = ["fullName", "phone", "email", "address"];
+
+/** "Leo Ajule Mukasa" → first "Leo", last "Ajule Mukasa". One word → no last name. */
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
+  return { firstName: parts[0] ?? "", lastName: parts.slice(1).join(" ") };
 }
 
 interface DeliveryQuote {
@@ -104,17 +111,23 @@ type QuoteState = "idle" | "loading" | "ok" | "fallback";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function InputField({
-  label, name, type = "text", placeholder, required, value, onChange, error, prefix,
+  label, name, type = "text", placeholder, required, optional, value, onChange, error, prefix,
+  autoComplete, inputMode,
 }: {
   label: string; name: string; type?: string; placeholder?: string;
-  required?: boolean; value: string;
+  required?: boolean; optional?: boolean; value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string; prefix?: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
+  // Errors use real red (not the brand token — `primary-red` is green now),
+  // so a problem never looks like a friendly hint.
   return (
     <div>
-      <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
-        {label}{required && <span className="text-primary-red ml-0.5">*</span>}
+      <label htmlFor={name} className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
+        {label}{required && <span className="text-red-600 ml-0.5">*</span>}
+        {optional && <span className="ml-1 text-gray-400 font-normal normal-case tracking-normal text-[10px]">(optional)</span>}
       </label>
       <div className="relative flex">
         {prefix && (
@@ -123,18 +136,29 @@ function InputField({
           </span>
         )}
         <input
+          id={name}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full h-11 px-4 text-sm bg-gray-50 border text-zinc-900 placeholder:text-gray-400
-            focus:outline-none focus:ring-2 focus:ring-primary-red/20 focus:border-primary-red transition-all
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${name}-error` : undefined}
+          className={`w-full h-12 px-4 text-base sm:text-sm bg-gray-50 border text-zinc-900 placeholder:text-gray-400
+            focus:outline-none focus:ring-2 transition-all
             ${prefix ? "rounded-r-xl" : "rounded-xl"}
-            ${error ? "border-primary-red bg-red-50/60" : "border-gray-200"}`}
+            ${error
+              ? "border-red-500 bg-red-50 focus:ring-red-500/20 focus:border-red-500"
+              : "border-gray-200 focus:ring-kafunda-green/20 focus:border-kafunda-green"}`}
         />
       </div>
-      {error && <p className="mt-1 text-[11px] text-primary-red font-medium">{error}</p>}
+      {error && (
+        <p id={`${name}-error`} role="alert" className="mt-1.5 text-xs text-red-600 font-semibold">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -177,11 +201,12 @@ export default function CheckoutPage() {
   const [serverError, setServerError] = useState("");
 
   const [form, setForm] = useState<FormData>({
-    firstName: "", lastName: "", phone: "", email: "",
+    fullName: "", phone: "", email: "",
     address: "", notes: "",
     paymentMethod: "pesapal",
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showNotes, setShowNotes] = useState(false);
 
   // Pinned delivery location + live quote
   const [pin, setPin] = useState<PickedLocation | null>(null);
@@ -250,24 +275,41 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryFee + surcharge;
 
   // ── Validation ──────────────────────────────────────────────────────────────
+  /** Validates the form. On failure, jumps to and focuses the first problem
+   *  field and says so next to the Pay button — tapping Pay must never look
+   *  like it did nothing. */
   const validate = (): boolean => {
     const e: FormErrors = {};
-    if (!form.firstName.trim()) e.firstName = "Required";
-    if (!form.lastName.trim())  e.lastName  = "Required";
-    if (!form.phone.trim()) {
-      e.phone = "Phone number is required.";
-    } else if (!/^(\+?256|0)?[7][0-9]{8}$/.test(form.phone.replace(/\s/g, ""))) {
-      e.phone = "Enter a valid Ugandan number (e.g. 0712 345 678)";
+    if (!form.fullName.trim()) e.fullName = "Please enter your name.";
+    const phone = form.phone.replace(/[\s-]/g, "");
+    if (!phone) {
+      e.phone = "Please enter your phone number.";
+    } else if (!/^(\+?256|0)?[7][0-9]{8}$/.test(phone)) {
+      const digits = phone.replace(/\D/g, "").replace(/^256/, "").replace(/^0/, "");
+      e.phone = digits.length < 9
+        ? `This number is too short — it should have 10 digits, like 0712 345 678.`
+        : "Please check this number — it should look like 0712 345 678.";
     }
-    if (!form.email.trim()) {
-      e.email = "Email is required for your order receipt.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      e.email = "Enter a valid email address.";
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      e.email = "This email doesn't look right — or leave it empty.";
     }
-    if (!form.address.trim()) e.address = "Delivery address is required.";
+    if (!form.address.trim()) e.address = "Please tell us where to deliver (building, street or area).";
     setErrors(e);
-    return Object.keys(e).length === 0;
+
+    const first = FIELD_ORDER.find((k) => e[k]);
+    if (first) {
+      setServerError("Please fix the highlighted details above to continue.");
+      const el = document.getElementById(first);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.focus({ preventScroll: true });
+      return false;
+    }
+    return true;
   };
+
+  /** Pin missing / unpriced: bring the map into view instead of the page top. */
+  const scrollToMap = () =>
+    document.getElementById("delivery-pin")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -279,8 +321,8 @@ export default function CheckoutPage() {
   function buildPayload() {
     return {
       customer: {
-        firstName: form.firstName, lastName: form.lastName,
-        phone: form.phone, email: form.email,
+        ...splitName(form.fullName),
+        phone: form.phone.replace(/[\s-]/g, ""), email: form.email.trim(),
         address: form.address,
         location: pin,
         locationLabel: pinLabel,
@@ -309,9 +351,10 @@ export default function CheckoutPage() {
    *  arrival. Validation still runs — the form may have been edited since. */
   async function placeCodInstead() {
     if (isSubmitting) return;
-    if (!validate()) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (!validate()) return;
     if (quoteState !== "ok" || !quote) {
-      setServerError("Please pin your delivery location so we can calculate your delivery fee.");
+      setServerError("Please pin your delivery location on the map so we can calculate your delivery fee.");
+      scrollToMap();
       return;
     }
 
@@ -385,14 +428,16 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (!validate()) return;
     if (quoteState !== "ok" || !quote) {
       setServerError(
-        quoteState === "fallback"
-          ? "We can't deliver to that pin (it may be outside our delivery range). Please pin a location within Kampala."
-          : "Please pin your delivery location so we can calculate your delivery fee before checkout."
+        quoteState === "loading"
+          ? "Still calculating your delivery fee — give it a second and tap again."
+          : quoteState === "fallback"
+            ? "We can't deliver to that pin (it may be outside our delivery range). Please pin a location within Kampala."
+            : "Please pin your delivery location on the map so we can calculate your delivery fee."
       );
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToMap();
       return;
     }
     setIsSubmitting(true);
@@ -484,7 +529,7 @@ export default function CheckoutPage() {
           onFailed={(message) => endPesapalSession(message)}
           onDismiss={() =>
             endPesapalSession(
-              "Payment window closed before the payment was completed. Your cart is saved — you can try again or choose cash on delivery."
+              "Payment cancelled. Your cart is saved — tap Pay to try again, or pay cash on delivery."
             )
           }
         />
@@ -547,28 +592,32 @@ export default function CheckoutPage() {
               {/* Section 1: Contact */}
               <SectionCard number={1} title="Contact Information" icon={User}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InputField label="First Name" name="firstName" placeholder="Joshua" required
-                    value={form.firstName} onChange={handleChange} error={errors.firstName} />
-                  <InputField label="Last Name" name="lastName" placeholder="Kyayi" required
-                    value={form.lastName} onChange={handleChange} error={errors.lastName} />
+                  <div className="sm:col-span-2">
+                    <InputField label="Full Name" name="fullName" placeholder="e.g. Leo Ajule" required
+                      autoComplete="name"
+                      value={form.fullName} onChange={handleChange} error={errors.fullName} />
+                  </div>
                   <InputField label="Phone Number" name="phone" type="tel" placeholder="0712 345 678"
-                    required value={form.phone} onChange={handleChange} error={errors.phone} prefix="UG" />
-                  <InputField label="Email Address" name="email" type="email" placeholder="you@example.com"
-                    required value={form.email} onChange={handleChange} error={errors.email} />
+                    required autoComplete="tel" inputMode="tel"
+                    value={form.phone} onChange={handleChange} error={errors.phone} />
+                  <InputField label="Email" name="email" type="email" placeholder="For your receipt"
+                    optional autoComplete="email" inputMode="email"
+                    value={form.email} onChange={handleChange} error={errors.email} />
                 </div>
               </SectionCard>
 
               {/* Section 2: Delivery */}
               <SectionCard number={2} title="Delivery Details" icon={MapPin}>
                 <div className="space-y-5">
-                  <InputField label="Street Address / Building" name="address"
-                    placeholder="Plot 14, Acacia Ave, Kololo" required
+                  <InputField label="Delivery Address" name="address"
+                    placeholder="Building, street or area — e.g. Forest Mall, Lugogo" required
+                    autoComplete="street-address"
                     value={form.address} onChange={handleChange} error={errors.address} />
 
                   {/* Pin location → instant delivery fee */}
-                  <div>
+                  <div id="delivery-pin" className="scroll-mt-24">
                     <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                      Pin Your Location <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(for an instant delivery fee)</span>
+                      Pin Your Location <span className="text-red-600">*</span> <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(tap the map or use My Location)</span>
                     </label>
                     <LocationPicker
                       onChange={(loc, label) => {
@@ -617,14 +666,22 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
-                      Delivery Notes <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(optional)</span>
-                    </label>
-                    <textarea name="notes" value={form.notes} onChange={handleChange} rows={3}
-                      placeholder="Gate codes, landmarks, or any special instructions..."
-                      className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red/20 focus:border-primary-red transition-all resize-none" />
-                  </div>
+                  {/* Notes are rarely needed — keep them out of the way. */}
+                  {showNotes || form.notes ? (
+                    <div>
+                      <label htmlFor="notes" className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
+                        Note for the rider <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(optional)</span>
+                      </label>
+                      <textarea id="notes" name="notes" value={form.notes} onChange={handleChange} rows={2}
+                        placeholder="Gate, landmark, or anything the rider should know"
+                        className="w-full px-4 py-3 text-base sm:text-sm bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-kafunda-green/20 focus:border-kafunda-green transition-all resize-none" />
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setShowNotes(true)}
+                      className="text-xs font-bold text-kafunda-green hover:underline">
+                      + Add a note for the rider
+                    </button>
+                  )}
                 </div>
               </SectionCard>
 
@@ -747,7 +804,7 @@ export default function CheckoutPage() {
 
                 {/* Error */}
                 {serverError && (
-                  <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-primary-red font-medium leading-relaxed">
+                  <div role="alert" className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-semibold leading-relaxed">
                     {serverError}
                   </div>
                 )}

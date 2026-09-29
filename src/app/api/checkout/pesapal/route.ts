@@ -185,17 +185,18 @@ async function getOrRegisterIpnId(token: string): Promise<string> {
 
 function validateCustomer(customer: IncomingCustomer): void {
   if (!customer) throw new CheckoutError("Customer details required.");
-  if (!customer.firstName?.trim() || !customer.lastName?.trim()) {
-    throw new CheckoutError("First and last name required.");
+  if (!customer.firstName?.trim()) {
+    throw new CheckoutError("Name required.");
   }
   if (!customer.phone?.trim()) throw new CheckoutError("Phone number required.");
 
-  const cleanPhone = customer.phone.replace(/\s/g, "");
+  const cleanPhone = customer.phone.replace(/[\s-]/g, "");
   if (!/^(\+?256|0)?[7][0-9]{8}$/.test(cleanPhone)) {
     throw new CheckoutError("Invalid Ugandan phone number.");
   }
-  if (!customer.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
-    throw new CheckoutError("Valid email required for order receipt.");
+  // Email is optional (receipt only) — but if given it must be valid.
+  if (customer.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
+    throw new CheckoutError("That email address doesn't look right.");
   }
   if (!customer.address?.trim()) throw new CheckoutError("Delivery address required.");
 
@@ -368,7 +369,7 @@ async function createWooOrder(
       address_1: customer.address,
       city: cityLabel(customer),
       country: "UG",
-      email: customer.email,
+      ...(customer.email?.trim() ? { email: customer.email.trim() } : {}),
       phone: customer.phone,
     },
     shipping: {
@@ -435,15 +436,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Server-side cart + price verification (batched)
-    const { lines, subtotal } = await verifyCartAndPrice(payload.cart);
-
-    // 4. Server-side delivery quote from the pinned coordinates (null = fee
-    //    settled on the confirmation call), then the trusted total:
-    //    goods + delivery + 3.5% online processing charge on the amount that
-    //    actually moves through Pesapal. Computed from verified prices —
-    //    the client's figures are display-only. Whole UGX shillings.
-    const delivery = await quoteDeliveryFee(payload.customer);
+    // 3–5. Cart verification, delivery quote and Pesapal auth are independent,
+    //      so run them in parallel — this is the wait between tapping "Pay"
+    //      and the payment window opening.
+    //    Delivery quote from the pinned coordinates (null = fee settled on the
+    //    confirmation call), then the trusted total: goods + delivery + 3.5%
+    //    online processing charge on the amount that actually moves through
+    //    Pesapal. Computed from verified prices — the client's figures are
+    //    display-only. Whole UGX shillings.
+    const [{ lines, subtotal }, delivery, { token, notificationId }] = await Promise.all([
+      verifyCartAndPrice(payload.cart),
+      quoteDeliveryFee(payload.customer),
+      getPesapalToken().then(async (token) => ({
+        token,
+        notificationId: await getOrRegisterIpnId(token),
+      })),
+    ]);
 
     // Free delivery over the threshold (constants.ts). The distance/store
     // metadata from the quote is still kept for the rider — only the CHARGE
@@ -456,10 +464,6 @@ export async function POST(request: NextRequest) {
     // accordingly — the customer is never charged 3.5% on a waived fee.
     const surcharge = Math.round((subtotal + deliveryFee) * PESAPAL_SURCHARGE_RATE);
     const total = subtotal + deliveryFee + surcharge;
-
-    // 5. Pesapal token + IPN id
-    const token = await getPesapalToken();
-    const notificationId = await getOrRegisterIpnId(token);
 
     // 6. Create pending Woo order with verified prices (delivery + surcharge
     //    recorded as fee lines so the Woo order total matches the Pesapal charge)
@@ -480,7 +484,7 @@ export async function POST(request: NextRequest) {
       notification_id: notificationId,
       branch: "Mpererwe Branch",
       billing_address: {
-        email_address: payload.customer.email,
+        ...(payload.customer.email?.trim() ? { email_address: payload.customer.email.trim() } : {}),
         phone_number: payload.customer.phone,
         country_code: "UG",
         first_name: payload.customer.firstName,

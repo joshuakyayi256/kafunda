@@ -27,11 +27,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Lock, ShieldCheck, X } from "lucide-react";
 
-const POLL_INTERVAL_MS = 4_000;
+const POLL_INTERVAL_MS = 2_500;
 /** ~10 minutes of payment-page time (MoMo PIN prompts can be slow). */
-const MAX_POLLS_PAYING = 150;
+const MAX_POLLS_PAYING = 240;
 /** ~90s of verification after the customer returns from the payment page. */
-const MAX_POLLS_VERIFYING = 22;
+const MAX_POLLS_VERIFYING = 36;
+
+const RETRY_HINT = "Your cart is saved — try again, or pay cash on delivery.";
+
+interface StatusResponse {
+  status?: string;
+  reason?: string | null;
+}
+
+async function fetchStatus(trackingId: string): Promise<StatusResponse> {
+  const res = await fetch(
+    `/api/orders/status?orderTrackingId=${encodeURIComponent(trackingId)}`,
+    { cache: "no-store" }
+  );
+  return (await res.json()) as StatusResponse;
+}
 
 type Phase = "paying" | "verifying" | "timeout";
 
@@ -63,6 +78,7 @@ export default function PesapalModal({
 }: PesapalModalProps) {
   const [phase, setPhase] = useState<Phase>("paying");
   const [frameLoaded, setFrameLoaded] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   // Terminal callbacks must fire exactly once, and must not restart the poll
   // loop when the parent re-renders and hands us new function identities.
@@ -84,6 +100,40 @@ export default function PesapalModal({
     onFailedRef.current(message);
   }, []);
 
+  /**
+   * Customer taps Cancel. One last status check first: if they already
+   * approved the prompt on their phone, cancelling would lose a PAID order —
+   * so a completed payment is honoured instead of discarded.
+   */
+  const handleCancel = useCallback(async () => {
+    if (cancelling || settledRef.current) return;
+    setCancelling(true);
+    try {
+      const data = await fetchStatus(trackingId);
+      if (data.status === "completed") {
+        await fetch("/api/checkout/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderTrackingId: trackingId }),
+        }).catch(() => undefined);
+        settleCompleted();
+        return;
+      }
+    } catch {
+      // Can't reach the status check — cancel anyway; the IPN still backstops.
+    }
+    if (settledRef.current) return;
+    settledRef.current = true;
+    onDismiss();
+  }, [cancelling, trackingId, settleCompleted, onDismiss]);
+
+  // Escape key cancels too.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") void handleCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleCancel]);
+
   // ── Lock the page behind the modal ────────────────────────────────────────
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -102,7 +152,7 @@ export default function PesapalModal({
       const notification = (params.get("OrderNotificationType") || "").toUpperCase();
 
       if (notification === "CANCELLED") {
-        settleFailed("Payment was cancelled. Your cart is saved — you can try again or pay cash on delivery.");
+        settleFailed(`Payment was cancelled. ${RETRY_HINT}`);
         return;
       }
       // Otherwise hand over to verification; the poll below decides.
@@ -156,11 +206,7 @@ export default function PesapalModal({
       if (cancelled || settledRef.current) return;
 
       try {
-        const res = await fetch(
-          `/api/orders/status?orderTrackingId=${encodeURIComponent(trackingId)}`,
-          { cache: "no-store" }
-        );
-        const data = (await res.json()) as { status?: string };
+        const data = await fetchStatus(trackingId);
 
         if (cancelled || settledRef.current) return;
 
@@ -173,15 +219,18 @@ export default function PesapalModal({
           settleCompleted();
           return;
         }
-        // Only meaningful once the customer is back from the payment page —
-        // an unattempted transaction reads as INVALID.
+        // FAILED means a real attempt was declined (insufficient funds, wrong
+        // PIN, rejected prompt) — tell the customer straight away instead of
+        // leaving them watching a spinner. INVALID / REVERSED only count once
+        // they're back from the payment page: an unattempted transaction
+        // reads as INVALID.
         if (
-          phase === "verifying" &&
-          (data.status === "failed" || data.status === "invalid" || data.status === "reversed")
+          data.status === "failed" ||
+          (phase === "verifying" && (data.status === "invalid" || data.status === "reversed"))
         ) {
-          await finalizeInWoo(); // records the failure against the order too
-          if (cancelled) return;
-          settleFailed("Payment was not completed. Your cart is saved — you can try again or pay cash on delivery.");
+          const reason = data.reason || "Payment was not completed.";
+          void finalizeInWoo(); // records the failure against the order; don't make the customer wait
+          settleFailed(`${reason} ${RETRY_HINT}`);
           return;
         }
       } catch {
@@ -214,10 +263,9 @@ export default function PesapalModal({
     >
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-2xl">
 
-        {/* Header. There is deliberately NO close control while a payment is
-            in flight: half-finished payments were the biggest source of lost
-            orders. The window closes by itself the moment the transaction
-            settles — paid, declined, or cancelled on Pesapal's own screen. */}
+        {/* Header. Cancel is always available; it re-checks with Pesapal first
+            so an already-approved payment is never thrown away. The window
+            also closes by itself once the payment is paid or declined. */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 bg-white px-5 py-3.5">
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
@@ -227,21 +275,16 @@ export default function PesapalModal({
               Pay {amountLabel}
             </p>
           </div>
-          {phase === "timeout" ? (
-            <button
-              type="button"
-              onClick={onDismiss}
-              aria-label="Close payment window"
-              className="shrink-0 rounded-full p-2 text-zinc-400 transition-colors hover:bg-gray-100 hover:text-zinc-900"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-amber-600">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              In progress
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => void handleCancel()}
+            disabled={cancelling}
+            aria-label="Cancel payment"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-2 text-xs font-bold text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+          >
+            {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+            {cancelling ? "Cancelling…" : "Cancel"}
+          </button>
         </div>
 
         {/* Payment frame */}
@@ -322,7 +365,7 @@ export default function PesapalModal({
           {phase === "paying" && (
             <>
               <p className="text-center text-[10px] font-semibold leading-relaxed text-zinc-400">
-                Keep this window open until your payment goes through — it closes on its own.
+                Approve the prompt on your phone — this window closes on its own when it&apos;s done.
               </p>
               <a
                 href={paymentUrl}

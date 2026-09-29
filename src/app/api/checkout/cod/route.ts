@@ -88,17 +88,18 @@ class CheckoutError extends Error {
 
 function validateCustomer(customer: IncomingCustomer): void {
   if (!customer) throw new CheckoutError("Customer details required.");
-  if (!customer.firstName?.trim() || !customer.lastName?.trim()) {
-    throw new CheckoutError("First and last name required.");
+  if (!customer.firstName?.trim()) {
+    throw new CheckoutError("Name required.");
   }
   if (!customer.phone?.trim()) throw new CheckoutError("Phone number required.");
 
-  const cleanPhone = customer.phone.replace(/\s/g, "");
+  const cleanPhone = customer.phone.replace(/[\s-]/g, "");
   if (!/^(\+?256|0)?[7][0-9]{8}$/.test(cleanPhone)) {
     throw new CheckoutError("Invalid Ugandan phone number.");
   }
-  if (!customer.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
-    throw new CheckoutError("Valid email required for order receipt.");
+  // Email is optional (receipt only) — but if given it must be valid.
+  if (customer.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
+    throw new CheckoutError("That email address doesn't look right.");
   }
   if (!customer.address?.trim()) throw new CheckoutError("Delivery address required.");
 
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
         address_1: payload.customer.address,
         city: cityLabel(payload.customer),
         country: "UG",
-        email: payload.customer.email,
+        ...(payload.customer.email?.trim() ? { email: payload.customer.email.trim() } : {}),
         phone: payload.customer.phone,
       },
       shipping: {

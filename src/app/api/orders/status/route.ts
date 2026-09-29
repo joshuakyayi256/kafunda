@@ -77,6 +77,25 @@ function mapStatus(statusCode: number | undefined, description: string | undefin
   return "pending";
 }
 
+/** Turn Pesapal's raw failure description into something a customer understands. */
+function friendlyReason(description: unknown): string {
+  const d = String(description ?? "").trim();
+  const l = d.toLowerCase();
+  if (/insufficient|not enough|low balance|balance/.test(l)) {
+    return "Insufficient funds — your account doesn't have enough money for this payment.";
+  }
+  if (/cancel|declined by (the )?user|rejected by (the )?user|user rejected/.test(l)) {
+    return "The payment was cancelled on your phone.";
+  }
+  if (/timeout|timed out|expired|no response/.test(l)) {
+    return "The payment prompt expired before it was approved.";
+  }
+  if (/pin/.test(l)) return "The PIN entered was not accepted.";
+  if (/limit/.test(l)) return "This payment is over your account's transaction limit.";
+  if (/declin|do not honou?r|refused|rejected/.test(l)) return "Your bank or mobile money provider declined the payment.";
+  return d ? `The payment failed: ${d.slice(0, 140)}` : "The payment did not go through.";
+}
+
 export async function GET(req: NextRequest) {
   const orderTrackingId = req.nextUrl.searchParams.get("orderTrackingId");
 
@@ -114,6 +133,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       status,
+      // Why a payment failed (e.g. "Insufficient funds"), shown to the customer.
+      reason: status === "failed" ? friendlyReason(txn?.description) : null,
       merchantReference: txn?.merchant_reference ?? null,
       confirmationCode: txn?.confirmation_code ?? null,
       paymentMethod: txn?.payment_method ?? null,
