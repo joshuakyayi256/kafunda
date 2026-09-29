@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getProductsByIds } from "@/lib/api";
+import { qualifiesForFreeDelivery } from "@/lib/constants";
 import { getDeliveryQuote, isInUganda, type DeliveryQuote } from "@/lib/delivery";
 
 // -- Constants --------------------------------------------------------------
@@ -196,18 +197,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Server-side cart + price verification (batched)
-    const { lines } = await verifyCartAndPrice(payload.cart);
+    const { lines, subtotal } = await verifyCartAndPrice(payload.cart);
 
     // 4. Server-side delivery quote (null = fee settled on the call)
     let delivery: DeliveryQuote | null = null;
     if (payload.customer.location) {
-      const result = await getDeliveryQuote(
-        payload.customer.location.lat,
-        payload.customer.location.lng
-      );
-      if (result.ok) delivery = result.quote;
-      else console.warn(`[COD] Delivery quote fell back to call (${result.reason}).`);
+      try {
+        const result = await getDeliveryQuote(
+          payload.customer.location.lat,
+          payload.customer.location.lng
+        );
+        if (result.ok) delivery = result.quote;
+        else console.warn(`[COD] Delivery quote fell back to call (${result.reason}).`);
+      } catch (err) {
+        console.error("[COD] Delivery quote error:", err);
+      }
     }
+
+    // Free delivery over the threshold — same rule as the Pesapal route and
+    // the checkout UI, applied to the SERVER-verified subtotal.
+    const freeDelivery = qualifiesForFreeDelivery(subtotal);
+    const deliveryFee = freeDelivery ? 0 : (delivery?.feeUgx ?? 0);
 
     // 5. Create the Woo order
     const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
@@ -226,7 +236,8 @@ export async function POST(request: NextRequest) {
           lng: payload.customer.location.lng,
           label: payload.customer.locationLabel || "",
           distanceKm: delivery?.distanceKm ?? null,
-          feeUgx: delivery?.feeUgx ?? null,
+          feeUgx: freeDelivery ? 0 : (delivery?.feeUgx ?? null),
+          freeDelivery,
           store: delivery?.storeId ?? null,
           maps: `https://www.google.com/maps?q=${payload.customer.location.lat},${payload.customer.location.lng}`,
         }),
@@ -260,11 +271,12 @@ export async function POST(request: NextRequest) {
       })),
       // Delivery fee (when auto-quoted from the pin) recorded as a fee line —
       // paid in cash on arrival together with the goods. No quote = fee
-      // settled on the confirmation call, like before.
+      // settled on the confirmation call, like before. Distance/store stay in
+      // the pin metadata for the rider, not in the customer-facing label.
       fee_lines: delivery
         ? [{
-            name: `Delivery (${delivery.distanceKm} km · ${delivery.storeName}) — cash on arrival`,
-            total: delivery.feeUgx.toString(),
+            name: freeDelivery ? "Free delivery" : "Delivery",
+            total: deliveryFee.toString(),
           }]
         : [],
       customer_note: payload.customer.notes || "",
@@ -292,7 +304,6 @@ export async function POST(request: NextRequest) {
     const data = await res.json();
     if (!data?.id) throw new Error("WooCommerce did not return an order id.");
     const wcOrderId = data.id as number;
-    const deliveryFee = delivery?.feeUgx ?? 0;
 
     // 6. Cache for idempotency
     if (idempotencyKey) {

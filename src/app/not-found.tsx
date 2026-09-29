@@ -18,7 +18,7 @@ export default function NotFound() {
                 </h2>
 
                 <p className="text-zinc-500 font-medium mb-10 leading-relaxed">
-                    Looks like the vintage you're looking for doesn't exist or has been moved to a private cellar.
+                    Looks like the vintage you&apos;re looking for doesn&apos;t exist or has been moved to a private cellar.
                 </p>
 
                 <Link

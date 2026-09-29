@@ -97,8 +97,8 @@ export default function DeliveryPage() {
         <section>
           <h2 className="text-2xl font-black uppercase tracking-tighter mb-6">Covered Areas</h2>
           <p className="text-zinc-500 text-sm mb-6 font-medium">
-            We currently deliver to the following areas in Kampala. Don't see yours?{" "}
-            <Link href="/contact" className="text-primary-red font-bold hover:underline">Contact us</Link> — we'll do our best.
+            We currently deliver to the following areas in Kampala. Don&apos;t see yours?{" "}
+            <Link href="/contact" className="text-primary-red font-bold hover:underline">Contact us</Link> — we&apos;ll do our best.
           </p>
           <div className="flex flex-wrap gap-2">
             {deliveryAreas.map((area) => (

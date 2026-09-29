@@ -363,12 +363,6 @@ const Navbar = () => {
     }
   };
 
-  // Active category test for the strip highlight
-  const activeCategoryHref = (href: string) => {
-    if (typeof window === "undefined") return false;
-    return false; // active state handled per-link below via pathname+search
-  };
-
   return (
     <>
       <AnnouncementBar />

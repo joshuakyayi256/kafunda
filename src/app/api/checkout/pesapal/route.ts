@@ -323,14 +323,12 @@ async function createWooOrder(
   const feeLines: { name: string; total: string }[] = [];
   // Delivery fee (when auto-quoted from the pin) is recorded as a fee line so
   // the Woo order total exactly matches the amount charged via Pesapal. When
-  // the order qualifies for free delivery the distance/store label is kept for
-  // the rider but the CHARGE is zeroed, so the Woo total still reconciles with
+  // the order qualifies for free delivery the distance/store stay in the pin
+  // metadata for the rider but the CHARGE is zeroed, so the Woo total still reconciles with
   // the Pesapal amount. When there's no quote, the fee is settled on the call.
   if (delivery) {
     feeLines.push({
-      name: freeDelivery
-        ? `Delivery (${delivery.distanceKm} km · ${delivery.storeName}) — FREE (order over threshold)`
-        : `Delivery (${delivery.distanceKm} km · ${delivery.storeName})`,
+      name: freeDelivery ? "Free delivery" : "Delivery",
       total: freeDelivery ? "0" : delivery.feeUgx.toString(),
     });
   }

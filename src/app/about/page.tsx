@@ -70,13 +70,13 @@ export default function AboutPage() {
               Who We Are
             </p>
             <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-[0.95] mb-6">
-              Uganda's Premier<br />
+              Uganda&apos;s Premier<br />
               <span className="text-primary-red">Liquor Destination</span>
             </h2>
             <p className="text-zinc-600 leading-relaxed mb-4 font-medium">
               Kafunda Wines & Spirits was built on a simple belief: that access to great drinks
-              shouldn't require a trip across town. Whether you're hosting a dinner party,
-              celebrating a milestone, or winding down after a long week — premium shouldn't
+              shouldn&apos;t require a trip across town. Whether you&apos;re hosting a dinner party,
+              celebrating a milestone, or winding down after a long week — premium shouldn&apos;t
               mean complicated.
             </p>
             <p className="text-zinc-600 leading-relaxed mb-8 font-medium">
@@ -137,7 +137,7 @@ export default function AboutPage() {
           Ready?
         </p>
         <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-6">
-          Let's pour you something<br />
+          Let&apos;s pour you something<br />
           <span className="text-primary-red">special.</span>
         </h2>
         <Link

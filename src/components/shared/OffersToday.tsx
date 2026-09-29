@@ -5,10 +5,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "@/components/shared/ProductCard";
 import products from "@/data/products.json";
+import type { Product } from "@/types";
 import { motion } from "framer-motion";
 
 const OffersToday = () => {
-    const dailyOffers = products.filter((p: any) => p.is_today_offer).slice(0, 4);
+    const dailyOffers = (products as unknown as Product[]).filter((p) => p.is_today_offer).slice(0, 4);
 
     if (dailyOffers.length === 0) return null;
 
@@ -45,7 +46,7 @@ const OffersToday = () => {
                     whileInView="whileInView"
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12"
                 >
-                    {dailyOffers.map((offer: any) => (
+                    {dailyOffers.map((offer) => (
                         <motion.div key={offer.id} variants={staggerItem}>
                             <ProductCard product={offer} />
                         </motion.div>
