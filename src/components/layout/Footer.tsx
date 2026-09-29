@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { CONTACT, SOCIAL, SITE } from "@/lib/constants";
+import { CONTACT, SOCIAL, SITE, APP_LINKS } from "@/lib/constants";
 
 /**
  * Footer (June 2026, client revisions).
@@ -17,11 +17,6 @@ import { CONTACT, SOCIAL, SITE } from "@/lib/constants";
  *   google-play.png   app-store.png
  *   -> if your Google Play file is .jpg, change the src below to .jpg.
  */
-
-const APP_LINKS = {
-  ios: "https://apps.apple.com/search?term=kafunda%20winestore",
-  android: "https://play.google.com/store/search?q=kafunda%20winestore&c=apps",
-};
 
 const SHOP_LINKS = [
   { label: "Beers & Ciders", href: "/shop?category=Beers" },

@@ -4,16 +4,21 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Truck, Smartphone } from "lucide-react";
 
 /**
- * Minimal, image-led hero.
- * Big photography, one short line, two CTAs. Slides crossfade slowly with
- * no carousel chrome (no arrows) - the imagery is the message.
+ * Image-led hero, tuned for mobile ad traffic.
+ * - Height is driven by viewport WIDTH on phones (so the photo keeps a sane
+ *   crop instead of becoming a tall sliver) and by viewport height on desktop.
+ * - A strong bottom scrim keeps the headline readable on ANY photo — the
+ *   old light scrim let white text vanish into bright glassware.
+ * - Image, headline and CTA change together (one key), so the button never
+ *   says "Whiskies" over a wine photo mid-transition.
+ * - Trust line (delivery time + payment options) answers the two questions
+ *   ad visitors have before they scroll.
  *
- * NOTE: images are attractive Unsplash stock placeholders (host already
- * allowlisted in next.config). Swap the URLs for Kafunda's own product
- * photography when it's ready - just edit SLIDES below.
+ * NOTE: images are Unsplash stock placeholders (host allowlisted in
+ * next.config). Swap for Kafunda's own photography by editing SLIDES.
  */
 const SLIDES = [
   {
@@ -30,7 +35,7 @@ const SLIDES = [
     alt: "Premium whisky bottles on a shelf",
     line: "Single malts worth savouring.",
     cta: "Shop Whiskies",
-    href: "/shop?category=Whisky",
+    href: "/shop?category=Whiskys",
   },
   {
     id: 3,
@@ -38,7 +43,7 @@ const SLIDES = [
     alt: "Champagne being poured into glasses",
     line: "Every occasion deserves bubbles.",
     cta: "Shop Champagnes",
-    href: "/shop?category=Champagne",
+    href: "/shop?category=Champagnes",
   },
 ];
 
@@ -55,65 +60,77 @@ export default function Hero() {
   const slide = SLIDES[index];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 md:pt-7">
-    <section className="relative h-[46vh] min-h-85 md:h-[54vh] md:min-h-105 overflow-hidden rounded-3xl bg-kafunda-ink shadow-sm">
-      {/* Imagery */}
-      <AnimatePresence mode="popLayout">
-        <motion.div
-          key={slide.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
-          className="absolute inset-0"
-        >
-          <Image
-            src={slide.image}
-            alt={slide.alt}
-            fill
-            priority={slide.id === 1}
-            sizes="100vw"
-            className="object-cover"
-          />
-        </motion.div>
-      </AnimatePresence>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 md:pt-7">
+      <section
+        className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-kafunda-ink shadow-sm
+          h-[68vw] min-h-60 max-h-100 sm:h-[46vh] sm:max-h-none md:h-[54vh] md:min-h-105"
+      >
+        {/* Imagery */}
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={slide.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={slide.image}
+              alt={slide.alt}
+              fill
+              priority={slide.id === 1}
+              sizes="(max-width: 1280px) 100vw, 1280px"
+              className="object-cover object-center"
+            />
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Legibility scrim - bottom-weighted so the image stays the star */}
-      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/15 to-transparent" />
+        {/* Legibility scrim — strong at the bottom where the copy sits. */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/45 to-black/5" />
 
-      {/* Copy - one line + CTAs, bottom-left */}
-      <div className="absolute inset-x-0 bottom-0">
-        <div className="px-6 sm:px-8 lg:px-12 pb-8 md:pb-12">
-          <AnimatePresence mode="wait">
-            <motion.p
+        {/* Copy + CTAs, bottom-left */}
+        <div className="absolute inset-x-0 bottom-0 px-4 sm:px-8 lg:px-12 pb-4 sm:pb-8 md:pb-12">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
               key={slide.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.45 }}
-              className="text-white text-2xl sm:text-3xl md:text-4xl font-black tracking-tight max-w-xl mb-5"
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.3 }}
             >
-              {slide.line}
-            </motion.p>
+              <p className="text-white text-[22px] leading-tight sm:text-3xl md:text-5xl font-black tracking-tight max-w-xl mb-2 sm:mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+                {slide.line}
+              </p>
+
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-white/90 text-[11px] sm:text-sm font-semibold mb-3 sm:mb-5 drop-shadow">
+                <span className="inline-flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> 1–2 hr delivery in Kampala
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Smartphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Mobile Money · Card · Cash
+                </span>
+              </p>
+
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Link
+                  href={slide.href}
+                  className="inline-flex items-center justify-center gap-2 bg-primary-red hover:bg-primary-red-hover text-white px-5 sm:px-7 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider transition-colors shadow-lg"
+                >
+                  {slide.cta} <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/shop"
+                  className="inline-flex items-center justify-center bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/40 text-white px-4 sm:px-6 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider transition-colors"
+                >
+                  Browse All
+                </Link>
+              </div>
+            </motion.div>
           </AnimatePresence>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={slide.href}
-              className="inline-flex items-center gap-2 bg-primary-red hover:bg-primary-red-hover text-white px-6 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-colors"
-            >
-              {slide.cta} <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/shop"
-              className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-white px-6 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-colors"
-            >
-              Browse All
-            </Link>
-          </div>
-
-          {/* Slide progress - three thin ticks, no chrome */}
-          <div className="flex gap-1.5 mt-6">
+          {/* Slide ticks */}
+          <div className="flex gap-1.5 mt-3 sm:mt-6">
             {SLIDES.map((s, i) => (
               <button
                 key={s.id}
@@ -127,8 +144,7 @@ export default function Hero() {
             ))}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
     </div>
   );
 }

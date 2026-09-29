@@ -37,7 +37,17 @@ export default async function Home() {
   const catalogueEmpty = products.length === 0;
 
   // ── Section datasets (one fetch, filtered in memory) ──────────────────────
-  const offerPicks = products.filter((p) => p.is_sale);
+  // Real deals first (sale / today's-offer items keep their SALE badge), then
+  // topped up to a full row with in-stock picks that rotate daily — only a
+  // handful of products are on sale at a time, and a 3-card row looked empty.
+  const OFFER_ROW = 16;
+  const deals = products.filter((p) => p.is_sale || p.is_today_offer);
+  const dealIds = new Set(deals.map((p) => p.id));
+  const day = Math.floor(Date.now() / 86_400_000);
+  const pool = products.filter((p) => !dealIds.has(p.id) && p.in_stock && p.price_ugx > 0);
+  const start = pool.length ? (day * 7) % pool.length : 0;
+  const rotated = [...pool.slice(start), ...pool.slice(0, start)];
+  const offerPicks = [...deals, ...rotated].slice(0, Math.max(OFFER_ROW, deals.length));
 
   const beers       = products.filter((p) => inCategory(p, ["beer", "cider"]));
   const champagnes  = products.filter((p) => inCategory(p, ["champagne", "sparkling", "prosecco"]));
@@ -80,8 +90,9 @@ export default async function Home() {
       <CategoryShelf
         title="Today's Offers"
         accentWord="Offers"
-        eyebrow="Limited Time"
+        eyebrow="Deals & top picks"
         products={offerPicks}
+        limit={offerPicks.length}
         viewAllHref="/shop?filter=offers"
         textured
       />

@@ -7,7 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
 import SmoothScroll from "@/components/providers/SmoothScroll";
-import { SITE, CONTACT, SOCIAL, STORES } from "@/lib/constants";
+import { SITE, CONTACT, SOCIAL, STORES, IOS_APP_ID } from "@/lib/constants";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -77,6 +77,8 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   },
   icons: { icon: "/kafunda-icon.png", apple: "/kafunda-icon.png" },
+  // Safari Smart App Banner: "Open" if the Kafunda app is installed, "Get" if not.
+  itunes: { appId: IOS_APP_ID },
   openGraph: {
     type: "website",
     siteName: "Kafunda Wines & Spirits",

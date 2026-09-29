@@ -27,6 +27,17 @@ export const CONTACT = {
   },
 } as const;
 
+/**
+ * Mobile apps. IOS_APP_ID also drives Safari's Smart App Banner (root
+ * layout), which shows "Open" to customers who already have the app.
+ */
+export const IOS_APP_ID = "6808913536";
+
+export const APP_LINKS = {
+  ios: `https://apps.apple.com/ug/app/kafunda-winestore-2026/id${IOS_APP_ID}`,
+  android: "https://play.google.com/store/search?q=kafunda%20winestore&c=apps",
+} as const;
+
 export const SOCIAL = {
   facebook: "https://www.facebook.com/p/Kafunda-Wine-Store-Spirits-100063554799924/",
   twitter: "https://twitter.com/KafundaStore",

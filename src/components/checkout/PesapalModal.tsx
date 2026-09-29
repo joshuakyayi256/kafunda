@@ -40,6 +40,22 @@ interface StatusResponse {
   reason?: string | null;
 }
 
+/**
+ * Cancel an unfinished payment's Woo order (verified server-side against
+ * Pesapal — a paid order comes back "confirmed" instead). Exported so the
+ * checkout page can also close a parked payment the customer abandons.
+ */
+export async function cancelPesapalOrder(trackingId: string): Promise<string | undefined> {
+  const res = await fetch("/api/checkout/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderTrackingId: trackingId, cancel: true }),
+    keepalive: true, // survives the page being closed right after
+  });
+  const data = (await res.json()) as { state?: string };
+  return data.state;
+}
+
 async function fetchStatus(trackingId: string): Promise<StatusResponse> {
   const res = await fetch(
     `/api/orders/status?orderTrackingId=${encodeURIComponent(trackingId)}`,
@@ -109,13 +125,10 @@ export default function PesapalModal({
     if (cancelling || settledRef.current) return;
     setCancelling(true);
     try {
-      const data = await fetchStatus(trackingId);
-      if (data.status === "completed") {
-        await fetch("/api/checkout/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderTrackingId: trackingId }),
-        }).catch(() => undefined);
+      // The server checks with Pesapal: a paid order is confirmed, an unpaid
+      // one is closed as "cancelled" so it doesn't linger as Pending payment.
+      const state = await cancelPesapalOrder(trackingId);
+      if (state === "confirmed") {
         settleCompleted();
         return;
       }
@@ -152,6 +165,7 @@ export default function PesapalModal({
       const notification = (params.get("OrderNotificationType") || "").toUpperCase();
 
       if (notification === "CANCELLED") {
+        void cancelPesapalOrder(trackingId).catch(() => undefined);
         settleFailed(`Payment was cancelled. ${RETRY_HINT}`);
         return;
       }
@@ -161,7 +175,7 @@ export default function PesapalModal({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [settleFailed]);
+  }, [settleFailed, trackingId]);
 
   // ── Verification poll (the authority on whether money moved) ──────────────
   useEffect(() => {

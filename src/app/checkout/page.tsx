@@ -12,7 +12,7 @@ import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
 import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery, DELIVERY_FEE } from "@/lib/constants";
 import LocationPicker, { PickedLocation } from "@/components/shared/LocationPicker";
-import PesapalModal from "@/components/checkout/PesapalModal";
+import PesapalModal, { cancelPesapalOrder } from "@/components/checkout/PesapalModal";
 
 type PaymentMethod = "pesapal" | "cod";
 
@@ -574,7 +574,12 @@ export default function CheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { clearPendingPayment(); setResumable(null); }}
+                onClick={() => {
+                  // Close the abandoned order so it doesn't sit as "Pending payment".
+                  void cancelPesapalOrder(resumable.trackingId).catch(() => undefined);
+                  clearPendingPayment();
+                  setResumable(null);
+                }}
                 className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition-colors hover:text-zinc-700"
               >
                 Start Over

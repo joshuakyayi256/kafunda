@@ -63,16 +63,16 @@ export default function CategoryShelf({
   }
 
   return (
-    <section className={`py-10 md:py-12 ${textured ? "bg-transparent" : "bg-white"} border-t border-kafunda-bone-soft`}>
+    <section className={`py-6 md:py-12 ${textured ? "bg-transparent" : "bg-white"} border-t border-kafunda-bone-soft`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-end mb-6 md:mb-8">
+        <div className="flex justify-between items-end mb-3 md:mb-8">
           <div>
             {eyebrow && (
               <p className="text-[10px] font-bold text-primary-red uppercase tracking-[0.3em] mb-1.5">
                 {eyebrow}
               </p>
             )}
-            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-kafunda-ink">
+            <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-kafunda-ink">
               {before}
               {accent && <span className="text-primary-red">{accent}</span>}
               {after}
@@ -120,13 +120,13 @@ export default function CategoryShelf({
         */}
         <div
           ref={scrollRef}
-          className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 scrollbar-hide"
+          className="flex items-stretch gap-2 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 sm:pb-4 scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {items.map((product) => (
             <div
               key={product.id}
-              className="snap-start shrink-0 flex w-37.5 sm:w-50 lg:w-57.5"
+              className="snap-start shrink-0 flex w-[42vw] max-w-45 sm:w-50 sm:max-w-none lg:w-57.5"
             >
               <ProductCard product={product} />
             </div>

@@ -75,7 +75,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         alt={product.name}
                         fill
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className={`object-contain p-4 transition-transform duration-500 group-hover:scale-105 ${!product.in_stock ? "opacity-40 grayscale" : ""}`}
+                        className={`object-contain p-2 sm:p-4 transition-transform duration-500 group-hover:scale-105 ${!product.in_stock ? "opacity-40 grayscale" : ""}`}
                     />
 
                     {product.is_sale && (
@@ -118,7 +118,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 </div>
 
                 {/* Info — grows to fill remaining height; price pinned to bottom */}
-                <div className="px-3.5 pt-3 pb-4 flex flex-col grow">
+                <div className="px-2.5 sm:px-3.5 pt-2 sm:pt-3 pb-3 sm:pb-4 flex flex-col grow">
                     <p className="text-[9px] font-bold text-kafunda-green uppercase tracking-widest mb-1 truncate">
                         {category}
                     </p>

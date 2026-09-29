@@ -37,10 +37,12 @@ const WC_HEADERS: Record<string, string> = ORIGIN_IP ? { Host: WC_HOSTNAME } : {
 
 interface ConfirmPayload {
   orderTrackingId?: string;
+  /** Customer cancelled/abandoned: close the order unless it's actually paid. */
+  cancel?: boolean;
 }
 
 /** What the success page consumes. */
-type ConfirmState = "confirmed" | "pending" | "failed" | "refunded" | "error";
+type ConfirmState = "confirmed" | "pending" | "failed" | "refunded" | "cancelled" | "error";
 
 // ── Helpers (kept in sync with the IPN route — consolidate into
 //    src/lib/pesapal.ts during the next quiet window) ─────────────────────────
@@ -140,14 +142,31 @@ async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string
   }
 }
 
+async function getWooOrderStatus(wcOrderId: string): Promise<string | null> {
+  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
+  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
+  if (!wcKey || !wcSecret) throw new Error("Missing WooCommerce credentials.");
+
+  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
+  const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}?_fields=id,status`, {
+    headers: { Accept: "application/json", Authorization: `Basic ${base64Auth}`, ...WC_HEADERS },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Woo order lookup failed (${res.status}).`);
+  const data = (await res.json()) as { status?: string };
+  return data.status ?? null;
+}
+
 // ── Route Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   let orderTrackingId = "";
+  let cancelRequested = false;
 
   try {
     const payload = (await request.json()) as ConfirmPayload;
     orderTrackingId = (payload.orderTrackingId || "").trim();
+    cancelRequested = payload.cancel === true;
   } catch {
     return NextResponse.json({ state: "error", message: "Invalid request body." }, { status: 400 });
   }
@@ -187,6 +206,21 @@ export async function POST(request: NextRequest) {
     const pesapalStatus = String(txn.payment_status_description || "PENDING");
     const wcStatus = mapStatus(pesapalStatus);
     const state = toConfirmState(wcStatus);
+
+    // 3b. Customer cancelled / abandoned the payment. Unless Pesapal says the
+    //     money actually moved, close the order as "cancelled" so unpaid
+    //     orders don't pile up as "Pending payment". Only a still-unpaid
+    //     order (pending/failed) is touched — never a paid one. If the
+    //     customer somehow completes the payment later, the IPN flips it
+    //     straight back to processing + paid.
+    if (cancelRequested && state !== "confirmed" && state !== "refunded") {
+      const current = await getWooOrderStatus(wcOrderId);
+      if (current === "pending" || current === "failed") {
+        await updateWooOrder(wcOrderId, "cancelled", orderTrackingId);
+        console.log(`[Confirm] Order ${pesapalRef} cancelled by customer (Pesapal: ${pesapalStatus}).`);
+      }
+      return NextResponse.json({ state: "cancelled", merchantRef: pesapalRef });
+    }
 
     if (state === "pending") {
       return NextResponse.json({ state, merchantRef: pesapalRef });
