@@ -363,7 +363,9 @@ async function createWooOrder(
     payment_method: "pesapal",
     payment_method_title: "Pesapal (Mobile Money / Card)",
     set_paid: false,
-    status: "pending",
+    // Hidden Draft until PAID (lib/wooOrderStatus.ts): unpaid attempts never
+    // show up as "Pending payment" and never send emails.
+    status: "checkout-draft",
     billing: {
       first_name: customer.firstName,
       last_name: customer.lastName,
@@ -390,16 +392,31 @@ async function createWooOrder(
   };
 
   const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
-  const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Basic ${base64Auth}`,
-      ...WC_HEADERS,
-    },
-    body: JSON.stringify(orderBody),
-  });
+  const post = (body: unknown) =>
+    fetch(`${WC_BASE}/wp-json/wc/v3/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Basic ${base64Auth}`,
+        ...WC_HEADERS,
+      },
+      body: JSON.stringify(body),
+    });
+
+  let res = await post(orderBody);
+
+  // Store doesn't accept the Draft status (400 invalid param) → create as
+  // pending like before rather than failing the checkout.
+  if (res.status === 400) {
+    const text = await res.text();
+    if (/status/i.test(text)) {
+      console.warn("[Pesapal] checkout-draft not accepted; creating as pending.");
+      res = await post({ ...orderBody, status: "pending" });
+    } else {
+      throw new Error(`WooCommerce order creation failed (400): ${text.slice(0, 200)}`);
+    }
+  }
 
   if (!res.ok) {
     const text = await res.text();

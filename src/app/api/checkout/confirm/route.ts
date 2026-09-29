@@ -155,8 +155,9 @@ export async function POST(request: NextRequest) {
     if (cancelRequested && state !== "confirmed" && state !== "refunded") {
       // setWooOrderStatus only moves a still-pending order; an order already
       // closed as failed/cancelled is left alone (no second email).
-      if (await setWooOrderStatus(wcOrderId, "cancelled", orderTrackingId)) {
-        console.log(`[Confirm] Order ${pesapalRef} cancelled by customer (Pesapal: ${pesapalStatus}).`);
+      // Hide the unpaid order (Draft: no email, not in the orders list).
+      if (await setWooOrderStatus(wcOrderId, "checkout-draft", orderTrackingId)) {
+        console.log(`[Confirm] Order ${pesapalRef} hidden after customer cancel (Pesapal: ${pesapalStatus}).`);
       }
       return NextResponse.json({ state: "cancelled", merchantRef: pesapalRef });
     }

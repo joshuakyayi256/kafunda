@@ -1,15 +1,16 @@
 /**
- * Cancel unpaid Pesapal orders that have been sitting in "Pending payment".
+ * Background check of unpaid Pesapal orders (Draft or legacy "Pending payment").
  * -------------------------------------------------------------------------
  * The Woo order has to exist BEFORE the customer pays (Pesapal charges
- * against its KAF-{id} reference), so every abandoned payment — browser
- * closed, phone died, customer walked away — would otherwise stay pending
- * forever. After STALE_AFTER_MIN minutes an unpaid order is closed as
- * "cancelled".
+ * against its KAF-{id} reference). New ones are created as hidden Drafts.
+ * After STALE_AFTER_MIN minutes each is checked with Pesapal:
+ *   - PAID (confirmation lost)  → marked paid → shop's "New order" email
+ *   - not paid                  → hidden as a Draft (no email); Woo deletes
+ *                                 old drafts by itself
+ *   - unknown / Pesapal down    → left alone, checked again next run
  *
- * Safe against late payments: if Pesapal does complete one afterwards, the
- * IPN (and /api/checkout/confirm) write processing + set_paid, which moves
- * a cancelled order straight back to paid.
+ * Safe against late payments: if Pesapal completes one afterwards, the IPN
+ * (and /api/checkout/confirm) mark it paid.
  *
  * Runs from the daily cron (/api/cron/cancel-stale-orders) and, throttled,
  * after each new Pesapal checkout so it keeps up between cron runs.
@@ -27,6 +28,8 @@ const THROTTLE_MS = 10 * 60 * 1000;
  */
 const LOOKBACK_DAYS = 3;
 const MAX_PER_RUN = 5;
+/** Pesapal status checks per run (cheap, no emails) — newest orders first. */
+const MAX_CHECKS_PER_RUN = 20;
 
 const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
   .replace(/\/graphql\/?$/, "")
@@ -51,6 +54,7 @@ function authHeaders(): Record<string, string> {
 
 interface WooOrderLite {
   id: number;
+  status?: string;
   payment_method?: string;
   date_created_gmt?: string;
   transaction_id?: string;
@@ -66,26 +70,31 @@ export async function cancelStalePesapalOrders(): Promise<number[]> {
   const before = new Date(cutoff).toISOString().slice(0, 19);
   const after = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 19);
 
-  const res = await fetch(
-    `${WC_BASE}/wp-json/wc/v3/orders?status=pending&before=${before}&after=${after}` +
-      `&orderby=date&order=asc&per_page=${MAX_PER_RUN * 4}` +
-      `&_fields=id,payment_method,date_created_gmt,transaction_id,meta_data`,
-    { headers, cache: "no-store" }
-  );
+  // Newest first, so a recent paid-but-unconfirmed order is always checked
+  // before older abandoned drafts (which Woo deletes by itself anyway).
+  const list = (statuses: string) =>
+    fetch(
+      `${WC_BASE}/wp-json/wc/v3/orders?status=${statuses}&before=${before}&after=${after}` +
+        `&orderby=date&order=desc&per_page=${MAX_CHECKS_PER_RUN}` +
+        `&_fields=id,status,payment_method,date_created_gmt,transaction_id,meta_data`,
+      { headers, cache: "no-store" }
+    );
+  let res = await list("pending,checkout-draft");
+  if (res.status === 400) res = await list("pending"); // store without Draft support
   if (!res.ok) throw new Error(`Pending order lookup failed (${res.status}).`);
   const orders = (await res.json()) as WooOrderLite[];
 
-  const stale = orders
-    .filter((o) => {
-      if (o.payment_method !== "pesapal") return false;
-      const created = o.date_created_gmt ? Date.parse(`${o.date_created_gmt}Z`) : NaN;
-      return Number.isFinite(created) && created < cutoff;
-    })
-    .slice(0, MAX_PER_RUN);
+  const stale = orders.filter((o) => {
+    if (o.payment_method !== "pesapal") return false;
+    const created = o.date_created_gmt ? Date.parse(`${o.date_created_gmt}Z`) : NaN;
+    return Number.isFinite(created) && created < cutoff;
+  });
   if (stale.length === 0) return [];
 
   const cancelled: number[] = [];
+  let writes = 0;
   for (const o of stale) {
+    if (writes >= MAX_PER_RUN) break; // trickle: never a burst of changes/emails
     const id = String(o.id);
     const trackingId =
       o.meta_data?.find((m) => m.key === "_pesapal_tracking_id")?.value || o.transaction_id || "";
@@ -94,7 +103,7 @@ export async function cancelStalePesapalOrders(): Promise<number[]> {
     // ask Pesapal first: a payment whose confirmation got lost is recovered
     // (→ processing, which fires the shop's "New order" email) instead of
     // being cancelled.
-    let note = `Auto-cancelled: Pesapal payment not completed within ${STALE_AFTER_MIN} minutes. If the customer pays later, the payment notification will mark it paid automatically.`;
+    let note = `Hidden as unpaid: Pesapal payment not completed within ${STALE_AFTER_MIN} minutes. If the customer pays later, the payment notification will mark it paid automatically.`;
     if (trackingId) {
       let status: string;
       try {
@@ -104,6 +113,7 @@ export async function cancelStalePesapalOrders(): Promise<number[]> {
         continue;
       }
       if (status === "COMPLETED") {
+        writes++;
         await setWooOrderStatus(id, "processing", String(trackingId));
         await addNote(id, "Payment confirmed with Pesapal by the order check (confirmation had not arrived). Marked paid.", headers);
         console.log(`[staleOrders] Order ${id}: RECOVERED a paid order.`);
@@ -114,17 +124,21 @@ export async function cancelStalePesapalOrders(): Promise<number[]> {
         // PENDING / unknown: Pesapal hasn't settled it — don't guess.
         continue;
       }
-      note = `Auto-cancelled: Pesapal reports the payment as ${status} (not paid).`;
+      note = `Hidden as unpaid: Pesapal reports the payment as ${status}.`;
     }
 
-    if (await setWooOrderStatus(id, "cancelled", String(trackingId || ""))) {
+    // Unpaid: hide it as a Draft (no email, off the orders list; Woo deletes
+    // old drafts itself). Already a draft → nothing to do.
+    if (o.status === "checkout-draft") continue;
+    if (await setWooOrderStatus(id, "checkout-draft", String(trackingId || ""))) {
+      writes++;
       await addNote(id, note, headers);
       cancelled.push(o.id);
     }
   }
 
   if (cancelled.length) {
-    console.log(`[staleOrders] Cancelled ${cancelled.length} unpaid Pesapal order(s): ${cancelled.join(", ")}`);
+    console.log(`[staleOrders] Hid ${cancelled.length} unpaid Pesapal order(s): ${cancelled.join(", ")}`);
   }
   return cancelled;
 }
