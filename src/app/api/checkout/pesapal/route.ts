@@ -11,7 +11,8 @@
  * amount sent to Pesapal is the goods subtotal only.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { cancelStalePesapalOrdersThrottled } from "@/lib/staleOrders";
 import { getProductsByIds } from "@/lib/api";
 import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery } from "@/lib/constants";
 import { getDeliveryQuote, isInUganda, type DeliveryQuote } from "@/lib/delivery";
@@ -415,6 +416,10 @@ async function createWooOrder(
 export async function POST(request: NextRequest) {
   try {
     purgeExpiredIdempotency();
+
+    // After the response is sent: close earlier abandoned (unpaid) Pesapal
+    // orders so they don't pile up as "Pending payment". Never delays checkout.
+    after(cancelStalePesapalOrdersThrottled);
 
     const payload = (await request.json()) as CheckoutPayload;
 
