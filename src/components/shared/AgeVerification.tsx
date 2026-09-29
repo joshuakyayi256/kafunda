@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 const AgeVerification = () => {
     const [isVisible, setIsVisible] = useState(false);
@@ -11,18 +12,17 @@ const AgeVerification = () => {
         const isVerified = localStorage.getItem("kafunda_age_verified");
         if (!isVerified) {
             // Defer state update to avoid synchronous cascade error
-            setTimeout(() => {
-                setIsVisible(true);
-                // Prevent scrolling while modal is open
-                document.body.style.overflow = "hidden";
-            }, 0);
+            setTimeout(() => setIsVisible(true), 0);
         }
     }, []);
+
+    // Page can't scroll behind the gate (shared, counted lock — released the
+    // moment the gate closes, even if another overlay is involved).
+    useScrollLock(isVisible);
 
     const handleVerify = () => {
         localStorage.setItem("kafunda_age_verified", "true");
         setIsVisible(false);
-        document.body.style.overflow = "unset";
     };
 
     const handleReject = () => {

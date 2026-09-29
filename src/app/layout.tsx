@@ -7,7 +7,6 @@ import Navbar from "@/components/layout/Navbar";
 import CartDrawer from "@/components/shared/CartDrawer";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
-import SmoothScroll from "@/components/providers/SmoothScroll";
 import { SITE, CONTACT, SOCIAL, STORES, IOS_APP_ID } from "@/lib/constants";
 
 const inter = Inter({
@@ -125,11 +124,9 @@ export default function RootLayout({
             <AgeVerification />
             <Navbar />
             <CartDrawer />
-            <SmoothScroll>
               <main className="grow pb-16 md:pb-0">
                 {children}
               </main>
-            </SmoothScroll>
             <Footer />
           </CartProvider>
         </ToastProvider>

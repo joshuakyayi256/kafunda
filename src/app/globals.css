@@ -219,3 +219,11 @@ body.kafunda-textured-site {
 @media (prefers-reduced-motion: reduce) {
   .shimmer::after { animation: none; }
 }
+
+/* ============================================================
+   NATIVE SCROLLING (Lenis removed — see useScrollLock.ts)
+   Anchor jumps / scrollIntoView land below the sticky header.
+   ============================================================ */
+html {
+  scroll-padding-top: 8rem;
+}

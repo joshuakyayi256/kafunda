@@ -8,6 +8,7 @@ import { X, ShoppingBag, Star, ArrowRight } from "lucide-react";
 import { Product } from "@/types";
 import { formatUGX } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 interface Props {
   product: Product | null;
@@ -17,11 +18,8 @@ interface Props {
 export default function QuickViewModal({ product, onClose }: Props) {
   const { addToCart } = useCart();
 
-  // Lock body scroll while open
-  useEffect(() => {
-    if (product) document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [product]);
+  // Lock page scroll while open (shared, counted lock).
+  useScrollLock(!!product);
 
   // Close on Escape key
   useEffect(() => {

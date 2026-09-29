@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Lock, ShieldCheck, X } from "lucide-react";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 const POLL_INTERVAL_MS = 2_500;
 /** ~10 minutes of payment-page time (MoMo PIN prompts can be slow). */
@@ -148,11 +149,7 @@ export default function PesapalModal({
   }, [handleCancel]);
 
   // ── Lock the page behind the modal ────────────────────────────────────────
-  useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
-  }, []);
+  useScrollLock(true);
 
   // ── Return signal from the iframe (/checkout/pesapal-return) ──────────────
   useEffect(() => {

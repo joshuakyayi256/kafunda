@@ -11,6 +11,7 @@ import {
   Zap, ArrowRight, User, Loader2, Truck, Clock,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useScrollLock } from "@/lib/useScrollLock";
 import { formatUGX } from "@/lib/utils";
 
 // Config
@@ -264,12 +265,7 @@ const Navbar = () => {
     }
   }, [isSearchOpen]);
 
-  useEffect(() => {
-    document.body.style.overflow = isSearchOpen || isMoreOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isSearchOpen, isMoreOpen]);
+  useScrollLock(isSearchOpen || isMoreOpen);
 
   useEffect(() => {
     const t = setTimeout(() => {

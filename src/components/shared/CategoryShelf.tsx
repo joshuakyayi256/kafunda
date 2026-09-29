@@ -120,7 +120,7 @@ export default function CategoryShelf({
         */}
         <div
           ref={scrollRef}
-          className="flex items-stretch gap-2 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 sm:pb-4 scrollbar-hide"
+          className="flex items-stretch gap-2 sm:gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory md:snap-proximity scroll-smooth pb-3 sm:pb-4 scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {items.map((product) => (

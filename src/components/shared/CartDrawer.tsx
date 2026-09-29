@@ -16,6 +16,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, Plus, Minus, Trash2, ShoppingCart, ArrowRight, Truck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useScrollLock } from "@/lib/useScrollLock";
 import { formatUGX } from "@/lib/utils";
 import { DELIVERY_FEE, qualifiesForFreeDelivery } from "@/lib/constants";
 
@@ -37,17 +38,13 @@ export default function CartDrawer() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pathname]);
 
-    // Esc closes; lock page scroll while open.
+    // Lock page scroll while open (shared, counted lock); Esc closes.
+    useScrollLock(isCartOpen);
     useEffect(() => {
         if (!isCartOpen) return;
         const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeCart(); };
-        const previous = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
         window.addEventListener("keydown", onKey);
-        return () => {
-            document.body.style.overflow = previous;
-            window.removeEventListener("keydown", onKey);
-        };
+        return () => window.removeEventListener("keydown", onKey);
     }, [isCartOpen, closeCart]);
 
     const threshold = DELIVERY_FEE.FREE_DELIVERY_THRESHOLD_UGX;
