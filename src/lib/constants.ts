@@ -9,7 +9,7 @@
 export const SITE = {
   name: "Kafunda Wines & Spirits",
   tagline: "Uganda's premier destination for wines, spirits & fine drinks.",
-  url: "https://kafundawines.com",
+  url: "https://shop.kafundawines.com",
   email: "info@kafundawines.com",
   description: "Buy Beer, Spirits and Wine Online - Shop Drinks in Uganda.",
 } as const;

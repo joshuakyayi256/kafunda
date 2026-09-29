@@ -1,9 +1,9 @@
 /**
- * iOS Universal Links — lets kafundawines.com links open straight in the
+ * iOS Universal Links — lets shop.kafundawines.com links open straight in the
  * Kafunda app when it's installed (Safari falls back to the website if not).
  *
  * Env (Vercel): APPLE_APP_IDS = "TEAMID.bundle.id" (comma-separate several).
- * The app itself must also list "applinks:kafundawines.com" under its
+ * The app itself must also list "applinks:shop.kafundawines.com" under its
  * Associated Domains entitlement. Until the env var is set this returns 404
  * and links simply keep opening in the browser.
  */

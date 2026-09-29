@@ -28,7 +28,7 @@ const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafun
 const ORIGIN_IP = process.env.WP_ORIGIN_IP;
 const WC_BASE   = ORIGIN_IP ? `http://${ORIGIN_IP}` : `https://${WC_HOSTNAME}`;
 const WC_HEADERS: Record<string, string> = ORIGIN_IP ? { Host: WC_HOSTNAME } : {};
-const BASE_URL  = process.env.NEXT_PUBLIC_BASE_URL || "https://kafundawines.com";
+const BASE_URL  = process.env.NEXT_PUBLIC_BASE_URL || "https://shop.kafundawines.com";
 
 // -- Types ------------------------------------------------------------------
 

@@ -1,12 +1,12 @@
 /**
- * Android App Links — lets kafundawines.com links open straight in the
+ * Android App Links — lets shop.kafundawines.com links open straight in the
  * Kafunda Android app when it's installed.
  *
  * Env (Vercel):
  *   ANDROID_PACKAGE_NAME       e.g. "com.kafunda.winestore"
  *   ANDROID_SHA256_CERT        signing-cert SHA-256 fingerprint(s), comma-separated
  *                              (Play Console → App integrity → App signing).
- * The app must also declare an autoVerify intent filter for kafundawines.com.
+ * The app must also declare an autoVerify intent filter for shop.kafundawines.com.
  * Until configured this returns 404 and links keep opening in the browser.
  */
 

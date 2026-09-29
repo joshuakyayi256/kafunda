@@ -22,7 +22,7 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const SITE_URL = "https://kafundawines.com";
+const SITE_URL = SITE.url;
 // Was /og-default.jpg, which doesn't exist — shared links showed no image.
 const OG_IMAGE = `${SITE_URL}/kafunda-logo-full.png`;
 
