@@ -113,7 +113,7 @@ export default function RootLayout({
       {/* kafunda-textured-site puts the barkcloth texture behind the whole
           site; sections float on top of it (see globals.css). */}
       <body
-        className="kafunda-textured-site min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-hidden"
+        className="kafunda-textured-site min-h-full flex flex-col font-sans text-kafunda-ink overflow-x-clip"
         suppressHydrationWarning
       >
         <script

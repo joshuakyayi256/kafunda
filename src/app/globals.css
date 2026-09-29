@@ -96,7 +96,11 @@ body {
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* clip, NOT hidden: `hidden` on both html and body turns body into a
+     scroll container, which silently breaks every position:sticky element
+     (header, shop sidebar, order summary). clip hides sideways overflow
+     without that side effect. */
+  overflow-x: clip;
 }
 
 main {

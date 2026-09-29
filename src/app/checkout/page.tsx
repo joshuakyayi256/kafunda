@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -293,7 +293,7 @@ export default function CheckoutPage() {
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       e.email = "This email doesn't look right — or leave it empty.";
     }
-    if (!form.address.trim()) e.address = "Please tell us where to deliver (building, street or area).";
+    if (!form.address.trim() && !pinLabel) e.address = "Please tell us where to deliver (building, street or area).";
     setErrors(e);
 
     const first = FIELD_ORDER.find((k) => e[k]);
@@ -311,8 +311,24 @@ export default function CheckoutPage() {
   const scrollToMap = () =>
     document.getElementById("delivery-pin")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
+  /** True once the customer types their own address — auto-fill then stops. */
+  const addressTypedRef = useRef(false);
+
+  /** Pin placed (Locate me / map / search): fill the address box for them. */
+  const handlePinChange = (loc: PickedLocation, label: string) => {
+    setPin(loc);
+    if (!label) return;
+    setPinLabel(label);
+    const clean = label.replace(/,\s*Uganda$/i, "").trim();
+    if (clean && clean !== "Pinned location" && !addressTypedRef.current) {
+      setForm((p) => ({ ...p, address: clean }));
+      setErrors((p) => (p.address ? { ...p, address: undefined } : p));
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === "address") addressTypedRef.current = value.trim() !== "";
     setForm((p) => ({ ...p, [name]: value }));
     if (errors[name as keyof FormErrors]) setErrors((p) => ({ ...p, [name]: undefined }));
     if (serverError) setServerError("");
@@ -323,7 +339,7 @@ export default function CheckoutPage() {
       customer: {
         ...splitName(form.fullName),
         phone: form.phone.replace(/[\s-]/g, ""), email: form.email.trim(),
-        address: form.address,
+        address: form.address.trim() || pinLabel,
         location: pin,
         locationLabel: pinLabel,
         notes: form.notes,
@@ -614,22 +630,12 @@ export default function CheckoutPage() {
               {/* Section 2: Delivery */}
               <SectionCard number={2} title="Delivery Details" icon={MapPin}>
                 <div className="space-y-5">
-                  <InputField label="Delivery Address" name="address"
-                    placeholder="Building, street or area — e.g. Forest Mall, Lugogo" required
-                    autoComplete="street-address"
-                    value={form.address} onChange={handleChange} error={errors.address} />
-
-                  {/* Pin location → instant delivery fee */}
-                  <div id="delivery-pin" className="scroll-mt-24">
+                  {/* Pin location FIRST → instant delivery fee + auto-filled address */}
+                  <div id="delivery-pin" className="scroll-mt-32">
                     <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                      Pin Your Location <span className="text-red-600">*</span> <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(tap the map or use My Location)</span>
+                      Where should we deliver? <span className="text-red-600">*</span> <span className="text-gray-400 font-normal normal-case tracking-normal text-[10px]">(tap Locate me — we fill in the rest)</span>
                     </label>
-                    <LocationPicker
-                      onChange={(loc, label) => {
-                        setPin(loc);
-                        if (label) setPinLabel(label);
-                      }}
-                    />
+                    <LocationPicker onChange={handlePinChange} />
 
                     {/* Quote status */}
                     {quoteState === "loading" && (
@@ -661,6 +667,11 @@ export default function CheckoutPage() {
                       </div>
                     )}
                   </div>
+
+                  <InputField label="Delivery Address" name="address"
+                    placeholder="Filled in from your pin — add building / gate if you like" required
+                    autoComplete="street-address"
+                    value={form.address} onChange={handleChange} error={errors.address} />
 
                   {/* Notes are rarely needed — keep them out of the way. */}
                   {showNotes || form.notes ? (
@@ -733,7 +744,7 @@ export default function CheckoutPage() {
 
             {/* ── Right: Order Summary ── */}
             <div className="lg:col-span-5">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden sticky top-24">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden sticky top-32">
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">

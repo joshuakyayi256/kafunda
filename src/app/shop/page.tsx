@@ -154,8 +154,10 @@ export default async function ShopPage({
                 {/* ── Main layout: desktop sidebar + content ── */}
                 <div className="flex gap-10">
 
-                    {/* Desktop sidebar only — ShopFilters mobile button is lg:hidden inside it */}
-                    <div className="hidden lg:block">
+                    {/* Desktop sidebar only — ShopFilters mobile button is lg:hidden inside it.
+                        self-start + sticky: the sidebar stays put under the header while
+                        only the products scroll (a stretched flex child can't stick). */}
+                    <div className="hidden lg:block self-start sticky top-32">
                         <ShopFilters {...sharedFiltersProps} />
                     </div>
 

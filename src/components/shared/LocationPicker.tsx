@@ -62,12 +62,16 @@ export default function LocationPicker({
   async function commit(lng: number, lat: number) {
     onChangeRef.current({ lat, lng }, ""); // fee quote can start immediately
     try {
+      // No `limit` here: Mapbox rejects limit + several types on reverse
+      // lookups, which left us with only "Kampala, Uganda". Features come back
+      // most-specific first, so [0] is the building/street/area.
       const res = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
-        `?access_token=${TOKEN}&country=ug&types=poi,address,neighborhood,locality,place&limit=1`
+        `?access_token=${TOKEN}&country=ug&types=poi,address,neighborhood,locality,place`
       );
       const data = await res.json();
-      const name: string = data?.features?.[0]?.place_name || "Pinned location";
+      const raw: string = data?.features?.[0]?.place_name || "";
+      const name = raw.replace(/,\s*Uganda$/i, "").trim() || "Pinned location";
       setLabel(name);
       onChangeRef.current({ lat, lng }, name);
     } catch {

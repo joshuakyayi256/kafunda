@@ -247,7 +247,12 @@ export default function ShopFilters({ categories, currentCategory, currentFilter
 
       {/* ── Desktop: Sidebar ── */}
       <aside className="hidden lg:block w-56 shrink-0">
-        <div className="sticky top-28">
+        {/* Own scroll when the category list is taller than the screen, so
+            the sidebar never scrolls away with the products. */}
+        <div
+          className="max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain pr-2 pb-6 [scrollbar-width:thin]"
+          data-lenis-prevent
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-900">
               Filters
