@@ -15,8 +15,18 @@
  * after each new Pesapal checkout so it keeps up between cron runs.
  */
 
+import { getPesapalPaymentStatus } from "@/lib/pesapalStatus";
+import { setWooOrderStatus } from "@/lib/wooOrderStatus";
+
 const STALE_AFTER_MIN = 60;
 const THROTTLE_MS = 10 * 60 * 1000;
+/**
+ * Woo emails "Cancelled order" for every order we close. The first run after
+ * launch swept the whole pending backlog at once and sent a burst of emails,
+ * so: only look at recent orders, and close a few per run at most.
+ */
+const LOOKBACK_DAYS = 3;
+const MAX_PER_RUN = 5;
 
 const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
   .replace(/\/graphql\/?$/, "")
@@ -43,6 +53,8 @@ interface WooOrderLite {
   id: number;
   payment_method?: string;
   date_created_gmt?: string;
+  transaction_id?: string;
+  meta_data?: { key: string; value: string }[];
 }
 
 /** Returns the ids of the orders it cancelled. */
@@ -52,44 +64,95 @@ export async function cancelStalePesapalOrders(): Promise<number[]> {
   // date_created_gmt below keeps the cut-off exact regardless.
   const cutoff = Date.now() - STALE_AFTER_MIN * 60 * 1000;
   const before = new Date(cutoff).toISOString().slice(0, 19);
+  const after = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 19);
 
   const res = await fetch(
-    `${WC_BASE}/wp-json/wc/v3/orders?status=pending&before=${before}&per_page=100&_fields=id,payment_method,date_created_gmt`,
+    `${WC_BASE}/wp-json/wc/v3/orders?status=pending&before=${before}&after=${after}` +
+      `&orderby=date&order=asc&per_page=${MAX_PER_RUN * 4}` +
+      `&_fields=id,payment_method,date_created_gmt,transaction_id,meta_data`,
     { headers, cache: "no-store" }
   );
   if (!res.ok) throw new Error(`Pending order lookup failed (${res.status}).`);
   const orders = (await res.json()) as WooOrderLite[];
 
-  const stale = orders.filter((o) => {
-    if (o.payment_method !== "pesapal") return false;
-    const created = o.date_created_gmt ? Date.parse(`${o.date_created_gmt}Z`) : NaN;
-    return Number.isFinite(created) && created < cutoff;
-  });
+  const stale = orders
+    .filter((o) => {
+      if (o.payment_method !== "pesapal") return false;
+      const created = o.date_created_gmt ? Date.parse(`${o.date_created_gmt}Z`) : NaN;
+      return Number.isFinite(created) && created < cutoff;
+    })
+    .slice(0, MAX_PER_RUN);
   if (stale.length === 0) return [];
 
-  const batch = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/batch`, {
+  const cancelled: number[] = [];
+  for (const o of stale) {
+    const id = String(o.id);
+    const trackingId =
+      o.meta_data?.find((m) => m.key === "_pesapal_tracking_id")?.value || o.transaction_id || "";
+
+    // NEVER close an order we can't prove is unpaid. With a tracking id we
+    // ask Pesapal first: a payment whose confirmation got lost is recovered
+    // (→ processing, which fires the shop's "New order" email) instead of
+    // being cancelled.
+    let note = `Auto-cancelled: Pesapal payment not completed within ${STALE_AFTER_MIN} minutes. If the customer pays later, the payment notification will mark it paid automatically.`;
+    if (trackingId) {
+      let status: string;
+      try {
+        status = await getPesapalPaymentStatus(String(trackingId));
+      } catch (err) {
+        console.warn(`[staleOrders] Order ${id}: Pesapal check failed, leaving pending this run.`, err);
+        continue;
+      }
+      if (status === "COMPLETED") {
+        await setWooOrderStatus(id, "processing", String(trackingId));
+        await addNote(id, "Payment confirmed with Pesapal by the order check (confirmation had not arrived). Marked paid.", headers);
+        console.log(`[staleOrders] Order ${id}: RECOVERED a paid order.`);
+        continue;
+      }
+      if (status === "REVERSED") continue; // leave for a human
+      if (status !== "FAILED" && status !== "INVALID") {
+        // PENDING / unknown: Pesapal hasn't settled it — don't guess.
+        continue;
+      }
+      note = `Auto-cancelled: Pesapal reports the payment as ${status} (not paid).`;
+    }
+
+    if (await setWooOrderStatus(id, "cancelled", String(trackingId || ""))) {
+      await addNote(id, note, headers);
+      cancelled.push(o.id);
+    }
+  }
+
+  if (cancelled.length) {
+    console.log(`[staleOrders] Cancelled ${cancelled.length} unpaid Pesapal order(s): ${cancelled.join(", ")}`);
+  }
+  return cancelled;
+}
+
+async function addNote(id: string, note: string, headers: Record<string, string>) {
+  await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${id}/notes`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ update: stale.map((o) => ({ id: o.id, status: "cancelled" })) }),
-  });
-  if (!batch.ok) throw new Error(`Stale order cancel failed (${batch.status}).`);
+    body: JSON.stringify({ note }),
+  }).catch(() => undefined);
+}
 
-  // Leave a note on each so the shop can see why it was closed.
-  await Promise.allSettled(
-    stale.map((o) =>
-      fetch(`${WC_BASE}/wp-json/wc/v3/orders/${o.id}/notes`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          note: `Auto-cancelled: Pesapal payment not completed within ${STALE_AFTER_MIN} minutes. If the customer pays later, the payment notification will mark it paid automatically.`,
-        }),
-      })
-    )
-  );
-
-  const ids = stale.map((o) => o.id);
-  console.log(`[staleOrders] Cancelled ${ids.length} unpaid Pesapal order(s): ${ids.join(", ")}`);
-  return ids;
+/**
+ * Record Pesapal's tracking id on the Woo order right after checkout starts
+ * (meta only — no status change, no email), so the cleanup above can always
+ * verify an order with Pesapal before touching it.
+ */
+export async function saveTrackingIdOnOrder(wcOrderId: number, trackingId: string): Promise<void> {
+  try {
+    const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ meta_data: [{ key: "_pesapal_tracking_id", value: trackingId }] }),
+    });
+    if (!res.ok) console.warn(`[staleOrders] Could not save tracking id on ${wcOrderId} (${res.status}).`);
+  } catch (err) {
+    console.warn(`[staleOrders] Could not save tracking id on ${wcOrderId}:`, err);
+  }
 }
 
 /** Fire-and-forget variant for request handlers: at most once per 10 min per instance. */

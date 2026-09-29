@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse, after } from "next/server";
-import { cancelStalePesapalOrdersThrottled } from "@/lib/staleOrders";
+import { cancelStalePesapalOrdersThrottled, saveTrackingIdOnOrder } from "@/lib/staleOrders";
 import { getProductsByIds } from "@/lib/api";
 import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery } from "@/lib/constants";
 import { getDeliveryQuote, isInUganda, type DeliveryQuote } from "@/lib/delivery";
@@ -531,6 +531,12 @@ export async function POST(request: NextRequest) {
         JSON.stringify(submitData).slice(0, 300);
       throw new Error(`Pesapal refused submission: ${reason}`);
     }
+
+    // 7b. After the response: store Pesapal's tracking id on the Woo order
+    //     (meta only — no email) so the stale-order check can always verify
+    //     with Pesapal before touching it. Never delays the redirect.
+    const trackingIdForOrder = submitData.order_tracking_id;
+    if (trackingIdForOrder) after(() => saveTrackingIdOnOrder(wcOrderId, trackingIdForOrder));
 
     // 8. Cache for idempotency
     if (idempotencyKey) {
