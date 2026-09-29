@@ -44,6 +44,8 @@ export default function LocationPicker({
   const onChangeRef = useRef(onChange);
   /** A located spot that arrived before the map finished loading. */
   const pendingPinRef = useRef<[number, number] | null>(null);
+  /** Increments per pin move — stale address lookups are ignored. */
+  const commitSeqRef = useRef(0);
 
   const [mapFailed, setMapFailed] = useState(false);
   const [label, setLabel] = useState("");
@@ -60,23 +62,41 @@ export default function LocationPicker({
 
   // ── Commit a pin position: notify parent + reverse-geocode a label ─────────
   async function commit(lng: number, lat: number) {
+    const seq = ++commitSeqRef.current;
     onChangeRef.current({ lat, lng }, ""); // fee quote can start immediately
+    setLabel("Finding the address…");
+
+    const name = (await exactAddress(lat, lng)) || (await mapboxAddress(lat, lng)) || "Pinned location";
+    // The pin may have moved again while we were looking this one up.
+    if (seq !== commitSeqRef.current) return;
+    setLabel(name);
+    onChangeRef.current({ lat, lng }, name);
+  }
+
+  /** Building / street / area from OpenStreetMap (via our API) — detailed in Kampala. */
+  async function exactAddress(lat: number, lng: number): Promise<string | null> {
     try {
-      // No `limit` here: Mapbox rejects limit + several types on reverse
-      // lookups, which left us with only "Kampala, Uganda". Features come back
-      // most-specific first, so [0] is the building/street/area.
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+      const data = (await res.json()) as { label?: string | null };
+      return data.label || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Fallback: Mapbox (often only the town in Uganda). */
+  async function mapboxAddress(lat: number, lng: number): Promise<string | null> {
+    try {
+      // No `limit`: Mapbox rejects limit + several types on reverse lookups.
       const res = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
         `?access_token=${TOKEN}&country=ug&types=poi,address,neighborhood,locality,place`
       );
       const data = await res.json();
       const raw: string = data?.features?.[0]?.place_name || "";
-      const name = raw.replace(/,\s*Uganda$/i, "").trim() || "Pinned location";
-      setLabel(name);
-      onChangeRef.current({ lat, lng }, name);
+      return raw.replace(/,\s*Uganda$/i, "").trim() || null;
     } catch {
-      setLabel("Pinned location");
-      onChangeRef.current({ lat, lng }, "Pinned location");
+      return null;
     }
   }
 
@@ -179,6 +199,7 @@ export default function LocationPicker({
   }, [query]);
 
   function pickSuggestion(s: Suggestion) {
+    commitSeqRef.current++; // cancel any in-flight pin lookup
     setQuery("");
     setSuggestions([]);
     setLabel(s.placeName);
