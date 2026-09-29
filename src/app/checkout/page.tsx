@@ -312,7 +312,9 @@ export default function CheckoutPage() {
       setServerError("Please fix the highlighted details above to continue.");
       const el = document.getElementById(first);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      el?.focus({ preventScroll: true });
+      // Focus only with a mouse — on phones it would pop the keyboard open
+      // uninvited; the red highlight + message already point at the field.
+      if (window.matchMedia("(pointer: fine)").matches) el?.focus({ preventScroll: true });
       return false;
     }
     return true;

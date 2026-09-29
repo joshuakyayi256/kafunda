@@ -227,3 +227,18 @@ body.kafunda-textured-site {
 html {
   scroll-padding-top: 8rem;
 }
+
+/* ============================================================
+   NO ZOOM-ON-TYPE (iPhone Safari)
+   iOS zooms the page when a field with text under 16px is focused.
+   On touch screens every typeable field gets 16px — unlayered CSS, so it
+   wins over the smaller Tailwind text-sm / text-xs on inputs. Pinch-zoom
+   stays available (we do NOT set maximum-scale / user-scalable=no).
+   ============================================================ */
+@media (pointer: coarse), (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

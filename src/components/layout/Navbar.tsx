@@ -260,7 +260,9 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    if (isSearchOpen) {
+    // Only auto-focus with a mouse/trackpad. On phones, focusing pops the
+    // keyboard open by itself — the customer taps the box when ready.
+    if (isSearchOpen && window.matchMedia("(pointer: fine)").matches) {
       setTimeout(() => overlaySearchRef.current?.focus(), 60);
     }
   }, [isSearchOpen]);
