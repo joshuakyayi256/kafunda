@@ -427,30 +427,35 @@ export default function CheckoutPage() {
     const res = await fetch("/api/checkout/pesapal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Full-page Pesapal (not embedded): the embedded window depended on
-      // third-party cookies, which iPhone Safari / private browsers block —
-      // the payment page then spun forever and customers cancelled.
-      body: JSON.stringify(buildPayload()),
+      // Embedded: Pesapal returns to /checkout/pesapal-return, which signals
+      // the pop-up — or, if the customer switched to the full page, forwards
+      // to /checkout/success. Both paths verify with Pesapal.
+      body: JSON.stringify({ ...buildPayload(), embedded: true }),
     });
     const data = await res.json();
     if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
     }
 
-    if (data.order_tracking_id) {
-      // Parked first: if the customer comes back without finishing, checkout
-      // offers "Resume payment" instead of losing the order.
-      writePendingPayment({
-        paymentUrl: data.redirect_url,
-        orderRef: data.merchant_reference || `KAF-${data.wc_order_id}`,
-        trackingId: data.order_tracking_id,
-        amount: total,
-      });
+    // No tracking id = nothing to verify the pop-up against → full page.
+    if (!data.order_tracking_id) {
+      window.location.assign(data.redirect_url);
+      await new Promise(() => {}); // keep the spinner until the page leaves
+      return;
     }
-    // Pesapal's secure page → back to /checkout/success, which verifies.
-    // isSubmitting stays on (button shows "Opening…") until the page leaves.
-    window.location.assign(data.redirect_url);
-    await new Promise(() => {}); // never resolves: keeps the spinner until navigation
+
+    const session: PesapalSession = {
+      paymentUrl: data.redirect_url,
+      orderRef: data.merchant_reference || `KAF-${data.wc_order_id}`,
+      trackingId: data.order_tracking_id,
+      amount: total,
+    };
+    // Parked before the pop-up opens: if the browser dies mid-payment, the
+    // next visit offers "Resume payment" instead of losing the order.
+    writePendingPayment(session);
+    setResumable(null);
+    setOfferCod(false);
+    setPesapal(session);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -594,7 +599,7 @@ export default function CheckoutPage() {
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={() => { setOfferCod(false); window.location.assign(resumable.paymentUrl); }}
+                onClick={() => { setOfferCod(false); setPesapal(resumable); setResumable(null); }}
                 className="rounded-xl bg-kafunda-green px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-kafunda-green-deep"
               >
                 Resume Payment

@@ -96,6 +96,20 @@ export default function PesapalModal({
   const [phase, setPhase] = useState<Phase>("paying");
   const [frameLoaded, setFrameLoaded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Some browsers (iPhone Safari, private modes) block the cookies Pesapal's
+  // page needs inside a pop-up, and it can hang on a spinner. After a short
+  // wait we offer the SAME payment on Pesapal's full page — it returns to our
+  // site and is verified exactly the same way.
+  const [showFallback, setShowFallback] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowFallback(true), 10_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const openFullPage = useCallback(() => {
+    settledRef.current = true; // stop polling; the return page takes over
+    window.location.assign(paymentUrl);
+  }, [paymentUrl]);
 
   // Terminal callbacks must fire exactly once, and must not restart the poll
   // loop when the parent re-renders and hands us new function identities.
@@ -309,12 +323,33 @@ export default function PesapalModal({
           />
 
           {!frameLoaded && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50 px-8 text-center">
               <Loader2 className="h-7 w-7 animate-spin text-kafunda-green" />
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">
                 Loading secure payment…
               </p>
+              {showFallback && (
+                <button
+                  type="button"
+                  onClick={openFullPage}
+                  className="mt-3 rounded-xl bg-kafunda-green px-6 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-md transition-colors hover:bg-kafunda-green-deep"
+                >
+                  Continue on Pesapal&apos;s secure page
+                </button>
+              )}
             </div>
+          )}
+
+          {/* Loaded but may still be stuck (blocked cookies inside the frame):
+              a slim, non-blocking way out once the customer has waited. */}
+          {frameLoaded && showFallback && phase === "paying" && (
+            <button
+              type="button"
+              onClick={openFullPage}
+              className="absolute inset-x-0 top-0 z-10 bg-amber-50/95 border-b border-amber-200 px-4 py-2 text-center text-[11px] font-bold text-amber-800 hover:bg-amber-100"
+            >
+              Payment page not loading? Tap here to continue on Pesapal&apos;s full page →
+            </button>
           )}
 
           {/* Verifying / timed out both cover the frame — the payment page has
@@ -378,14 +413,13 @@ export default function PesapalModal({
               <p className="text-center text-[10px] font-semibold leading-relaxed text-zinc-400">
                 Approve the prompt on your phone — this window closes on its own when it&apos;s done.
               </p>
-              <a
-                href={paymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 underline transition-colors hover:text-zinc-700"
+              <button
+                type="button"
+                onClick={openFullPage}
+                className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 underline transition-colors hover:text-zinc-800"
               >
-                Trouble paying? Open in a new tab
-              </a>
+                Trouble paying? Open the full payment page
+              </button>
             </>
           )}
         </div>
