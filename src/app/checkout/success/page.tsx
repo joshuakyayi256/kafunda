@@ -87,6 +87,7 @@ export default function CheckoutSuccessPage() {
     initialStatus(orderRef, trackingId, notificationType)
   );
   const [attempt, setAttempt] = useState(0);
+  const [failReason, setFailReason] = useState("");
 
   // Keep clearCart out of the polling effect's deps — it's recreated each
   // render and must not restart the loop. Synced via its own effect (refs
@@ -95,6 +96,29 @@ export default function CheckoutSuccessPage() {
   useEffect(() => {
     clearCartRef.current = clearCart;
   }, [clearCart]);
+
+  // Settle the order once the outcome is known:
+  //  - paid      → /api/checkout/confirm flips the Woo order to paid now
+  //                (doesn't wait for the IPN; safe to repeat — no-op writes
+  //                are skipped server-side, so no duplicate emails)
+  //  - cancelled → close the unpaid order once (verified with Pesapal first)
+  //  - either way → forget the parked "resume payment" session
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (settledRef.current || (status !== "success" && status !== "failed")) return;
+    settledRef.current = true;
+    try { window.localStorage.removeItem("kafunda:pending-payment"); } catch { /* ignore */ }
+    if (!trackingId) return;
+    const cancelled = notificationType.toUpperCase() === "CANCELLED";
+    if (status === "success" || cancelled) {
+      void fetch("/api/checkout/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderTrackingId: trackingId, ...(cancelled ? { cancel: true } : {}) }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }
+  }, [status, trackingId, notificationType]);
 
   // Polling — the effect body only schedules a timer (external system);
   // every setState happens inside timer/promise callbacks, never
@@ -124,6 +148,7 @@ export default function CheckoutSuccessPage() {
           return;
         }
         if (data.status === "failed" || data.status === "invalid" || data.status === "reversed") {
+          if (typeof data.reason === "string" && data.reason) setFailReason(data.reason);
           setStatus("failed");
           return;
         }
@@ -179,7 +204,7 @@ export default function CheckoutSuccessPage() {
             Payment Not Completed
           </h1>
           <p className="text-zinc-500 mb-2 font-medium">
-            Your payment was cancelled or could not be processed.
+            {failReason || "Your payment was cancelled or could not be processed."}
           </p>
           <p className="text-zinc-400 text-sm mb-8">
             Your cart has been saved — you can try again or choose a different payment method.

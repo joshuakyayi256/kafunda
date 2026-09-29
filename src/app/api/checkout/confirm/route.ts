@@ -22,16 +22,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { setWooOrderStatus, type TargetStatus } from "@/lib/wooOrderStatus";
 
 const PESAPAL_BASE = "https://pay.pesapal.com/v3";
 const MERCHANT_REF_PATTERN = /^KAF-(\d+)$/i;
-
-const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
-  .replace(/\/graphql\/?$/, "")
-  .replace(/^https?:\/\//, "");
-const ORIGIN_IP = process.env.WP_ORIGIN_IP;
-const WC_BASE   = ORIGIN_IP ? `http://${ORIGIN_IP}` : `https://${WC_HOSTNAME}`;
-const WC_HEADERS: Record<string, string> = ORIGIN_IP ? { Host: WC_HOSTNAME } : {};
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -85,9 +79,10 @@ async function getPesapalToken(): Promise<string> {
 function mapStatus(pesapalStatus: string): string {
   switch (pesapalStatus?.toUpperCase()) {
     case "COMPLETED":           return "processing";
-    case "FAILED":
-    case "INVALID":             return "failed";
+    case "FAILED":              return "failed";
     case "REVERSED":            return "refunded";
+    // INVALID = no payment attempt recorded (e.g. page opened, nothing paid).
+    // Not a failure worth an email — the stale-order cleanup closes it.
     default:                    return "pending";
   }
 }
@@ -99,62 +94,6 @@ function toConfirmState(wcStatus: string): ConfirmState {
     case "refunded":   return "refunded";
     default:           return "pending";
   }
-}
-
-async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string): Promise<void> {
-  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
-  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
-  if (!wcKey || !wcSecret) {
-    const state = {
-      WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
-      WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
-      WP_APP_USER:        !!process.env.WP_APP_USER,
-      WP_APP_PASS:        !!process.env.WP_APP_PASS,
-    };
-    console.error("[Confirm] WC creds state:", state);
-    throw new Error("Missing WooCommerce credentials.");
-  }
-
-  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
-  const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Basic ${base64Auth}`,
-      ...WC_HEADERS,
-    },
-    // set_paid on a completed payment is what makes Woo record the order as
-    // PAID (date_paid, payment_complete, stock reduction) instead of merely
-    // relabelling it — without it the shop keeps seeing an unpaid order
-    // sitting in processing. Woo ignores it once an order is already paid, so
-    // the IPN/confirm race stays harmless.
-    body: JSON.stringify({
-      status: wcStatus,
-      transaction_id: txnId,
-      ...(wcStatus === "processing" ? { set_paid: true } : {}),
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Woo order update failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-}
-
-async function getWooOrderStatus(wcOrderId: string): Promise<string | null> {
-  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
-  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
-  if (!wcKey || !wcSecret) throw new Error("Missing WooCommerce credentials.");
-
-  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
-  const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}?_fields=id,status`, {
-    headers: { Accept: "application/json", Authorization: `Basic ${base64Auth}`, ...WC_HEADERS },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Woo order lookup failed (${res.status}).`);
-  const data = (await res.json()) as { status?: string };
-  return data.status ?? null;
 }
 
 // ── Route Handler ──────────────────────────────────────────────────────────────
@@ -214,9 +153,9 @@ export async function POST(request: NextRequest) {
     //     customer somehow completes the payment later, the IPN flips it
     //     straight back to processing + paid.
     if (cancelRequested && state !== "confirmed" && state !== "refunded") {
-      const current = await getWooOrderStatus(wcOrderId);
-      if (current === "pending" || current === "failed") {
-        await updateWooOrder(wcOrderId, "cancelled", orderTrackingId);
+      // setWooOrderStatus only moves a still-pending order; an order already
+      // closed as failed/cancelled is left alone (no second email).
+      if (await setWooOrderStatus(wcOrderId, "cancelled", orderTrackingId)) {
         console.log(`[Confirm] Order ${pesapalRef} cancelled by customer (Pesapal: ${pesapalStatus}).`);
       }
       return NextResponse.json({ state: "cancelled", merchantRef: pesapalRef });
@@ -226,11 +165,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ state, merchantRef: pesapalRef });
     }
 
-    // 4. Terminal status → write to Woo. Same-status PUT is a no-op if the
-    //    IPN got here first, so no duplicate emails.
-    await updateWooOrder(wcOrderId, wcStatus, orderTrackingId);
+    // 4. Terminal status → write to Woo, but only if it's a real transition
+    //    (see lib/wooOrderStatus.ts) — no repeat writes, no repeat emails.
+    const wrote = await setWooOrderStatus(wcOrderId, wcStatus as TargetStatus, orderTrackingId);
 
-    console.log(`[Confirm] Order ${pesapalRef} → Pesapal: ${pesapalStatus} → WC: ${wcStatus} (fallback path)`);
+    if (wrote) console.log(`[Confirm] Order ${pesapalRef} → Pesapal: ${pesapalStatus} → WC: ${wcStatus} (fallback path)`);
 
     return NextResponse.json({ state, merchantRef: pesapalRef });
   } catch (err: unknown) {

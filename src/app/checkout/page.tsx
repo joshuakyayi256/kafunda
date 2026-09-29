@@ -221,6 +221,17 @@ export default function CheckoutPage() {
     setIsMounted(true);
     setIdempotencyKey(newIdempotencyKey());
     setResumable(readPendingPayment());
+
+    // Back button from Pesapal can restore this page from the browser cache
+    // with the button still "Opening…" — reset it and offer to resume.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      setIsSubmitting(false);
+      setResumable(readPendingPayment());
+      setIdempotencyKey(newIdempotencyKey());
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
   // ── Live delivery quote whenever the pin moves ──────────────────────────────
@@ -416,30 +427,30 @@ export default function CheckoutPage() {
     const res = await fetch("/api/checkout/pesapal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...buildPayload(), embedded: true }),
+      // Full-page Pesapal (not embedded): the embedded window depended on
+      // third-party cookies, which iPhone Safari / private browsers block —
+      // the payment page then spun forever and customers cancelled.
+      body: JSON.stringify(buildPayload()),
     });
     const data = await res.json();
     if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
     }
 
-    if (!data.order_tracking_id) {
-      window.location.href = data.redirect_url;
-      return;
+    if (data.order_tracking_id) {
+      // Parked first: if the customer comes back without finishing, checkout
+      // offers "Resume payment" instead of losing the order.
+      writePendingPayment({
+        paymentUrl: data.redirect_url,
+        orderRef: data.merchant_reference || `KAF-${data.wc_order_id}`,
+        trackingId: data.order_tracking_id,
+        amount: total,
+      });
     }
-
-    const session: PesapalSession = {
-      paymentUrl: data.redirect_url,
-      orderRef: data.merchant_reference || `KAF-${data.wc_order_id}`,
-      trackingId: data.order_tracking_id,
-      amount: total,
-    };
-    // Parked before the modal opens: if the browser dies mid-payment, the next
-    // visit can pick this exact payment back up instead of losing the order.
-    writePendingPayment(session);
-    setResumable(null);
-    setOfferCod(false);
-    setPesapal(session);
+    // Pesapal's secure page → back to /checkout/success, which verifies.
+    // isSubmitting stays on (button shows "Opening…") until the page leaves.
+    window.location.assign(data.redirect_url);
+    await new Promise(() => {}); // never resolves: keeps the spinner until navigation
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -583,7 +594,7 @@ export default function CheckoutPage() {
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={() => { setOfferCod(false); setPesapal(resumable); setResumable(null); }}
+                onClick={() => { setOfferCod(false); window.location.assign(resumable.paymentUrl); }}
                 className="rounded-xl bg-kafunda-green px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-kafunda-green-deep"
               >
                 Resume Payment

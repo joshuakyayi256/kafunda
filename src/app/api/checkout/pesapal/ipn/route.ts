@@ -25,16 +25,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { setWooOrderStatus, type TargetStatus } from "@/lib/wooOrderStatus";
 
 const PESAPAL_BASE = "https://pay.pesapal.com/v3";
 const MERCHANT_REF_PATTERN = /^KAF-(\d+)$/i;
 
-const WC_HOSTNAME = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com")
-  .replace(/\/graphql\/?$/, "")
-  .replace(/^https?:\/\//, "");
-const ORIGIN_IP = process.env.WP_ORIGIN_IP;
-const WC_BASE   = ORIGIN_IP ? `http://${ORIGIN_IP}` : `https://${WC_HOSTNAME}`;
-const WC_HEADERS: Record<string, string> = ORIGIN_IP ? { Host: WC_HOSTNAME } : {};
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -76,51 +71,11 @@ async function getPesapalToken(): Promise<string> {
 function mapStatus(pesapalStatus: string): string {
   switch (pesapalStatus?.toUpperCase()) {
     case "COMPLETED":           return "processing"; // payment received, fulfil
-    case "FAILED":
-    case "INVALID":             return "failed";
+    case "FAILED":              return "failed";
     case "REVERSED":            return "refunded";
-    default:                    return "pending";    // PENDING / INITIATED
-  }
-}
-
-async function updateWooOrder(wcOrderId: string, wcStatus: string, txnId: string): Promise<void> {
-  // Same credential fallback as the checkout init route — the two MUST stay
-  // in sync or the IPN silently fails while order creation succeeds.
-  const wcKey = process.env.WC_CONSUMER_KEY || process.env.WP_APP_USER;
-  const wcSecret = process.env.WC_CONSUMER_SECRET || process.env.WP_APP_PASS;
-  if (!wcKey || !wcSecret) {
-    const state = {
-      WC_CONSUMER_KEY:    !!process.env.WC_CONSUMER_KEY,
-      WC_CONSUMER_SECRET: !!process.env.WC_CONSUMER_SECRET,
-      WP_APP_USER:        !!process.env.WP_APP_USER,
-      WP_APP_PASS:        !!process.env.WP_APP_PASS,
-    };
-    console.error("[IPN] WC creds state:", state);
-    throw new Error("Missing WooCommerce credentials.");
-  }
-
-  const base64Auth = Buffer.from(`${wcKey}:${wcSecret}`).toString("base64");
-  const res = await fetch(`${WC_BASE}/wp-json/wc/v3/orders/${wcOrderId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Basic ${base64Auth}`,
-      ...WC_HEADERS,
-    },
-    // set_paid marks the order genuinely PAID in Woo (date_paid, stock
-    // reduction) rather than just moving its status label. Woo ignores it on
-    // an already-paid order, so a duplicate IPN is still a no-op.
-    body: JSON.stringify({
-      status: wcStatus,
-      transaction_id: txnId,
-      ...(wcStatus === "processing" ? { set_paid: true } : {}),
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Woo order update failed (${res.status}): ${text.slice(0, 200)}`);
+    // PENDING / INITIATED / INVALID (no payment attempt recorded) → no write;
+    // the stale-order cleanup closes abandoned orders quietly.
+    default:                    return "pending";
   }
 }
 
@@ -205,7 +160,9 @@ export async function GET(request: NextRequest) {
       return ipnAck(orderTrackingId, merchantRef, notificationType, "200", "IPN received; payment not final yet.");
     }
 
-    await updateWooOrder(wcOrderId, wcStatus, orderTrackingId);
+    // Only real transitions are written (lib/wooOrderStatus.ts) — a repeat or
+    // late IPN never re-fires Woo status emails or downgrades a paid order.
+    await setWooOrderStatus(wcOrderId, wcStatus as TargetStatus, orderTrackingId);
 
     console.log(`[IPN] Order ${merchantRef} → Pesapal: ${pesapalStatus} → WC: ${wcStatus}`);
 
