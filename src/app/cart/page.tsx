@@ -72,7 +72,7 @@ const CartPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-32 lg:pb-12">
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
         <h1 className="text-3xl font-black uppercase tracking-tighter text-zinc-900">
           Your Cart
@@ -248,6 +248,21 @@ const CartPage = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile: checkout always one tap away — the summary card sits below
+          the item list, easy to never scroll to. Sits above the bottom nav. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-60 border-t border-gray-200 bg-white/95 backdrop-blur px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+        <button
+          onClick={handleCheckout}
+          disabled={isRedirecting}
+          className="w-full flex items-center justify-between gap-3 bg-kafunda-green hover:bg-kafunda-green-deep text-white px-5 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-md disabled:opacity-70"
+        >
+          <span>{formatUGX(subtotal)}</span>
+          <span className="flex items-center gap-2">
+            {isRedirecting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Checkout <ArrowRight className="h-4 w-4" /></>}
+          </span>
+        </button>
       </div>
     </div>
   );

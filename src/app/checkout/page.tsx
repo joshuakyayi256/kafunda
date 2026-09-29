@@ -535,7 +535,7 @@ export default function CheckoutPage() {
         />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-36 lg:py-12">
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -643,18 +643,9 @@ export default function CheckoutPage() {
                         <Truck className="h-4 w-4 text-kafunda-green mt-0.5 shrink-0" />
                         <p className="text-[11px] leading-relaxed text-kafunda-green-deep font-medium">
                           {freeDelivery ? (
-                            <>
-                              Delivery is <span className="font-black uppercase">free</span> on this order —
-                              {" "}{quote.distanceKm} km (~{quote.durationMin} min ride) from {quote.storeName}.
-                            </>
+                            <>Location set — <span className="font-black uppercase">free delivery</span>.</>
                           ) : (
-                            <>
-                              Delivery to your pin: <span className="font-black">{formatUGX(quote.feeUgx)}</span> — {quote.distanceKm} km
-                              (~{quote.durationMin} min ride) from {quote.storeName}.{" "}
-                              {form.paymentMethod === "cod"
-                                ? "Paid in cash with your order on arrival."
-                                : "Included in your payment below."}
-                            </>
+                            <>Location set — delivery: <span className="font-black">{formatUGX(quote.feeUgx)}</span>.</>
                           )}
                         </p>
                       </div>
@@ -774,7 +765,7 @@ export default function CheckoutPage() {
                     <span className="font-bold text-zinc-800">{formatUGX(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-zinc-500 font-medium">
-                    <span>Delivery{quoteState === "ok" && quote && !freeDelivery ? ` · ${quote.distanceKm} km` : ""}</span>
+                    <span>Delivery</span>
                     {freeDelivery ? (
                       <span className="font-black text-kafunda-green uppercase text-xs">Free</span>
                     ) : quoteState === "ok" && quote ? (
@@ -842,7 +833,9 @@ export default function CheckoutPage() {
 
                 {/* Submit */}
                 <div className="px-6 pb-6 pt-4">
-                  <button type="submit" disabled={isSubmitting || !idempotencyKey || quoteState !== "ok"}
+                  {/* Not disabled for a missing pin: tapping must always DO
+                      something — handleSubmit explains what's missing. */}
+                  <button type="submit" disabled={isSubmitting || !idempotencyKey}
                     className={`w-full py-4 font-bold text-sm tracking-widest uppercase rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed
                       ${form.paymentMethod === "cod"
                         ? "bg-zinc-900 hover:bg-black text-white"
@@ -873,6 +866,25 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+          </div>
+
+          {/* Mobile: the Pay button lives in the summary at the very bottom of
+              the page — keep a copy pinned to the screen so it's never out of
+              reach. Same submit, so validation/guidance is identical. */}
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-60 border-t border-gray-200 bg-white/95 backdrop-blur px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+            {serverError && (
+              <p role="alert" className="mb-2 text-xs font-semibold text-red-600 line-clamp-2">{serverError}</p>
+            )}
+            <button type="submit" disabled={isSubmitting || !idempotencyKey}
+              className={`w-full flex items-center justify-between gap-3 px-5 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-md text-white disabled:opacity-70
+                ${form.paymentMethod === "cod" ? "bg-zinc-900 hover:bg-black" : "bg-kafunda-green hover:bg-kafunda-green-deep"}`}>
+              <span>{formatUGX(form.paymentMethod === "cod" ? subtotal + deliveryFee : total)}</span>
+              <span className="flex items-center gap-2">
+                {isSubmitting ? (
+                  <><Loader2 className="h-5 w-5 animate-spin" /> {form.paymentMethod === "pesapal" ? "Opening…" : "Placing…"}</>
+                ) : form.paymentMethod === "pesapal" ? "Pay Now" : "Place Order"}
+              </span>
+            </button>
           </div>
         </form>
       </div>

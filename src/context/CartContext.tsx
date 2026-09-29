@@ -59,10 +59,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return [...prevCart, { ...product, quantity }];
         });
-        toast(`${product.name} added to cart`);
-        // Decision (June 2026): toast is the add-to-cart feedback; the drawer no
-        // longer auto-opens, so browsing flow isn't interrupted on every add
-        // (especially on mobile). To revert, add `openCart();` back here.
+        // Sept 2026: open the cart drawer on every add — the customer sees what's
+        // in the cart and a one-tap Checkout button (client request: fewer
+        // steps to buy). The drawer itself is the confirmation, so no toast.
+        openCart();
     };
 
     const removeFromCart = (productId: string) => {

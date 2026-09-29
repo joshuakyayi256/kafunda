@@ -233,7 +233,7 @@ function SearchSuggestionsList({
 
 // Main Navbar
 const Navbar = () => {
-  const { itemsCount } = useCart();
+  const { itemsCount, openCart } = useCart();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -471,6 +471,7 @@ const Navbar = () => {
 
               <Link
                 href="/cart"
+                onClick={(e) => { e.preventDefault(); openCart(); }}
                 className="relative p-2.5 rounded-xl text-kafunda-burgundy/70 hover:bg-kafunda-cream/40 hover:text-kafunda-burgundy transition-colors"
                 aria-label={`Cart with ${itemsCount} items`}
               >
@@ -583,6 +584,7 @@ const Navbar = () => {
 
           <Link
             href="/cart"
+            onClick={(e) => { e.preventDefault(); openCart(); }}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide relative transition-colors ${
               pathname === "/cart" ? "text-primary-red" : "text-kafunda-burgundy/50 hover:text-kafunda-burgundy"
             }`}

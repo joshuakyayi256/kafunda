@@ -4,6 +4,7 @@ import "./globals.css";
 import { ToastProvider } from "@/context/ToastContext";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
+import CartDrawer from "@/components/shared/CartDrawer";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
 import SmoothScroll from "@/components/providers/SmoothScroll";
@@ -123,6 +124,7 @@ export default function RootLayout({
           <CartProvider>
             <AgeVerification />
             <Navbar />
+            <CartDrawer />
             <SmoothScroll>
               <main className="grow pb-16 md:pb-0">
                 {children}

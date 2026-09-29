@@ -42,8 +42,9 @@ export default function LocationPicker({
   const mapRef = useRef<MapboxMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const onChangeRef = useRef(onChange);
+  /** A located spot that arrived before the map finished loading. */
+  const pendingPinRef = useRef<[number, number] | null>(null);
 
-  const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [label, setLabel] = useState("");
   const [query, setQuery] = useState("");
@@ -112,7 +113,14 @@ export default function LocationPicker({
 
         mapRef.current = map;
         markerRef.current = marker;
-        setMapReady(true);
+
+        // "My location" answered before the map was up — apply it now.
+        if (pendingPinRef.current) {
+          const [lng, lat] = pendingPinRef.current;
+          pendingPinRef.current = null;
+          marker.setLngLat([lng, lat]);
+          map.jumpTo({ center: [lng, lat], zoom: 16 });
+        }
       } catch (err) {
         console.error("[LocationPicker] Map failed to load:", err);
         if (!cancelled) setMapFailed(true);
@@ -176,26 +184,66 @@ export default function LocationPicker({
     onChangeRef.current({ lat, lng }, s.placeName);
   }
 
+  /** Move the pin to a spot and quote it. Queues the spot if the map is still loading. */
+  function placePin(lng: number, lat: number) {
+    if (!mapRef.current || !markerRef.current) {
+      pendingPinRef.current = [lng, lat];
+    } else {
+      markerRef.current.setLngLat([lng, lat]);
+      mapRef.current.flyTo({ center: [lng, lat], zoom: 16, duration: 900 });
+    }
+    commit(lng, lat);
+  }
+
+  /**
+   * GPS first; if it times out or has no fix (common indoors / on cheaper
+   * phones), retry with network location, which answers in a second or two.
+   * Each failure gets a message that says what to actually do.
+   */
   function useMyLocation() {
     setGeoError("");
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setGeoError("Location only works on the secure (https) site — search or tap the map instead.");
+      return;
+    }
     if (!navigator.geolocation) {
       setGeoError("Location is not available in this browser — search or tap the map instead.");
       return;
     }
     setLocating(true);
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      setLocating(false);
+      const { latitude: lat, longitude: lng } = pos.coords;
+      // Rough Uganda bounding box — a VPN or desktop IP location can land abroad.
+      if (lat < -1.6 || lat > 4.3 || lng < 29.5 || lng > 35.1) {
+        setGeoError("Your location looks outside Uganda — please search your area or tap the map.");
+        return;
+      }
+      placePin(lng, lat);
+    };
+
+    const onFinalError = (err: GeolocationPositionError) => {
+      setLocating(false);
+      setGeoError(
+        err.code === err.PERMISSION_DENIED
+          ? "Location is blocked. Allow location for this site in your browser settings — or just search your area / tap the map."
+          : "We couldn't get a fix on your location. Please search your area or tap the map."
+      );
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        const { latitude: lat, longitude: lng } = pos.coords;
-        markerRef.current?.setLngLat([lng, lat]);
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 900 });
-        commit(lng, lat);
+      onSuccess,
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) return onFinalError(err);
+        // Timeout / unavailable → fall back to faster, network-based location.
+        navigator.geolocation.getCurrentPosition(onSuccess, onFinalError, {
+          enableHighAccuracy: false,
+          timeout: 15_000,
+          maximumAge: 5 * 60_000,
+        });
       },
-      () => {
-        setLocating(false);
-        setGeoError("We couldn't read your location — search or tap the map instead.");
-      },
-      { enableHighAccuracy: true, timeout: 10_000 }
+      { enableHighAccuracy: true, timeout: 8_000, maximumAge: 60_000 }
     );
   }
 
@@ -254,11 +302,11 @@ export default function LocationPicker({
         <button
           type="button"
           onClick={useMyLocation}
-          disabled={locating || !mapReady}
-          className="h-11 px-4 rounded-xl border border-gray-200 bg-white hover:border-kafunda-green hover:text-kafunda-green text-zinc-600 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-60 shrink-0"
+          disabled={locating}
+          className="h-11 px-3 sm:px-4 rounded-xl border border-kafunda-green/40 bg-kafunda-green-tint/50 hover:border-kafunda-green text-kafunda-green-deep text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 transition-colors disabled:opacity-60 shrink-0"
         >
           {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
-          <span className="hidden sm:inline">My location</span>
+          <span>{locating ? "Finding…" : "Locate me"}</span>
         </button>
       </div>
 
@@ -277,7 +325,7 @@ export default function LocationPicker({
         </p>
       )}
       {geoError && (
-        <p className="text-[11px] text-amber-700 font-medium">{geoError}</p>
+        <p role="alert" className="text-xs text-red-600 font-semibold">{geoError}</p>
       )}
       <p className="text-[10px] text-zinc-400">
         Drag the green pin (or tap the map) to your exact gate — the closer the
