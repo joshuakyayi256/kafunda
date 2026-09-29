@@ -36,6 +36,9 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const { addToCart } = useCart();
     const [quickViewOpen, setQuickViewOpen] = useState(false);
     const [justAdded, setJustAdded] = useState(false);
+    // Shimmer in the image slot until the photo arrives, then fade it in —
+    // no blank white squares or pop-in while Woo images download.
+    const [imgLoaded, setImgLoaded] = useState(false);
 
     const handleQuickView = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -62,7 +65,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             <div className="group relative h-full w-full bg-white rounded-2xl overflow-hidden border border-kafunda-bone-soft hover:border-kafunda-green/30 hover:shadow-[0_12px_32px_rgba(27,122,67,0.10)] transition-all duration-300 flex flex-col">
 
                 {/* Image — fixed square box; identical height on every card */}
-                <div className="relative aspect-square bg-white overflow-hidden shrink-0">
+                <div className={`relative aspect-square overflow-hidden shrink-0 ${imgLoaded ? "bg-white" : "shimmer"}`}>
                     <Link
                         href={`/product/${product.id}`}
                         className="absolute inset-0 z-10"
@@ -75,7 +78,11 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                         alt={product.name}
                         fill
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className={`object-contain p-2 sm:p-4 transition-transform duration-500 group-hover:scale-105 ${!product.in_stock ? "opacity-40 grayscale" : ""}`}
+                        onLoad={() => setImgLoaded(true)}
+                        onError={() => setImgLoaded(true)}
+                        className={`object-contain p-2 sm:p-4 transition-[transform,opacity] duration-500 group-hover:scale-105 ${
+                            !imgLoaded ? "opacity-0" : !product.in_stock ? "opacity-40 grayscale" : "opacity-100"
+                        }`}
                     />
 
                     {product.is_sale && (
