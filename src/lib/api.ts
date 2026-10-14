@@ -52,6 +52,14 @@ const USE_FALLBACK =
  * WP_ORIGIN_IP in Vercel so these calls bypass Cloudflare entirely.
  */
 const RETRY_DELAYS_MS = [300, 900]; // 2 retries → 3 attempts total
+
+/**
+ * How long a cached catalogue read is served before it's refreshed in the
+ * background. Kept short so products added/edited in wp-admin show up within
+ * about a minute even if the /api/revalidate webhook isn't configured (with
+ * the webhook it's near-instant).
+ */
+const CATALOGUE_REVALIDATE_S = 60;
 const REQUEST_TIMEOUT_MS = 12_000;
 
 function shouldRetry(status: number): boolean {
@@ -123,7 +131,7 @@ async function attemptWooREST(
       signal: controller.signal,
       ...(opts.noStore
         ? { cache: "no-store" as const }
-        : { next: { revalidate: 3600, tags: opts.tags ?? ["products"] } }),
+        : { next: { revalidate: CATALOGUE_REVALIDATE_S, tags: opts.tags ?? ["products"] } }),
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -157,7 +165,7 @@ async function attemptWooREST(
  *
  * Retries transport failures and 5xx/429 with jittered backoff.
  *
- * By default responses are cached for 1h (good for the catalogue). Pass
+ * By default responses are cached for CATALOGUE_REVALIDATE_S (60s). Pass
  * { noStore: true } for anything that must read live data (checkout, stock).
  */
 async function fetchWooRESTRaw(

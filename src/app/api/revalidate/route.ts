@@ -36,13 +36,15 @@ function authorized(request: NextRequest): boolean {
 function bustCaches(topic: string | null) {
   // Tagged fetch caches (lib/api.ts).
   // Next.js 16: the second argument (cacheLife profile) is required.
-  // 'max' = stale-while-revalidate — visitors keep getting the cached page
-  // instantly while fresh data loads in the background.
-  revalidateTag("products", "max");
-  revalidateTag("categories", "max");
-  // ISR'd pages that compose product data
+  // { expire: 0 } expires the entry immediately so the very next visitor
+  // gets fresh data. ('max' is stale-while-revalidate: the first visitor
+  // after a change still saw the old catalogue.)
+  revalidateTag("products", { expire: 0 });
+  revalidateTag("categories", { expire: 0 });
+  // Pages that compose product data
   revalidatePath("/");
   revalidatePath("/shop");
+  revalidatePath("/product/[id]", "page");
 
   console.log(`[Revalidate] Cache busted${topic ? ` (topic: ${topic})` : ""} at ${new Date().toISOString()}`);
 }
