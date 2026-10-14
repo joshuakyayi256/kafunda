@@ -57,6 +57,10 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     }, [product, addToCart]);
 
     const category = (product.category || "Uncategorized").split(",")[0].trim();
+    // A concrete "−20%" sells harder than a generic "Sale" tag.
+    const discountPct = product.original_price_ugx
+        ? Math.round((1 - product.price_ugx / product.original_price_ugx) * 100)
+        : 0;
 
     return (
         <>
@@ -87,7 +91,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
                     {product.is_sale && (
                         <span className="absolute top-3 left-3 z-20 bg-kafunda-crimson text-white text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-md shadow-sm">
-                            Sale
+                            {discountPct >= 5 ? `−${discountPct}%` : "Sale"}
                         </span>
                     )}
 

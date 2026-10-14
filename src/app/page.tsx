@@ -57,6 +57,15 @@ export default async function Home() {
   const darkSpirits = products.filter((p) => inCategory(p, ["cognac", "brandy", "rum", "tequila"]));
   const creams      = products.filter((p) => inCategory(p, ["cream", "liqueur", "bitter"]));
 
+  // Products per brand, so the marquee only shows brands we actually stock.
+  // Left undefined when the catalogue is empty (show every brand rather than none).
+  const brandCounts = catalogueEmpty
+    ? undefined
+    : products.reduce<Record<string, number>>((acc, p) => {
+        acc[p.brand] = (acc[p.brand] ?? 0) + 1;
+        return acc;
+      }, {});
+
   return (
     <main className="min-h-screen bg-kafunda-bone">
       {/* 1 ── Hero: image-led, minimal copy */}
@@ -159,7 +168,7 @@ export default async function Home() {
       <RecommendedForYou />
 
       {/* 6 ── Brands marquee (moved down: near the footer) */}
-      <BrandMarquee />
+      <BrandMarquee counts={brandCounts} />
 
       {/* 7 ── Recently viewed */}
       <RecentlyViewed />

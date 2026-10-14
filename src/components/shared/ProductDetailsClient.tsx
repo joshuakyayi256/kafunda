@@ -4,9 +4,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ChevronLeft, Minus, Plus, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronRight, ChevronLeft, Minus, Plus, ShoppingBag, ChevronDown, ChevronUp, Truck, Smartphone, BadgeCheck, MessageCircle } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatUGX } from "@/lib/utils";
+import { CONTACT, FREE_DELIVERY } from "@/lib/constants";
 import ProductCard from "@/components/shared/ProductCard";
 import StickyAddToCart from "@/components/shared/StickyAddToCart";
 import { Product } from "@/types";
@@ -43,6 +44,9 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
     const toggleAccordion = (id: string) => {
         setOpenAccordion(openAccordion === id ? null : id);
     };
+
+    const hasBrand = product.brand && product.brand !== "Kafunda Selection";
+    const savings = product.original_price_ugx ? product.original_price_ugx - product.price_ugx : 0;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -92,17 +96,36 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
 
                 {/* Right: Buy Box */}
                 <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                        {product.brand}
-                    </span>
+                    {hasBrand ? (
+                        <Link
+                            href={`/shop?brand=${encodeURIComponent(product.brand)}`}
+                            className="self-start text-xs font-bold text-kafunda-green uppercase tracking-widest mb-2 hover:underline"
+                        >
+                            More from {product.brand} →
+                        </Link>
+                    ) : (
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                            {product.brand}
+                        </span>
+                    )}
                     <h1 className="text-4xl font-black text-black mb-4 leading-tight uppercase tracking-tighter">
                         {product.name}
                     </h1>
 
-                    <div className="flex items-center space-x-4 mb-6">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
                         <span className="text-3xl font-black text-black">
                             {formatUGX(product.price_ugx)}
                         </span>
+                        {savings > 0 && product.original_price_ugx && (
+                            <>
+                                <span className="text-lg text-gray-400 line-through">
+                                    {formatUGX(product.original_price_ugx)}
+                                </span>
+                                <span className="bg-kafunda-crimson text-white px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wide">
+                                    Save {formatUGX(savings)}
+                                </span>
+                            </>
+                        )}
                         {product.in_stock && (
                             <span className="bg-emerald-50 text-success-green px-3 py-1 rounded-full text-xs font-bold flex items-center">
                                 <span className="w-2 h-2 bg-success-green rounded-full mr-2 animate-pulse"></span>
@@ -115,7 +138,7 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
                         {product.description}
                     </p>
 
-                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-10">
+                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-5">
                         {/* Quantity Selector */}
                         <div className="flex items-center border border-gray-200 rounded-md overflow-hidden w-full sm:w-auto">
                             <button
@@ -145,6 +168,32 @@ export default function ProductDetailsClient({ product, relatedProducts }: Produ
                             <span>Add to Cart</span>
                         </button>
                     </div>
+
+                    {/* Reassurance right at the decision point: the questions
+                        people have before they tap Add to Cart. */}
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 mb-5 text-xs font-semibold text-zinc-700">
+                        <li className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-kafunda-green shrink-0" /> 1–2 hr delivery in Kampala
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <Smartphone className="h-4 w-4 text-kafunda-green shrink-0" /> Mobile Money · Card · Cash on delivery
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <BadgeCheck className="h-4 w-4 text-kafunda-green shrink-0" /> 100% genuine, sealed bottles
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <ShoppingBag className="h-4 w-4 text-kafunda-green shrink-0" /> {FREE_DELIVERY.shortLabel}
+                        </li>
+                    </ul>
+
+                    <a
+                        href={`${CONTACT.whatsapp}?text=${encodeURIComponent(`Hi! I'd like to order ${quantity} x ${product.name} (${formatUGX(product.price_ugx)}) from the Kafunda website.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mb-10 inline-flex items-center justify-center gap-2 border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 py-3 px-6 rounded-md text-xs font-bold uppercase tracking-widest transition-colors"
+                    >
+                        <MessageCircle className="h-4 w-4" /> Prefer to order on WhatsApp?
+                    </a>
 
                     {/* Accordions */}
                     <div className="border-t border-gray-100 divide-y divide-gray-100">

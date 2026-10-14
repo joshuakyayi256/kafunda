@@ -10,6 +10,8 @@ import { getAllProducts, getCategories } from "@/lib/api";
 import { Product } from "@/types";
 import type { Metadata } from "next";
 import { smartSearch } from "@/lib/search-intent";
+import { matchesBrand } from "@/lib/brands";
+import { CONTACT } from "@/lib/constants";
 
 export const metadata: Metadata = {
     title: "Shop All Products",
@@ -53,7 +55,7 @@ export default async function ShopPage({
         : safeProducts.filter(p => p.category.toLowerCase().includes(currentCategory.toLowerCase()));
 
     if (currentBrand)
-        filteredProducts = filteredProducts.filter(p => p.brand.toLowerCase().includes(currentBrand.toLowerCase()));
+        filteredProducts = filteredProducts.filter(p => matchesBrand(p, currentBrand));
     if (currentFilter === "offers")
         filteredProducts = filteredProducts.filter(p => p.is_sale);
     if (currentSearch) {
@@ -83,6 +85,8 @@ export default async function ShopPage({
 
     const pageTitle = currentSearch
         ? `Results for "${currentSearch}"`
+        : currentBrand
+        ? currentBrand
         : currentFilter === "offers"
         ? "Special Offers"
         : currentCategory !== "All"
@@ -238,9 +242,25 @@ export default async function ShopPage({
                                 <p className="text-sm text-zinc-500 mb-6">
                                     We couldn&apos;t find any items matching your current filters.
                                 </p>
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                                    <a
+                                        href={`${CONTACT.whatsapp}?text=${encodeURIComponent(`Hi! Do you have ${currentSearch || currentBrand || "something I'm looking for"}? I couldn't find it on the website.`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-colors"
+                                    >
+                                        Ask us on WhatsApp
+                                    </a>
+                                    <Link
+                                        href="/shop?filter=offers"
+                                        className="inline-flex items-center px-5 py-2.5 border-2 border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:border-zinc-900 transition-colors"
+                                    >
+                                        See today&apos;s offers
+                                    </Link>
+                                </div>
                                 <Link
                                     href="/shop"
-                                    className="text-primary-red font-bold text-xs uppercase tracking-widest hover:underline"
+                                    className="inline-block mt-5 text-primary-red font-bold text-xs uppercase tracking-widest hover:underline"
                                 >
                                     Clear all filters
                                 </Link>

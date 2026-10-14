@@ -174,10 +174,26 @@ body.kafunda-textured-site {
   to   { transform: translateX(-50%); }
 }
 
+/* Second row drifts the other way */
+.kafunda-marquee-track--reverse {
+  animation-direction: reverse;
+}
+
+/* Soft fade at both edges so tiles glide in/out instead of being cut off */
+.kafunda-marquee-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kafunda-marquee-track {
     animation: none;
     transform: translateX(0);
+  }
+  /* No motion: let people swipe through the brands instead */
+  .kafunda-marquee-fade {
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 }
 /* ============================================================

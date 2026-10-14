@@ -1,6 +1,7 @@
 // src/lib/api.ts
 import { Product } from "@/types";
 import { decodeEntities } from "@/lib/utils";
+import { detectBrand } from "@/lib/brands";
 import fallbackProducts from "@/data/products.json";
 
 const RAW_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com";
@@ -269,11 +270,13 @@ function mapProduct(node: any): Product {
   const categoryNames = node.categories?.map((c: any) => decodeEntities(c.name)).join(", ") || "Uncategorized";
   const rawDescription = node.short_description || node.description || "";
   const cleanDescription = decodeEntities(rawDescription.replace(/<[^>]*>?/gm, "").trim()) || "No description available.";
+  const name = decodeEntities(node.name) || "Unknown Product";
 
   return {
     id: node.id.toString(),
-    name: decodeEntities(node.name) || "Unknown Product",
-    brand: "Kafunda Selection",
+    name,
+    // Woo has no brand field — detect it from the name (see lib/brands.ts).
+    brand: detectBrand(name) ?? "Kafunda Selection",
     category: categoryNames,
     price_ugx: Number(node.price || 0),
     original_price_ugx: node.regular_price && Number(node.regular_price) > Number(node.price) ? Number(node.regular_price) : null,
