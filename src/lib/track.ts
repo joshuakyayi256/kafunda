@@ -186,13 +186,17 @@ export function identifyPushUser(phone: string) {
 export function maybePromptPush(delayMs = 3500, force = false) {
   if (!ONESIGNAL_ON || typeof window === "undefined") return;
   if (store("kafunda_age_verified") !== "true") return;
-  const last = Number(store("kafunda:push-prompted") ?? 0);
+  // v2 key: earlier attempts that never actually showed (OneSignal blocked by a
+  // wrong Site URL) were counted as "asked" — start those browsers fresh.
+  const KEY = "kafunda:push-prompted-v2";
+  const last = Number(store(KEY) ?? 0);
   if (!force && Date.now() - last < 3 * 24 * 60 * 60 * 1000) return;
   setTimeout(() => {
     onesignal(async (os) => {
       if (os.User.PushSubscription.optedIn) return;
-      store("kafunda:push-prompted", String(Date.now()));
       await os.Slidedown.promptPush(force ? { force: true } : undefined);
+      // Only counts once the prompt really appeared (promptPush throws if OneSignal can't run here).
+      store(KEY, String(Date.now()));
     });
   }, delayMs);
 }
