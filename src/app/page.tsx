@@ -8,10 +8,15 @@ export const revalidate = 300;
 import Hero from "@/components/shared/Hero";
 import BrandMarquee from "@/components/shared/BrandMarquee";
 import CategoryShelf from "@/components/shared/CategoryShelf";
-import PromoBanner from "@/components/shared/PromoBanner";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
-import { getAllProducts } from "@/lib/api";
 import RecommendedForYou from "@/components/shared/RecommendedForYou";
+import BlackNovemberHero from "@/components/home/BlackNovemberHero";
+import QuickCategories from "@/components/home/QuickCategories";
+import DealsGrid from "@/components/home/DealsGrid";
+import TrustStrip from "@/components/home/TrustStrip";
+import WhatsAppBand from "@/components/home/WhatsAppBand";
+import { getAllProducts } from "@/lib/api";
+import { CAMPAIGN, campaignLive } from "@/lib/campaign";
 import { Product } from "@/types";
 
 /** Case-insensitive: does the product's category string contain any keyword? */
@@ -20,34 +25,56 @@ function inCategory(p: Product, keywords: string[]): boolean {
   return keywords.some((kw) => cat.includes(kw));
 }
 
+/** Day number since 1970 — changes the rotating picks once a day. (The page is ISR-cached, so this runs per regeneration, not per visitor.) */
+function dayIndex(): number {
+  return Math.floor(Date.now() / 86_400_000);
+}
+
+function discount(p: Product): number {
+  return p.original_price_ugx ? 1 - p.price_ugx / p.original_price_ugx : 0;
+}
+
+/**
+ * Homepage, built for paid traffic (Nov 2026 redesign):
+ *  1. Campaign hero (Black November) — one offer, countdown, real bottles
+ *  2. One-tap category tiles
+ *  3. Trust strip — delivery time, pay on delivery, stores, free delivery
+ *  4. Deals GRID (biggest discounts first) — visible without swiping
+ *  5. Price-led shelf (Under UGX 50k) + best-selling categories
+ *  6. WhatsApp ordering band, then the rest of the catalogue
+ * Outside a campaign window the normal photo hero returns automatically.
+ */
 export default async function Home() {
-  const liveProducts = await getAllProducts();
-
-  const products = liveProducts || [];
-
-  // ── Serve-stale-on-error guard ───────────────────────────────────────────
-  // At RUNTIME: if WooCommerce is unreachable during a background revalidation,
-  // the fetch layer returns an empty list. Rendering that would cache an EMPTY
-  // homepage, so we keep serving the last good version and retry later.
-  //
-  // ── Empty-catalogue handling ──────────────────────────────────────────────
-  // The catalogue can come back empty if WooCommerce is briefly unreachable.
-  // We do NOT hard-throw a 500: the page renders its shell and shows a friendly
-  // notice; ISR (revalidate=300) refills the catalogue automatically.
+  const products = (await getAllProducts()) || [];
   const catalogueEmpty = products.length === 0;
+  const live = campaignLive();
 
-  // ── Section datasets (one fetch, filtered in memory) ──────────────────────
-  // Real deals first (sale / today's-offer items keep their SALE badge), then
-  // topped up to a full row with in-stock picks that rotate daily — only a
-  // handful of products are on sale at a time, and a 3-card row looked empty.
-  const OFFER_ROW = 16;
-  const deals = products.filter((p) => p.is_sale || p.is_today_offer);
+  const sellable = products.filter((p) => p.in_stock && p.price_ugx > 0 && p.image_url);
+
+  // ── Deals: real sale prices from WooCommerce, biggest % off first ─────────
+  const deals = sellable
+    .filter((p) => p.is_sale || p.is_today_offer || discount(p) > 0)
+    .sort((a, b) => discount(b) - discount(a));
+  const hasDeals = deals.length > 0;
+
+  // Daily-rotating picks to fill rows when only a few products are on sale.
+  // Premium-first (>= UGX 60k) — bigger baskets, and they look best in the hero.
   const dealIds = new Set(deals.map((p) => p.id));
-  const day = Math.floor(Date.now() / 86_400_000);
-  const pool = products.filter((p) => !dealIds.has(p.id) && p.in_stock && p.price_ugx > 0);
-  const start = pool.length ? (day * 7) % pool.length : 0;
-  const rotated = [...pool.slice(start), ...pool.slice(0, start)];
-  const offerPicks = [...deals, ...rotated].slice(0, Math.max(OFFER_ROW, deals.length));
+  const day = dayIndex();
+  const rotate = <T,>(arr: T[]) => {
+    if (!arr.length) return arr;
+    const start = (day * 7) % arr.length;
+    return [...arr.slice(start), ...arr.slice(0, start)];
+  };
+  const premium = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx >= 60_000));
+  const others = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx < 60_000));
+
+  const heroPicks = [...deals, ...premium].slice(0, 3);
+  const gridProducts = [...deals, ...premium, ...others].slice(0, Math.max(8, Math.min(deals.length, 12)));
+
+  const under50k = sellable
+    .filter((p) => p.price_ugx <= 50_000)
+    .sort((a, b) => discount(b) - discount(a) || b.price_ugx - a.price_ugx);
 
   const beers       = products.filter((p) => inCategory(p, ["beer", "cider"]));
   const champagnes  = products.filter((p) => inCategory(p, ["champagne", "sparkling", "prosecco"]));
@@ -58,7 +85,6 @@ export default async function Home() {
   const creams      = products.filter((p) => inCategory(p, ["cream", "liqueur", "bitter"]));
 
   // Products per brand, so the marquee only shows brands we actually stock.
-  // Left undefined when the catalogue is empty (show every brand rather than none).
   const brandCounts = catalogueEmpty
     ? undefined
     : products.reduce<Record<string, number>>((acc, p) => {
@@ -68,8 +94,9 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-kafunda-bone">
-      {/* 1 ── Hero: image-led, minimal copy */}
-      <Hero />
+      {live ? <BlackNovemberHero picks={heroPicks} hasDeals={hasDeals} /> : <Hero />}
+
+      <QuickCategories />
 
       {/* Empty-catalogue notice (only when Woo is briefly unreachable) */}
       {catalogueEmpty && (
@@ -95,62 +122,41 @@ export default async function Home() {
         </div>
       )}
 
-      {/* 2 ── Today's Offers (moved up: first thing after the hero) */}
-      <CategoryShelf
-        title="Today's Offers"
-        accentWord="Offers"
-        eyebrow="Deals & top picks"
-        products={offerPicks}
-        limit={offerPicks.length}
-        viewAllHref="/shop?filter=offers"
-        textured
-      />
+      <div className="pt-4 md:pt-6">
+        <TrustStrip />
+      </div>
 
-      {/* 3 ── Beers */}
-      <CategoryShelf
-        title="Beers & Ciders"
-        accentWord="Beers"
-        products={beers}
-        viewAllHref="/shop?category=Beers"
-      />
-
-      {/* 4 ── Champagnes */}
-      <CategoryShelf
-        title="Champagnes & Sparkling"
-        accentWord="Champagnes"
-        products={champagnes}
-        viewAllHref="/shop?category=Champagnes"
-      />
-
-      {/* ── Promo banner: mid-page break ── */}
-      <PromoBanner
-        eyebrow="Limited Time"
-        line1="Up to"
-        accent="30% off"
-        line2="special offers"
-        ctaLabel="Shop all deals"
+      <DealsGrid
+        products={gridProducts}
+        eyebrow={live ? CAMPAIGN.name : "Deals & top picks"}
+        title={
+          live ? (
+            <>Black November <span className="text-primary-red">{hasDeals ? "Deals" : "Picks"}</span></>
+          ) : (
+            <>Today&apos;s <span className="text-primary-red">Offers</span></>
+          )
+        }
+        note={hasDeals ? "Biggest savings first. While stocks last." : "Hand-picked for this week — delivered in 1–2 hours."}
         href="/shop?filter=offers"
       />
 
-      {/* 5 ── The remaining drink types */}
       <CategoryShelf
-        title="Fine Wines"
-        accentWord="Wines"
-        products={wines}
-        viewAllHref="/shop?category=Wines"
+        title="Great Bottles Under 50k"
+        accentWord="Under 50k"
+        eyebrow="Easy on the wallet"
+        products={under50k}
+        viewAllHref="/shop?maxPrice=50000"
+        textured
       />
-      <CategoryShelf
-        title="Whiskies & Bourbons"
-        accentWord="Whiskies"
-        products={whiskies}
-        viewAllHref="/shop?category=Whiskys"
-      />
-      <CategoryShelf
-        title="Gins & Vodkas"
-        accentWord="Gins"
-        products={ginsVodkas}
-        viewAllHref="/shop?category=Gins"
-      />
+
+      <CategoryShelf title="Whiskies & Bourbons" accentWord="Whiskies" products={whiskies} viewAllHref="/shop?category=Whiskys" />
+      <CategoryShelf title="Beers & Ciders" accentWord="Beers" products={beers} viewAllHref="/shop?category=Beers" />
+
+      <WhatsAppBand campaign={live ? CAMPAIGN.name : undefined} />
+
+      <CategoryShelf title="Fine Wines" accentWord="Wines" products={wines} viewAllHref="/shop?category=Wines" />
+      <CategoryShelf title="Champagnes & Sparkling" accentWord="Champagnes" products={champagnes} viewAllHref="/shop?category=Champagnes" />
+      <CategoryShelf title="Gins & Vodkas" accentWord="Gins" products={ginsVodkas} viewAllHref="/shop?category=Gins" />
       <CategoryShelf
         title="Cognacs, Rums & Tequilas"
         accentWord="Cognacs"
@@ -158,19 +164,10 @@ export default async function Home() {
         viewAllHref="/shop?category=Cognacs"
         textured
       />
-      <CategoryShelf
-        title="Creams & Liqueurs"
-        accentWord="Creams"
-        products={creams}
-        viewAllHref="/shop?category=Creams"
-      />
+      <CategoryShelf title="Creams & Liqueurs" accentWord="Creams" products={creams} viewAllHref="/shop?category=Creams" />
 
       <RecommendedForYou />
-
-      {/* 6 ── Brands marquee (moved down: near the footer) */}
       <BrandMarquee counts={brandCounts} />
-
-      {/* 7 ── Recently viewed */}
       <RecentlyViewed />
     </main>
   );

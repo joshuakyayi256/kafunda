@@ -31,7 +31,8 @@ const SLIDES = [
   },
   {
     id: 2,
-    image: "https://images.unsplash.com/photo-1527281400683-1aefee6bdb96?q=80&w=2400",
+    // Previous photo was removed from Unsplash (404 → broken image in the hero).
+    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=2400",
     alt: "Premium whisky bottles on a shelf",
     line: "Single malts worth savouring.",
     cta: "Shop Whiskies",

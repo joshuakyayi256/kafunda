@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kafunda Marketing
  * Description: Push (OneSignal) incl. automatic daily pushes + matching emails, offer emails (wp_mail), customer export and abandoned-cart recovery. Dashboard at /marketing.
- * Version: 2.2.0
+ * Version: 2.3.0
  * Author: Kafunda Wines & Spirits
  */
 if (!defined('ABSPATH')) exit;
@@ -834,6 +834,12 @@ function kafunda_mkt_auto_message($product, DateTime $at) {
     [$title, $msg] = $t[array_rand($t)];
     $map = ['{name}' => $name, '{short}' => $short, '{price}' => $price, '{was}' => $was];
     $title = strtr($title, $map);
+    // Black November: every automatic push/email in November carries the campaign name.
+    if ($at->format('n') === '11') {
+        // Drop a leading emoji (keep the words) so the title doesn't start with two.
+        $title = '🖤 Black November · ' . preg_replace('/^[^\p{L}\p{N}]+/u', '', $title, 1);
+        $msg .= ' Black November deals end 30 Nov.';
+    }
     return [mb_substr($title, 0, 65), mb_substr(strtr($msg, $map), 0, 240)];
 }
 
