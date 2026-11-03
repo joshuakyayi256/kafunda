@@ -27,6 +27,7 @@ import {
   MessageCircle, Package, Phone, Clock,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { firePendingConversion, markCartConverted, maybePromptPush } from "@/lib/track";
 
 type Status = "loading" | "success" | "failed" | "confirming";
 
@@ -108,6 +109,11 @@ export default function CheckoutSuccessPage() {
     if (settledRef.current || (status !== "success" && status !== "failed")) return;
     settledRef.current = true;
     try { window.localStorage.removeItem("kafunda:pending-payment"); } catch { /* ignore */ }
+    if (status === "success") {
+      firePendingConversion(orderRef); // Google Ads purchase, value parked at checkout
+      markCartConverted(orderRef);
+      maybePromptPush(2500, true);
+    }
     if (!trackingId) return;
     const cancelled = notificationType.toUpperCase() === "CANCELLED";
     if (status === "success" || cancelled) {
@@ -118,7 +124,7 @@ export default function CheckoutSuccessPage() {
         keepalive: true,
       }).catch(() => undefined);
     }
-  }, [status, trackingId, notificationType]);
+  }, [status, trackingId, notificationType, orderRef]);
 
   // Polling — the effect body only schedules a timer (external system);
   // every setState happens inside timer/promise callbacks, never

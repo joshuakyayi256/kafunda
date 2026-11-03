@@ -13,6 +13,10 @@ import { formatUGX } from "@/lib/utils";
 import { PESAPAL_SURCHARGE_RATE, qualifiesForFreeDelivery, DELIVERY_FEE } from "@/lib/constants";
 import LocationPicker, { PickedLocation } from "@/components/shared/LocationPicker";
 import PesapalModal, { cancelPesapalOrder } from "@/components/checkout/PesapalModal";
+import {
+  getCartToken, identifyPushUser, markCartConverted, maybePromptPush, parkConversion,
+  setConversionUserData, trackBeginCheckout, trackPurchase,
+} from "@/lib/track";
 
 type PaymentMethod = "pesapal" | "cod";
 
@@ -267,6 +271,52 @@ export default function CheckoutPage() {
     return () => { cancelled = true; };
   }, [pin]);
 
+  // ── Ads: checkout started (once per visit) ──────────────────────────────────
+  const checkoutTrackedRef = useRef(false);
+  useEffect(() => {
+    if (checkoutTrackedRef.current || cart.length === 0) return;
+    checkoutTrackedRef.current = true;
+    trackBeginCheckout(cart, subtotal);
+  }, [cart, subtotal]);
+
+  // ── Abandoned cart capture ──────────────────────────────────────────────────
+  // As soon as there's a usable phone or email, save the cart (debounced) so
+  // WordPress can send the "you left something" email and the dashboard can
+  // show it for a WhatsApp follow-up. Saved again whenever cart/contact change.
+  useEffect(() => {
+    if (isSuccess || cart.length === 0) return;
+    const phone = form.phone.replace(/[\s-]/g, "");
+    const phoneOk = /^(\+?256|0)?[7][0-9]{8}$/.test(phone);
+    const email = form.email.trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!phoneOk && !emailOk) return;
+
+    const timer = setTimeout(() => {
+      void fetch("/api/cart/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: getCartToken(),
+          name: form.fullName.trim(),
+          phone: phoneOk ? phone : "",
+          email: emailOk ? email : "",
+          items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+        }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [cart, form.phone, form.email, form.fullName, isSuccess]);
+
+  /** Everything that should happen once an order is real (COD placed or paid). */
+  function recordSale(orderRef: string, value: number, wcOrderId?: number | string) {
+    setConversionUserData(form.email, form.phone);
+    trackPurchase(orderRef, value, cart);
+    markCartConverted(wcOrderId ?? orderRef);
+    identifyPushUser(form.phone);
+    maybePromptPush(2500, true); // "get delivery updates & offers"
+  }
+
   // ── Free delivery over the threshold ────────────────────────────────────────
   // Mirrors the server (constants.ts / qualifiesForFreeDelivery) so the price
   // the customer SEES matches what Pesapal actually charges. Without this the
@@ -413,6 +463,8 @@ export default function CheckoutPage() {
     if (!res.ok || !data.wc_order_id) {
       throw new Error(data.error || "Order could not be created. Please try again or contact support.");
     }
+    const fee = typeof data.delivery_fee === "number" ? data.delivery_fee : 0;
+    recordSale(data.order_number || `KAF-${data.wc_order_id}`, subtotal + fee, data.wc_order_id);
     clearCart();
     setCodFeeAtOrder(typeof data.delivery_fee === "number" ? data.delivery_fee : 0);
     setOrderNumber(data.order_number || `KAF-${data.wc_order_id}`);
@@ -438,6 +490,11 @@ export default function CheckoutPage() {
     if (!res.ok || !data.redirect_url) {
       throw new Error(data.error || "Could not start Pesapal payment. Please try again.");
     }
+
+    // If the customer ends up on the full-page Pesapal flow, /checkout/success
+    // fires the Ads conversion from this parked value.
+    parkConversion(data.merchant_reference || `KAF-${data.wc_order_id}`, total, cart);
+    setConversionUserData(form.email, form.phone);
 
     // No tracking id = nothing to verify the pop-up against → full page.
     if (!data.order_tracking_id) {
@@ -551,6 +608,7 @@ export default function CheckoutPage() {
           trackingId={pesapal.trackingId}
           amountLabel={formatUGX(pesapal.amount)}
           onCompleted={() => {
+            recordSale(pesapal.orderRef, pesapal.amount);
             clearCart();
             clearPendingPayment();
             setResumable(null);

@@ -19,11 +19,42 @@ import { useRouter } from "next/navigation";
 import CompleteYourOrder from "@/components/shared/CompleteYourOrder";
 
 const CartPage = () => {
-  const { cart, removeFromCart, updateQuantity, itemsCount, subtotal } =
+  const { cart, removeFromCart, updateQuantity, itemsCount, subtotal, restoreCart } =
     useCart();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // "Complete my order" link from a cart-reminder email / WhatsApp:
+  // /cart?restore=<token> puts the saved items back in the cart.
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("restore");
+    if (!token) return;
+    let cancelled = false;
+    const start = setTimeout(() => setIsRestoring(true), 0);
+    (async () => {
+      try {
+        const res = await fetch(`/api/cart/restore?token=${encodeURIComponent(token)}`, { cache: "no-store" });
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          restoreCart(data.items);
+          // Keep the same cart record so the sale counts as "recovered".
+          try { window.localStorage.setItem("kafunda:cart-token", token); } catch { /* ignore */ }
+        }
+      } catch {
+        // Link expired or offline — the cart page still works.
+      } finally {
+        if (!cancelled) {
+          setIsRestoring(false);
+          router.replace("/cart");
+        }
+      }
+    })();
+    return () => { cancelled = true; clearTimeout(start); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Wrap in a setTimeout to satisfy strict ESLint rules about synchronous updates
@@ -40,7 +71,7 @@ const CartPage = () => {
     router.push("/checkout");
   };
 
-  if (!isMounted) {
+  if (!isMounted || isRestoring) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary-red" />

@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "www.kafundawines.com" },
     ],
   },
+  // The marketing dashboard lives in WordPress (Kafunda Marketing snippet).
+  async redirects() {
+    return [
+      { source: "/marketing", destination: "https://kafundawines.com/marketing", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

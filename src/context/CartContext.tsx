@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { CartItem, Product } from "@/types";
 import { useToast } from "@/context/ToastContext";
+import { maybePromptPush, syncCartTags, trackAddToCart } from "@/lib/track";
 
 interface CartContextType {
     cart: CartItem[];
@@ -10,6 +11,7 @@ interface CartContextType {
     removeFromCart: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     clearCart: () => void;
+    restoreCart: (items: { product: Product; quantity: number }[]) => void;
     itemsCount: number;
     subtotal: number;
     isCartOpen: boolean;
@@ -41,10 +43,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
-    // Save cart to localStorage on changes
+    // Save cart to localStorage on changes (and keep the OneSignal
+    // abandoned-cart tags in step). Skip the very first run: the cart is
+    // still [] before the saved one loads, and that would wipe the tags.
+    const loadedRef = useRef(false);
     useEffect(() => {
         localStorage.setItem("kafunda_cart", JSON.stringify(cart));
+        if (loadedRef.current) syncCartTags(cart);
+        else if (cart.length > 0) loadedRef.current = true;
     }, [cart]);
+    useEffect(() => {
+        // Nothing saved → the cart really is empty; tags may sync from now on.
+        const t = setTimeout(() => { loadedRef.current = true; }, 500);
+        return () => clearTimeout(t);
+    }, []);
 
     const openCart = () => setIsCartOpen(true);
     const closeCart = () => setIsCartOpen(false);
@@ -59,6 +71,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return [...prevCart, { ...product, quantity }];
         });
+        trackAddToCart(product, quantity);
+        maybePromptPush(); // high-intent moment to ask for offer/order-update pushes
         // Sept 2026: open the cart drawer on every add — the customer sees what's
         // in the cart and a one-tap Checkout button (client request: fewer
         // steps to buy). The drawer itself is the confirmation, so no toast.
@@ -83,6 +97,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const clearCart = () => setCart([]);
 
+    /** Abandoned-cart link: put the saved lines back (merging with anything already here). */
+    const restoreCart = (items: { product: Product; quantity: number }[]) => {
+        setCart((prev) => {
+            const next = [...prev];
+            for (const { product, quantity } of items) {
+                const at = next.findIndex((i) => i.id === product.id);
+                if (at >= 0) next[at] = { ...next[at], quantity: Math.max(next[at].quantity, quantity) };
+                else next.push({ ...product, quantity });
+            }
+            return next;
+        });
+    };
+
     const itemsCount = cart.reduce((total, item) => total + item.quantity, 0);
     const subtotal = cart.reduce((total, item) => total + item.price_ugx * item.quantity, 0);
 
@@ -94,6 +121,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 removeFromCart,
                 updateQuantity,
                 clearCart,
+                restoreCart,
                 itemsCount,
                 subtotal,
                 isCartOpen,

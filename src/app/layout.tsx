@@ -7,6 +7,9 @@ import Navbar from "@/components/layout/Navbar";
 import CartDrawer from "@/components/shared/CartDrawer";
 import Footer from "@/components/layout/Footer";
 import AgeVerification from "@/components/shared/AgeVerification";
+import OffersSignup from "@/components/shared/OffersSignup";
+import SiteChrome from "@/components/layout/SiteChrome";
+import MarketingScripts from "@/components/marketing/MarketingScripts";
 import { SITE, CONTACT, SOCIAL, STORES, IOS_APP_ID } from "@/lib/constants";
 
 const inter = Inter({
@@ -121,15 +124,21 @@ export default function RootLayout({
         />
         <ToastProvider>
           <CartProvider>
-            <AgeVerification />
-            <Navbar />
-            <CartDrawer />
+            <SiteChrome>
+              <AgeVerification />
+              <Navbar />
+              <CartDrawer />
+              <OffersSignup />
+            </SiteChrome>
               <main className="grow pb-16 md:pb-0">
                 {children}
               </main>
-            <Footer />
+            <SiteChrome>
+              <Footer />
+            </SiteChrome>
           </CartProvider>
         </ToastProvider>
+        <MarketingScripts />
       </body>
     </html>
   );
