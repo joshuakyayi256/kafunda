@@ -263,7 +263,7 @@ function kafunda_mkt_render_email($p, $email) {
         . '<tr><td style="padding:22px 20px;text-align:center;border-bottom:4px solid ' . $green . '"><a href="' . esc_url(home_url('/')) . '"><img src="' . esc_url($logo) . '" alt="Kafunda Wines &amp; Spirits" height="44" style="height:44px;width:auto"></a></td></tr>'
         . '<tr><td style="padding:28px 24px 8px">'
         . '<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#141414">' . $e($p['heading'] ?? '') . '</h1>'
-        . $image . $paras . $items . $cta
+        . $image . $paras . $items . $cta . kafunda_mkt_render_products($p['products'] ?? [])
         . '</td></tr>'
         . '<tr><td style="padding:22px 24px 26px;font-size:12px;line-height:1.6;color:#888;text-align:center">'
         . '1–2 hour delivery across Kampala · Pay with Mobile Money, card or cash on delivery<br>'
@@ -271,6 +271,30 @@ function kafunda_mkt_render_email($p, $email) {
         . 'For adults 18+ only. Please drink responsibly.<br>'
         . '<a href="' . esc_url(kafunda_mkt_unsub_url($email)) . '" style="color:#888">Unsubscribe</a>'
         . '</td></tr></table></td></tr></table></body></html>';
+}
+
+/** "More picks" grid for offer emails: [ [name, price, was, image, url], … ] → 2 cards per row. */
+function kafunda_mkt_render_products($products) {
+    if (empty($products) || !is_array($products)) return '';
+    $e = function ($s) { return esc_html((string) $s); };
+    $cells = [];
+    foreach (array_slice($products, 0, 4) as $pr) {
+        $cells[] = '<td width="50%" valign="top" style="padding:6px">'
+            . '<a href="' . esc_url($pr['url'] ?? '') . '" style="text-decoration:none;color:#141414;display:block;border:1px solid #eee;border-radius:12px;padding:12px;text-align:center">'
+            . (!empty($pr['image']) ? '<img src="' . esc_url($pr['image']) . '" alt="" width="140" style="display:block;margin:0 auto 8px;width:140px;max-width:100%;height:140px;object-fit:contain">' : '')
+            . '<div style="font-size:13px;font-weight:700;line-height:1.3;min-height:34px">' . $e($pr['name'] ?? '') . '</div>'
+            . '<div style="font-size:14px;font-weight:800;color:#228f22;margin-top:4px">' . $e($pr['price'] ?? '') . '</div>'
+            . (!empty($pr['was']) ? '<div style="font-size:11px;color:#999;text-decoration:line-through">' . $e($pr['was']) . '</div>' : '')
+            . '<div style="margin-top:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#228f22">Order now →</div>'
+            . '</a></td>';
+    }
+    $rows = '';
+    foreach (array_chunk($cells, 2) as $pair) {
+        if (count($pair) === 1) $pair[] = '<td width="50%"></td>';
+        $rows .= '<tr>' . implode('', $pair) . '</tr>';
+    }
+    return '<h2 style="margin:22px 0 6px;font-size:15px;color:#141414">More picks for you</h2>'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 -6px">' . $rows . '</table>';
 }
 
 function kafunda_mkt_send($email, $subject, $payload) {
@@ -562,6 +586,7 @@ function kafunda_mkt_tick() {
         $out['campaign_sent'] = kafunda_mkt_process_campaigns();
         $out['reminders_sent'] = kafunda_mkt_process_reminders();
         kafunda_mkt_auto_plan();
+        kafunda_mkt_auto_emails();
     } finally {
         delete_transient('kafunda_mkt_tick_lock');
     }
@@ -710,7 +735,8 @@ function kafunda_mkt_send_push($f) {
  */
 
 function kafunda_mkt_auto_opts() {
-    $d = ['on' => 0, 'slots' => ['09:00', '12:00', '16:00', '20:00'], 'audience' => 'all', 'link' => 'shop'];
+    // email: 'off' | 'first' (one email a day, with the first push) | 'all' (an email with every push)
+    $d = ['on' => 0, 'slots' => ['09:00', '12:00', '16:00', '20:00'], 'audience' => 'all', 'link' => 'shop', 'email' => 'first'];
     $o = get_option('kafunda_mkt_auto', []);
     return array_merge($d, is_array($o) ? $o : []);
 }
@@ -833,6 +859,83 @@ function kafunda_mkt_auto_send(DateTime $at, $schedule) {
     ];
 }
 
+/** Product as an email card. */
+function kafunda_mkt_product_card($product, $campaign) {
+    $reg = (float) $product->get_regular_price();
+    return [
+        'name'  => wp_strip_all_tags($product->get_name()),
+        'price' => kafunda_mkt_ugx(wc_get_price_to_display($product)),
+        'was'   => ($product->is_on_sale() && $reg > (float) $product->get_price()) ? kafunda_mkt_ugx($reg) : '',
+        'image' => (string) wp_get_attachment_image_url($product->get_image_id(), 'medium'),
+        'url'   => str_replace('utm_source=onesignal&utm_medium=push', 'utm_source=newsletter&utm_medium=email', kafunda_mkt_auto_url($product, $campaign)),
+    ];
+}
+
+/** The offer email that goes with an automatic push: same product + 3 more picks. */
+function kafunda_mkt_auto_email_payload($product_id, $title, $message, $campaign) {
+    $product = function_exists('wc_get_product') ? wc_get_product((int) $product_id) : null;
+    if (!$product || !$product->is_in_stock()) return null;
+    $card = kafunda_mkt_product_card($product, $campaign);
+
+    $more = [];
+    $sale = wc_get_product_ids_on_sale();
+    $args = ['status' => 'publish', 'stock_status' => 'instock', 'limit' => 12, 'orderby' => 'rand', 'exclude' => [$product->get_id()]];
+    if ($sale && mt_rand(0, 1)) $args['include'] = array_slice(array_diff($sale, [$product->get_id()]), 0, 200);
+    foreach (wc_get_products($args) as $p) {
+        if ((float) $p->get_price() <= 0 || !$p->get_image_id() || !$p->is_visible()) continue;
+        $more[] = kafunda_mkt_product_card($p, $campaign);
+        if (count($more) >= 3) break;
+    }
+
+    return [
+        'preheader' => $message,
+        'heading'   => $title,
+        'body'      => "$message\n\nOrder in a few taps — pay with Mobile Money, card or cash on delivery.",
+        'image_url' => (string) wp_get_attachment_image_url($product->get_image_id(), 'large'),
+        'cta_text'  => 'Order ' . (mb_strlen($card['name']) > 28 ? 'now' : $card['name']),
+        'cta_url'   => $card['url'],
+        'products'  => $more,
+    ];
+}
+
+/** Does this slot also send an email? */
+function kafunda_mkt_auto_slot_emails($slot) {
+    $a = kafunda_mkt_auto_opts();
+    if ($a['email'] === 'all') return true;
+    if ($a['email'] !== 'first') return false;
+    $slots = (array) $a['slots'];
+    sort($slots);
+    return $slot === ($slots[0] ?? '');
+}
+
+/**
+ * When an automatic push's time arrives, queue its email to everyone who has
+ * ordered (all orders, new ones included) + offer subscribers. Sent 25/minute
+ * by the campaign queue; shows up in the Email tab like any campaign.
+ */
+function kafunda_mkt_auto_emails() {
+    global $wpdb;
+    $t = kafunda_mkt_tables();
+    $log = kafunda_mkt_auto_log();
+    $changed = false;
+    foreach ($log as $key => $x) {
+        if (($x['email'] ?? '') !== 'pending' || ($x['at'] ?? PHP_INT_MAX) > time()) continue;
+        $changed = true;
+        if ($x['at'] < time() - 3 * HOUR_IN_SECONDS) { $log[$key]['email'] = 'skipped (too late)'; continue; }
+        $campaign = 'auto_' . (new DateTime('@' . (int) $x['at']))->setTimezone(kafunda_mkt_tz())->format('Hi');
+        $payload = kafunda_mkt_auto_email_payload($x['product'] ?? 0, $x['title'] ?? '', $x['message'] ?? '', $campaign);
+        $recipients = $payload ? kafunda_mkt_audience('all') : [];
+        if (!$payload || !$recipients) { $log[$key]['email'] = $payload ? 'skipped (no recipients)' : 'skipped (product sold out)'; continue; }
+        $wpdb->insert($t['campaigns'], [
+            'subject' => $x['title'], 'payload' => wp_json_encode($payload), 'audience' => 'auto',
+            'status' => 'queued', 'recipients' => wp_json_encode($recipients),
+            'total' => count($recipients), 'created_at' => kafunda_mkt_now(),
+        ]);
+        $log[$key]['email'] = 'queued for ' . count($recipients);
+    }
+    if ($changed) kafunda_mkt_auto_log($log);
+}
+
 /** Makes sure today's and tomorrow's slots are scheduled in OneSignal. Cheap; runs every few minutes. */
 function kafunda_mkt_auto_plan($force = false) {
     $a = kafunda_mkt_auto_opts();
@@ -853,6 +956,7 @@ function kafunda_mkt_auto_plan($force = false) {
             // Already scheduled → skip. A failed attempt is retried on the next run (every ~5 min).
             if (isset($log[$key]) && ($log[$key]['status'] ?? '') !== 'error') continue;
             $log[$key] = kafunda_mkt_auto_send($at, true);
+            if ($log[$key]['status'] === 'scheduled' && kafunda_mkt_auto_slot_emails($slot)) $log[$key]['email'] = 'pending';
             $changed = true;
         }
     }
@@ -1022,6 +1126,64 @@ function kafunda_mkt_stats() {
     ];
 }
 
+/**
+ * Every customer found in all orders (new ones included), merged by email/phone:
+ * email, phone, name, order count, money spent, last order, subscription status.
+ */
+function kafunda_mkt_contacts() {
+    global $wpdb;
+    $t = kafunda_mkt_tables();
+    $people = [];
+    $page = 1;
+    do {
+        $orders = wc_get_orders([
+            'type' => 'shop_order', 'limit' => 200, 'page' => $page, 'orderby' => 'date', 'order' => 'ASC',
+            'status' => ['wc-completed', 'wc-processing', 'wc-on-hold', 'wc-pending', 'wc-cancelled', 'wc-failed', 'wc-refunded'],
+        ]);
+        foreach ($orders as $o) {
+            if (!is_a($o, 'WC_Order')) continue;
+            $email = kafunda_mkt_clean_email($o->get_billing_email());
+            $phone = kafunda_mkt_phone_key($o->get_billing_phone());
+            if (!$email && !$phone) continue;
+            $key = $email ?: 'tel:' . $phone;
+            if (!isset($people[$key]) && $phone && isset($people['tel:' . $phone])) { $people[$key] = $people['tel:' . $phone]; unset($people['tel:' . $phone]); }
+            $paid = in_array($o->get_status(), ['completed', 'processing', 'on-hold'], true);
+            $p = $people[$key] ?? ['email' => '', 'phone' => '', 'name' => '', 'orders' => 0, 'spent' => 0, 'last' => ''];
+            $p['email'] = $email ?: $p['email'];
+            $p['phone'] = $phone ? '0' . $phone : $p['phone'];
+            $name = trim($o->get_billing_first_name() . ' ' . $o->get_billing_last_name());
+            if ($name) $p['name'] = $name;
+            if ($paid) { $p['orders']++; $p['spent'] += (float) $o->get_total(); }
+            $d = $o->get_date_created();
+            if ($d) $p['last'] = $d->date('Y-m-d');
+            $people[$key] = $p;
+        }
+        $page++;
+    } while (count($orders) === 200 && $page < 200);
+
+    $unsub = array_flip((array) $wpdb->get_col("SELECT email FROM {$t['subs']} WHERE status = 'unsubscribed'"));
+    foreach ($people as &$p) $p['status'] = $p['email'] ? (isset($unsub[$p['email']]) ? 'unsubscribed' : 'emailable') : 'phone only';
+    unset($p);
+    uasort($people, function ($a, $b) { return strcmp($b['last'], $a['last']); });
+    return array_values($people);
+}
+
+function kafunda_mkt_export_contacts() {
+    $rows = kafunda_mkt_contacts();
+    nocache_headers();
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="kafunda-customers-' . gmdate('Y-m-d') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // so Excel shows UGX / names correctly
+    fputcsv($out, ['Name', 'Email', 'Phone', 'Paid orders', 'Total spent (UGX)', 'Last order', 'Email status']);
+    foreach ($rows as $r) {
+        // Leading apostrophe stops Excel turning phone numbers into formulas/numbers.
+        fputcsv($out, [$r['name'], $r['email'], $r['phone'] ? "'" . $r['phone'] : '', $r['orders'], round($r['spent']), $r['last'], $r['status']]);
+    }
+    fclose($out);
+    exit;
+}
+
 /** Handles dashboard form posts, then redirects (so refresh never re-sends). */
 function kafunda_mkt_handle_post() {
     if (empty($_POST['kmk_action'])) return;
@@ -1120,6 +1282,7 @@ function kafunda_mkt_handle_post() {
             'slots' => $slots,
             'audience' => in_array($p['auto_audience'] ?? '', ['web', 'app'], true) ? $p['auto_audience'] : 'all',
             'link' => ($p['auto_link'] ?? '') === 'wp' ? 'wp' : 'shop',
+            'email' => in_array($p['auto_email'] ?? '', ['off', 'first', 'all'], true) ? $p['auto_email'] : 'first',
         ];
         // Anything already queued in OneSignal is rebuilt with the new settings.
         kafunda_mkt_auto_cancel_future();
@@ -1140,9 +1303,15 @@ function kafunda_mkt_handle_post() {
         $log = kafunda_mkt_auto_log();
         $log['sample ' . time()] = $entry;
         kafunda_mkt_auto_log($log);
-        $entry['status'] === 'error'
-            ? kafunda_mkt_flash('error', $entry['error'])
-            : kafunda_mkt_flash('ok', 'Sample sent: "' . $entry['title'] . '"');
+        if ($entry['status'] === 'error') {
+            kafunda_mkt_flash('error', $entry['error']);
+        } else {
+            // Show the matching email too — sent only to you, not to customers.
+            $me = wp_get_current_user()->user_email;
+            $payload = kafunda_mkt_auto_email_payload($entry['product'], $entry['title'], $entry['message'], 'auto_sample');
+            $mailed = $payload && $me && kafunda_mkt_send($me, '[SAMPLE] ' . $entry['title'], $payload);
+            kafunda_mkt_flash('ok', 'Sample push sent: "' . $entry['title'] . '"' . ($mailed ? " — the matching email went to $me (only you)." : ''));
+        }
     }
 
     if ($action === 'cancel_campaign') {
@@ -1205,6 +1374,9 @@ add_action('template_redirect', function () {
     }
     if (!kafunda_mkt_can()) wp_die('Only shop managers and administrators can open the marketing dashboard.', 'Not allowed', ['response' => 403]);
 
+    if (($_GET['export'] ?? '') === 'contacts' && wp_verify_nonce($_GET['_kmk'] ?? '', 'kafunda_mkt_export')) {
+        kafunda_mkt_export_contacts();
+    }
     kafunda_mkt_handle_post();
     kafunda_mkt_render_dashboard();
     exit;
@@ -1346,18 +1518,23 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
             . '<label><span>Links open on</span><select name="auto_link">'
             . '<option value="shop"' . selected($auto['link'], 'shop', false) . '>shop.kafundawines.com</option>'
             . '<option value="wp"' . selected($auto['link'], 'wp', false) . '>kafundawines.com</option></select></label></div>'
+            . '<label><span>Also email customers</span><select name="auto_email">'
+            . '<option value="first"' . selected($auto['email'], 'first', false) . '>Once a day — with the first push (recommended)</option>'
+            . '<option value="all"' . selected($auto['email'], 'all', false) . '>With every push</option>'
+            . '<option value="off"' . selected($auto['email'], 'off', false) . '>No emails — push only</option></select>'
+            . '<em class="hint">Goes to everyone who has ordered (' . (int) $s['aud_customers'] . ' emails, new customers added automatically) plus offer subscribers — ' . (int) $s['aud_all'] . ' people now. Same product as the push, plus 3 more picks. More than one email a day gets you marked as spam quickly.</em></label>'
             . '<button class="btn btn-g">Save automatic pushes</button></form>'
             . '<form method="post" style="margin-top:10px" onsubmit="return confirm(\'Send one automatic-style push to subscribers right now?\')">' . $nonce . '<input type="hidden" name="kmk_action" value="auto_sample"><button class="btn btn-o" style="width:100%" ' . ($pushReady ? '' : 'disabled') . '>Send a sample now</button></form>';
 
         if ($upcoming) {
             echo '<h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:18px 0 4px">Scheduled</h3><ul class="list">';
-            foreach ($upcoming as $x) echo '<li><span class="tiny">' . $e($fmt($x['at'])) . '</span><br><b>' . $e($x['title']) . '</b><div class="muted">' . $e($x['message']) . '</div></li>';
+            foreach ($upcoming as $x) echo '<li><span class="tiny">' . $e($fmt($x['at'])) . (($x['email'] ?? '') === 'pending' ? ' · 🔔 push + ✉️ email' : ' · 🔔 push') . '</span><br><b>' . $e($x['title']) . '</b><div class="muted">' . $e($x['message']) . '</div></li>';
             echo '</ul>';
         }
         if ($past) {
             echo '<h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:18px 0 4px">Recently sent</h3><ul class="list">';
             foreach (array_slice($past, 0, 8, true) as $x) {
-                echo '<li><span class="tiny">' . $e($fmt($x['at'] ?? time())) . ($x['status'] === 'error' ? ' · <b style="color:#b91c1c">failed: ' . $e($x['error']) . '</b>' : '') . '</span><br><b>' . $e($x['title'] ?? '') . '</b></li>';
+                echo '<li><span class="tiny">' . $e($fmt($x['at'] ?? time())) . ($x['status'] === 'error' ? ' · <b style="color:#b91c1c">failed: ' . $e($x['error']) . '</b>' : '') . (!empty($x['email']) ? ' · ✉️ ' . $e($x['email']) : '') . '</span><br><b>' . $e($x['title'] ?? '') . '</b></li>';
             }
             echo '</ul><p class="tiny">Delivery and click numbers for each one are in "Recent pushes" below.</p>';
         }
@@ -1433,6 +1610,12 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
             . '<button class="btn btn-g" type="submit" onclick="document.getElementById(\'emode\').value=\'send\';var o=document.getElementById(\'eaud\').selectedOptions[0];return confirm(\'Send this email to \'+o.dataset.n+\' people? This cannot be undone.\')">Send to everyone selected</button>'
             . '</form></div></div>';
 
+        $export = add_query_arg(['export' => 'contacts', '_kmk' => wp_create_nonce('kafunda_mkt_export')], kafunda_mkt_dash_url('email'));
+        echo '<div><div class="card" style="margin-bottom:16px"><h2>Customers from all orders</h2><div class="in">'
+            . '<p class="muted" style="margin-top:0">Every customer in your WooCommerce orders — website, shop and app, old and new. <b>' . (int) $s['aud_customers'] . '</b> have an email and get offer emails automatically (new customers are added the moment they order). Many only gave a phone number — the export includes them too, for WhatsApp broadcasts.</p>'
+            . '<a class="btn btn-o" style="width:100%" href="' . esc_url($export) . '">Download customer list (CSV)</a>'
+            . '<p class="tiny" style="margin-bottom:0">Name, email, phone, paid orders, total spent, last order, email status. Opens in Excel or Google Sheets.</p></div></div>';
+
         $camps = $wpdb->get_results("SELECT id, subject, audience, status, total, sent, failed, created_at FROM {$t['campaigns']} ORDER BY id DESC LIMIT 20");
         $sending = false;
         echo '<div class="card"><h2>Campaigns</h2><div class="in">';
@@ -1447,7 +1630,7 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
                 . '</div><div class="tiny">' . $e($ago($c->created_at)) . ' · ' . $e($c->audience) . ' · ' . $e($c->status) . ' · ' . (int) $c->sent . '/' . (int) $c->total . ' sent' . ($c->failed ? ', ' . (int) $c->failed . ' failed' : '') . '</div>'
                 . ($active ? '<div class="bar"><i style="width:' . $pct . '%"></i></div>' : '') . '</li>';
         }
-        echo '</ul></div></div></div>';
+        echo '</ul></div></div></div></div>';
 
         if ($sending) {
             // Keep the queue moving while this page is open (wp-cron only runs when the site gets visits).
