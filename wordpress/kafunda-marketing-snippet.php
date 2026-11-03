@@ -561,6 +561,7 @@ function kafunda_mkt_tick() {
     try {
         $out['campaign_sent'] = kafunda_mkt_process_campaigns();
         $out['reminders_sent'] = kafunda_mkt_process_reminders();
+        kafunda_mkt_auto_plan();
     } finally {
         delete_transient('kafunda_mkt_tick_lock');
     }
@@ -697,6 +698,179 @@ function kafunda_mkt_send_push($f) {
     if (is_wp_error($r)) return $r;
     if (empty($r['id'])) return new WP_Error('onesignal', 'No subscribers matched that audience yet.');
     return $r;
+}
+
+/* ---- Automatic daily pushes --------------------------------------------- */
+/*
+ * Every day at the chosen times (default 09:00, 12:00, 16:00, 20:00 Kampala),
+ * a push goes to app + web subscribers featuring a random in-stock product
+ * (on-sale items preferred), with a message that fits the time of day.
+ * Today's and tomorrow's pushes are handed to OneSignal in advance with
+ * send_after, so they go out on time even if nobody visits the site at 9am.
+ */
+
+function kafunda_mkt_auto_opts() {
+    $d = ['on' => 0, 'slots' => ['09:00', '12:00', '16:00', '20:00'], 'audience' => 'all', 'link' => 'shop'];
+    $o = get_option('kafunda_mkt_auto', []);
+    return array_merge($d, is_array($o) ? $o : []);
+}
+
+function kafunda_mkt_auto_log($save = null) {
+    if ($save !== null) {
+        ksort($save);
+        update_option('kafunda_mkt_auto_log', array_slice($save, -80, null, true), false);
+        return $save;
+    }
+    $log = get_option('kafunda_mkt_auto_log', []);
+    return is_array($log) ? $log : [];
+}
+
+function kafunda_mkt_tz() { return new DateTimeZone('Africa/Kampala'); }
+
+/** Random in-stock product with a photo, avoiding the last 40 featured. */
+function kafunda_mkt_auto_pick_product($prefer_sale) {
+    if (!function_exists('wc_get_products')) return null;
+    $recent = get_option('kafunda_mkt_auto_recent', []);
+    if (!is_array($recent)) $recent = [];
+
+    $args = ['status' => 'publish', 'stock_status' => 'instock', 'limit' => 60, 'orderby' => 'rand'];
+    if ($prefer_sale) {
+        $sale = wc_get_product_ids_on_sale();
+        if (!$sale) return kafunda_mkt_auto_pick_product(false);
+        shuffle($sale);
+        $args['include'] = array_slice($sale, 0, 200);
+    }
+    $fallback = null;
+    foreach (wc_get_products($args) as $p) {
+        if ((float) $p->get_price() <= 0 || !$p->get_image_id() || !$p->is_visible()) continue;
+        if (!$fallback) $fallback = $p;
+        if (in_array($p->get_id(), $recent, true)) continue;
+        $pick = $p;
+        break;
+    }
+    $pick = $pick ?? $fallback;
+    if (!$pick && $prefer_sale) return kafunda_mkt_auto_pick_product(false);
+    if ($pick) {
+        $recent[] = $pick->get_id();
+        update_option('kafunda_mkt_auto_recent', array_slice(array_values(array_unique($recent)), -40), false);
+    }
+    return $pick;
+}
+
+/** Title + message that fit the hour and the day. */
+function kafunda_mkt_auto_message($product, DateTime $at) {
+    $name = wp_strip_all_tags($product->get_name());
+    $short = mb_strlen($name) > 38 ? rtrim(mb_substr($name, 0, 36)) . '…' : $name;
+    $price = kafunda_mkt_ugx(wc_get_price_to_display($product));
+    $reg = (float) $product->get_regular_price();
+    $was = ($product->is_on_sale() && $reg > (float) $product->get_price()) ? ' (was ' . kafunda_mkt_ugx($reg) . ')' : '';
+    $hour = (int) $at->format('G');
+    $weekend = in_array($at->format('N'), ['5', '6'], true); // Fri, Sat
+
+    if ($hour < 11) {
+        $t = [
+            ['☀️ Today\'s deal: {short}', '{name} now {price}{was}. Order now — delivered in 1–2 hours across Kampala.'],
+            ['🔥 Morning offer just dropped', '{name} for {price}{was}. Tap to grab it before it\'s gone.'],
+            ['Good morning from Kafunda 🍾', 'Today\'s pick: {name} at {price}{was}. Pay with Mobile Money or cash on delivery.'],
+        ];
+    } elseif ($hour < 15) {
+        $t = [
+            ['🍽️ Lunch break? We deliver', '{name} for {price}{was} — at your door in 1–2 hours.'],
+            ['Midday treat: {short}', 'Just {price}{was}. Order in two taps, pay on delivery.'],
+            ['⏰ Order now, relax tonight', '{name} — {price}{was}. Delivered across Kampala this afternoon.'],
+        ];
+    } elseif ($hour < 18) {
+        $t = [
+            ['🚚 Beat the evening rush', 'Order {name} now and it arrives before you\'re home. {price}{was}.'],
+            ['After-work plans? 🥂', '{name} for {price}{was}, delivered in 1–2 hours.'],
+            ['Stock up before tonight', '{name} — {price}{was}. Mobile Money, card or cash on delivery.'],
+        ];
+    } else {
+        $t = [
+            ['🍷 Tonight\'s pick: {short}', 'Unwind with {name} — {price}{was}. Delivered fast across Kampala.'],
+            ['Evening sorted 🥃', '{name} at {price}{was}. Tap to order, we bring it to you.'],
+            ['Still up? We\'re still delivering', '{name} for {price}{was}. Order now.'],
+        ];
+    }
+    if ($weekend && $hour >= 15) {
+        $t[] = ['🎉 Weekend plans? We\'ve got the drinks', '{name} for {price}{was}. Delivered in 1–2 hours — party sorted.'];
+        $t[] = ['🥳 It\'s the weekend!', 'Celebrate with {name} — {price}{was}. Order now, pay on delivery.'];
+    }
+    [$title, $msg] = $t[array_rand($t)];
+    $map = ['{name}' => $name, '{short}' => $short, '{price}' => $price, '{was}' => $was];
+    $title = strtr($title, $map);
+    return [mb_substr($title, 0, 65), mb_substr(strtr($msg, $map), 0, 240)];
+}
+
+function kafunda_mkt_auto_url($product, $campaign) {
+    $a = kafunda_mkt_auto_opts();
+    $url = $a['link'] === 'wp' ? get_permalink($product->get_id()) : kafunda_mkt_shop_url('/product/' . $product->get_id());
+    return add_query_arg(['utm_source' => 'onesignal', 'utm_medium' => 'push', 'utm_campaign' => $campaign], $url);
+}
+
+/** Builds + sends (or schedules) one automatic push. Returns a log entry. */
+function kafunda_mkt_auto_send(DateTime $at, $schedule) {
+    $hour = (int) $at->format('G');
+    $product = kafunda_mkt_auto_pick_product($hour < 11 || mt_rand(0, 1) === 1);
+    if (!$product) return ['status' => 'error', 'error' => 'No in-stock products with photos found.', 'at' => $at->getTimestamp()];
+    [$title, $message] = kafunda_mkt_auto_message($product, $at);
+    $r = kafunda_mkt_send_push([
+        'title' => $title,
+        'message' => $message,
+        'url' => kafunda_mkt_auto_url($product, 'auto_' . $at->format('Hi')),
+        'image' => (string) wp_get_attachment_image_url($product->get_image_id(), 'large'),
+        'audience' => kafunda_mkt_auto_opts()['audience'],
+        'send_after' => $schedule ? $at->format(DATE_ATOM) : '',
+    ]);
+    return [
+        'status' => is_wp_error($r) ? 'error' : ($schedule ? 'scheduled' : 'sent'),
+        'error' => is_wp_error($r) ? $r->get_error_message() : '',
+        'id' => is_wp_error($r) ? '' : $r['id'],
+        'title' => $title,
+        'message' => $message,
+        'product' => $product->get_id(),
+        'at' => $at->getTimestamp(),
+    ];
+}
+
+/** Makes sure today's and tomorrow's slots are scheduled in OneSignal. Cheap; runs every few minutes. */
+function kafunda_mkt_auto_plan($force = false) {
+    $a = kafunda_mkt_auto_opts();
+    $o = kafunda_mkt_opts();
+    if (empty($a['on']) || !$o['onesignal_rest_key']) return;
+    if (!$force && get_transient('kafunda_mkt_auto_plan_lock')) return;
+    set_transient('kafunda_mkt_auto_plan_lock', 1, 5 * MINUTE_IN_SECONDS);
+
+    $tz = kafunda_mkt_tz();
+    $log = kafunda_mkt_auto_log();
+    $changed = false;
+    foreach ([0, 1] as $add) {
+        $day = (new DateTime('now', $tz))->modify("+$add day")->format('Y-m-d');
+        foreach ((array) $a['slots'] as $slot) {
+            $at = DateTime::createFromFormat('Y-m-d H:i', "$day $slot", $tz);
+            if (!$at || $at->getTimestamp() < time() + 5 * MINUTE_IN_SECONDS) continue;
+            $key = $at->format('Y-m-d H:i');
+            // Already scheduled → skip. A failed attempt is retried on the next run (every ~5 min).
+            if (isset($log[$key]) && ($log[$key]['status'] ?? '') !== 'error') continue;
+            $log[$key] = kafunda_mkt_auto_send($at, true);
+            $changed = true;
+        }
+    }
+    if ($changed) kafunda_mkt_auto_log($log);
+}
+
+/** Cancels everything still waiting in OneSignal (used when turning off / changing times). */
+function kafunda_mkt_auto_cancel_future() {
+    $o = kafunda_mkt_opts();
+    $log = kafunda_mkt_auto_log();
+    foreach ($log as $key => $entry) {
+        if (($entry['status'] ?? '') !== 'scheduled' || ($entry['at'] ?? 0) <= time() + 60) continue;
+        if (!empty($entry['id'])) {
+            kafunda_mkt_onesignal('DELETE', 'notifications/' . rawurlencode($entry['id']) . '?app_id=' . rawurlencode($o['onesignal_app_id']));
+        }
+        unset($log[$key]);
+    }
+    kafunda_mkt_auto_log($log);
 }
 
 /** Push sign-up on kafundawines.com (optional — OneSignal allows ONE website per app). */
@@ -932,6 +1106,45 @@ function kafunda_mkt_handle_post() {
         }
     }
 
+    if ($action === 'save_auto') {
+        $tab = 'push';
+        $slots = [];
+        foreach ((array) ($p['slot'] ?? []) as $i => $time) {
+            if (empty($p['slot_on'][$i])) continue;
+            if (preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $time)) $slots[] = $time;
+        }
+        $slots = array_values(array_unique($slots));
+        sort($slots);
+        $new = [
+            'on' => empty($p['auto_on']) ? 0 : 1,
+            'slots' => $slots,
+            'audience' => in_array($p['auto_audience'] ?? '', ['web', 'app'], true) ? $p['auto_audience'] : 'all',
+            'link' => ($p['auto_link'] ?? '') === 'wp' ? 'wp' : 'shop',
+        ];
+        // Anything already queued in OneSignal is rebuilt with the new settings.
+        kafunda_mkt_auto_cancel_future();
+        update_option('kafunda_mkt_auto', $new, false);
+        if ($new['on'] && !kafunda_mkt_opts()['onesignal_rest_key']) {
+            kafunda_mkt_flash('error', 'Saved, but add your OneSignal REST API key in Settings before automatic pushes can go out.');
+        } elseif ($new['on'] && !$slots) {
+            kafunda_mkt_flash('error', 'Turn on at least one time slot.');
+        } else {
+            if ($new['on']) kafunda_mkt_auto_plan(true);
+            kafunda_mkt_flash('ok', $new['on'] ? 'Automatic pushes are on — today\'s and tomorrow\'s are scheduled below.' : 'Automatic pushes are off. Scheduled ones were cancelled.');
+        }
+    }
+
+    if ($action === 'auto_sample') {
+        $tab = 'push';
+        $entry = kafunda_mkt_auto_send(new DateTime('now', kafunda_mkt_tz()), false);
+        $log = kafunda_mkt_auto_log();
+        $log['sample ' . time()] = $entry;
+        kafunda_mkt_auto_log($log);
+        $entry['status'] === 'error'
+            ? kafunda_mkt_flash('error', $entry['error'])
+            : kafunda_mkt_flash('ok', 'Sample sent: "' . $entry['title'] . '"');
+    }
+
     if ($action === 'cancel_campaign') {
         $tab = 'email';
         $wpdb->query($wpdb->prepare("UPDATE {$t['campaigns']} SET status = 'cancelled' WHERE id = %d AND status IN ('queued','sending')", (int) ($p['id'] ?? 0)));
@@ -1102,6 +1315,54 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
     /* ---------------- Push ---------------- */
     if ($tab === 'push') {
         if (!$pushReady) echo '<div class="flash warn">OneSignal isn\'t connected yet. Paste your REST API key in <a href="' . esc_url(kafunda_mkt_dash_url('settings')) . '">Settings</a> (OneSignal → Settings → Keys &amp; IDs).</div>';
+        // ---- Automatic daily pushes card ----
+        $auto = kafunda_mkt_auto_opts();
+        if ($auto['on']) kafunda_mkt_auto_plan(); // top up the schedule whenever this page opens
+        $alog = kafunda_mkt_auto_log();
+        $tz = kafunda_mkt_tz();
+        $fmt = function ($ts) use ($tz) { return (new DateTime('@' . (int) $ts))->setTimezone($tz)->format('D j M, H:i'); };
+        $upcoming = array_filter($alog, function ($x) { return ($x['status'] ?? '') === 'scheduled' && ($x['at'] ?? 0) > time(); });
+        $past = array_reverse(array_filter($alog, function ($x) { return ($x['status'] ?? '') !== 'scheduled' || ($x['at'] ?? 0) <= time(); }), true);
+        $defaults = ['09:00', '12:00', '16:00', '20:00'];
+        $rows = array_values(array_unique(array_merge($auto['slots'], $defaults)));
+        sort($rows);
+
+        echo '<div class="card" style="margin-bottom:16px"><h2>Automatic daily pushes ' . ($auto['on'] ? '<span style="color:var(--g)">● ON</span>' : '<span style="color:#a1a1aa">● OFF</span>') . '</h2><div class="in">'
+            . '<p class="muted" style="margin-top:0">Each time below, a push goes out on its own with a random in-stock product (sale items first), its photo, price and a link to buy. The wording fits the time of day — morning deals, lunch delivery, beat the evening rush, tonight\'s pick — with party messages on Friday and Saturday evenings. Products don\'t repeat until about 40 others have been featured.</p>'
+            . '<form method="post">' . $nonce . '<input type="hidden" name="kmk_action" value="save_auto">'
+            . '<div class="check"><input type="checkbox" id="aon" name="auto_on" value="1" ' . ($auto['on'] ? 'checked' : '') . '><label for="aon" style="margin:0"><b>Send automatic pushes every day</b> (Kampala time)</label></div>'
+            . '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 14px">';
+        foreach ($rows as $i => $time) {
+            $on = in_array($time, $auto['slots'], true) || (!$auto['on'] && !get_option('kafunda_mkt_auto') && in_array($time, $defaults, true));
+            echo '<div style="display:flex;gap:6px;align-items:center;border:1px solid #ddd;border-radius:10px;padding:6px 10px">'
+                . '<input type="checkbox" name="slot_on[' . $i . ']" value="1" ' . ($on ? 'checked' : '') . '>'
+                . '<input type="time" name="slot[' . $i . ']" value="' . $a($time) . '" style="border:0;font:inherit;font-weight:700"></div>';
+        }
+        echo '<div style="display:flex;gap:6px;align-items:center;border:1px dashed #ddd;border-radius:10px;padding:6px 10px"><input type="checkbox" name="slot_on[99]" value="1"><input type="time" name="slot[99]" style="border:0;font:inherit"><span class="tiny">extra</span></div>';
+        echo '</div><div class="row2"><label><span>Send to</span><select name="auto_audience">'
+            . '<option value="all"' . selected($auto['audience'], 'all', false) . '>Everyone — app + website</option>'
+            . '<option value="app"' . selected($auto['audience'], 'app', false) . '>App only</option>'
+            . '<option value="web"' . selected($auto['audience'], 'web', false) . '>Website only</option></select></label>'
+            . '<label><span>Links open on</span><select name="auto_link">'
+            . '<option value="shop"' . selected($auto['link'], 'shop', false) . '>shop.kafundawines.com</option>'
+            . '<option value="wp"' . selected($auto['link'], 'wp', false) . '>kafundawines.com</option></select></label></div>'
+            . '<button class="btn btn-g">Save automatic pushes</button></form>'
+            . '<form method="post" style="margin-top:10px" onsubmit="return confirm(\'Send one automatic-style push to subscribers right now?\')">' . $nonce . '<input type="hidden" name="kmk_action" value="auto_sample"><button class="btn btn-o" style="width:100%" ' . ($pushReady ? '' : 'disabled') . '>Send a sample now</button></form>';
+
+        if ($upcoming) {
+            echo '<h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:18px 0 4px">Scheduled</h3><ul class="list">';
+            foreach ($upcoming as $x) echo '<li><span class="tiny">' . $e($fmt($x['at'])) . '</span><br><b>' . $e($x['title']) . '</b><div class="muted">' . $e($x['message']) . '</div></li>';
+            echo '</ul>';
+        }
+        if ($past) {
+            echo '<h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:18px 0 4px">Recently sent</h3><ul class="list">';
+            foreach (array_slice($past, 0, 8, true) as $x) {
+                echo '<li><span class="tiny">' . $e($fmt($x['at'] ?? time())) . ($x['status'] === 'error' ? ' · <b style="color:#b91c1c">failed: ' . $e($x['error']) . '</b>' : '') . '</span><br><b>' . $e($x['title'] ?? '') . '</b></li>';
+            }
+            echo '</ul><p class="tiny">Delivery and click numbers for each one are in "Recent pushes" below.</p>';
+        }
+        echo '</div></div>';
+
         $default_url = home_url('/shop/');
         echo '<div class="grid g2"><div class="card"><h2>New push notification</h2><div class="in">'
             . '<div class="chips">'
