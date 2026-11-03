@@ -90,7 +90,28 @@ function DealTile({ product, big }: { product: Product; big?: boolean }) {
   );
 }
 
-export default function BlackNovemberHero({ picks, hasDeals }: { picks: Product[]; hasDeals: boolean }) {
+/** 3 random products from the pool, picked fresh on every visit. */
+function useRandomPicks(pool: Product[]): { picks: Product[]; ready: boolean } {
+  const [picks, setPicks] = useState<Product[]>(() => pool.slice(0, 3));
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    // Deferred so the server HTML and first client render match, then shuffle.
+    const t = setTimeout(() => {
+      const copy = [...pool];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      setPicks(copy.slice(0, 3));
+      setReady(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [pool]);
+  return { picks, ready };
+}
+
+export default function BlackNovemberHero({ pool, hasDeals }: { pool: Product[]; hasDeals: boolean }) {
+  const { picks, ready } = useRandomPicks(pool);
   const waText = encodeURIComponent(`Hi Kafunda! I'd like to order from the ${CAMPAIGN.name} deals.`);
 
   return (
@@ -144,10 +165,8 @@ export default function BlackNovemberHero({ picks, hasDeals }: { picks: Product[
 
           {/* Product collage */}
           {picks.length >= 3 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-2 sm:grid-rows-2 sm:gap-3 lg:h-105">
-              <DealTile product={picks[0]} big />
-              <DealTile product={picks[1]} />
-              <DealTile product={picks[2]} />
+            <div className={`grid grid-cols-3 gap-2 transition-opacity duration-500 sm:grid-cols-2 sm:grid-rows-2 sm:gap-3 lg:h-105 ${ready ? "opacity-100" : "opacity-0"}`}>
+              {picks.map((p, i) => <DealTile key={p.id} product={p} big={i === 0} />)}
             </div>
           )}
         </div>

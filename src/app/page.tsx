@@ -69,7 +69,9 @@ export default async function Home() {
   const premium = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx >= 60_000));
   const others = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx < 60_000));
 
-  const heroPicks = [...deals, ...premium].slice(0, 3);
+  // Hero: a pool of good-looking bottles (UGX 50k+, in stock, with a photo);
+  // each visitor's browser picks 3 at random from it.
+  const heroPool = rotate(sellable.filter((p) => p.price_ugx >= 50_000)).slice(0, 24);
   const gridProducts = [...deals, ...premium, ...others].slice(0, Math.max(8, Math.min(deals.length, 12)));
 
   const under50k = sellable
@@ -94,7 +96,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-kafunda-bone">
-      {live ? <BlackNovemberHero picks={heroPicks} hasDeals={hasDeals} /> : <Hero />}
+      {live ? <BlackNovemberHero pool={heroPool.length >= 3 ? heroPool : sellable.slice(0, 24)} hasDeals={hasDeals} /> : <Hero />}
 
       <QuickCategories />
 
