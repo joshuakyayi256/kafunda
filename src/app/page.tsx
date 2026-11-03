@@ -57,22 +57,19 @@ export default async function Home() {
     .sort((a, b) => discount(b) - discount(a));
   const hasDeals = deals.length > 0;
 
-  // Daily-rotating picks to fill rows when only a few products are on sale.
-  // Premium-first (>= UGX 60k) — bigger baskets, and they look best in the hero.
-  const dealIds = new Set(deals.map((p) => p.id));
+  // Pools change daily; each visitor's browser then picks at random from them,
+  // so the hero and the picks grid look different on every visit.
   const day = dayIndex();
   const rotate = <T,>(arr: T[]) => {
     if (!arr.length) return arr;
     const start = (day * 7) % arr.length;
     return [...arr.slice(start), ...arr.slice(0, start)];
   };
-  const premium = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx >= 60_000));
-  const others = rotate(sellable.filter((p) => !dealIds.has(p.id) && p.price_ugx < 60_000));
 
-  // Hero: a pool of good-looking bottles (UGX 50k+, in stock, with a photo);
-  // each visitor's browser picks 3 at random from it.
+  // Hero: good-looking bottles (UGX 50k+, in stock, with a photo) → 3 random.
   const heroPool = rotate(sellable.filter((p) => p.price_ugx >= 50_000)).slice(0, 24);
-  const gridProducts = [...deals, ...premium, ...others].slice(0, Math.max(8, Math.min(deals.length, 12)));
+  // Picks grid: any in-stock bottle from UGX 20k (skips water/mixers) → 8 random.
+  const gridPool = rotate(sellable.filter((p) => p.price_ugx >= 20_000)).slice(0, 60);
 
   const under50k = sellable
     .filter((p) => p.price_ugx <= 50_000)
@@ -129,17 +126,18 @@ export default async function Home() {
       </div>
 
       <DealsGrid
-        products={gridProducts}
-        eyebrow={live ? CAMPAIGN.name : "Deals & top picks"}
+        pool={gridPool}
+        count={8}
+        eyebrow={live ? CAMPAIGN.name : "Top picks"}
         title={
           live ? (
-            <>Black November <span className="text-primary-red">{hasDeals ? "Deals" : "Picks"}</span></>
+            <>Black November <span className="text-primary-red">Picks</span></>
           ) : (
-            <>Today&apos;s <span className="text-primary-red">Offers</span></>
+            <>Today&apos;s <span className="text-primary-red">Picks</span></>
           )
         }
-        note={hasDeals ? "Biggest savings first. While stocks last." : "Hand-picked for this week — delivered in 1–2 hours."}
-        href="/shop?filter=offers"
+        note="A fresh selection every visit — delivered in 1–2 hours."
+        href="/shop"
       />
 
       <CategoryShelf

@@ -1,27 +1,50 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "@/components/shared/ProductCard";
 import { Product } from "@/types";
 
 /**
- * Black November deals as a GRID (not a sideways carousel): on phones a
- * 2-column grid shows 4–6 deals without any swiping, which is where most
- * ad clicks land. Biggest discounts first.
+ * Homepage picks as a GRID (not a sideways carousel): on phones a 2-column
+ * grid shows 4–6 products without any swiping, which is where most ad clicks
+ * land. Each visitor gets a fresh random selection from the pool, so returning
+ * customers keep seeing different bottles.
  */
 export default function DealsGrid({
-  products,
+  pool,
+  count = 8,
   title,
   eyebrow,
   note,
   href,
 }: {
-  products: Product[];
+  pool: Product[];
+  count?: number;
   title: React.ReactNode;
   eyebrow: string;
   note?: string;
   href: string;
 }) {
-  if (products.length === 0) return null;
+  const [items, setItems] = useState<Product[]>(() => pool.slice(0, count));
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Deferred so server HTML and the first client render match, then shuffle.
+    const t = setTimeout(() => {
+      const copy = [...pool];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      setItems(copy.slice(0, count));
+      setReady(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [pool, count]);
+
+  if (pool.length === 0) return null;
   return (
     <section className="mx-auto max-w-7xl px-3 py-6 sm:px-6 md:py-10 lg:px-8">
       <div className="mb-4 flex items-end justify-between gap-3 md:mb-6">
@@ -35,8 +58,8 @@ export default function DealsGrid({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-        {products.map((p) => (
+      <div className={`grid grid-cols-2 gap-2 transition-opacity duration-500 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 ${ready ? "opacity-100" : "opacity-0"}`}>
+        {items.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
@@ -45,7 +68,7 @@ export default function DealsGrid({
         href={href}
         className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border-2 border-kafunda-ink bg-white py-3.5 text-xs font-black uppercase tracking-widest text-kafunda-ink transition-colors hover:bg-kafunda-ink hover:text-white sm:mx-auto sm:w-80"
       >
-        See every deal <ArrowRight className="h-4 w-4" />
+        Shop all products <ArrowRight className="h-4 w-4" />
       </Link>
     </section>
   );
