@@ -1,4 +1,4 @@
-/** /api/subscribe — offers sign-up popup → WordPress subscriber list. */
+/** /api/offers-join — offers sign-up popup → WordPress subscriber list. */
 import { NextRequest, NextResponse } from "next/server";
 import { wpPublic } from "@/lib/marketing/wp";
 

@@ -73,13 +73,19 @@ export default function OffersSignup() {
     setError("");
     setState("sending");
     try {
-      const res = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "popup" }),
-      });
+      // Neutral path: ad blockers commonly block URLs containing "subscribe".
+      let res: Response;
+      try {
+        res = await fetch("/api/offers-join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, source: "popup" }),
+        });
+      } catch {
+        throw new Error("Couldn't connect. Check your internet, or pause your ad blocker for this site, and try again.");
+      }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Something went wrong.");
+      if (!res.ok) throw new Error(data.error || `Sign-up failed (error ${res.status}). Please try again.`);
       try { localStorage.setItem(KEY, "subscribed"); } catch { /* ignore */ }
       setState("done");
       maybePromptPush(1200, true);
