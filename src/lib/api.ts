@@ -3,6 +3,7 @@ import { Product } from "@/types";
 import { decodeEntities } from "@/lib/utils";
 import { detectBrand } from "@/lib/brands";
 import fallbackProducts from "@/data/products.json";
+import catalogueSnapshot from "@/data/catalogue-snapshot.json";
 
 const RAW_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "https://kafundawines.com";
 const BASE_URL = RAW_URL.replace(/\/graphql\/?$/, "");
@@ -76,6 +77,53 @@ function sleep(ms: number): Promise<void> {
 function getFallbackProducts(): Product[] {
   // products.json already matches the Product shape; just ensure stock_count.
   return inStockOnly((fallbackProducts as Product[]).map((p) => ({ stock_count: 5, ...p })));
+}
+
+/**
+ * STALE-ON-ERROR CATALOGUE
+ * ----------------------------------------------------------------------
+ * When WooCommerce is unreachable (Cloudflare drops, WAF blocks, bad keys)
+ * the shop keeps selling from the newest catalogue we have instead of
+ * crashing:
+ *   1. lastGoodCatalogue — the last successful fetch on this server instance
+ *   2. catalogue-snapshot.json — real live products bundled at deploy time
+ *      (refresh with `npm run snapshot`)
+ * Safe for production because these are REAL Woo ids, and checkout always
+ * re-verifies price and stock live via getProductsByIds.
+ */
+let lastGoodCatalogue: Product[] | null = null;
+
+function getSnapshotProducts(): Product[] {
+  // /api/products trims a few fields; fill them with mapProduct's defaults.
+  return inStockOnly(
+    (catalogueSnapshot.products as unknown as Partial<Product>[]).map((p) => ({
+      gallery_urls: [],
+      abv: "N/A",
+      volume: "750ml",
+      stock_count: 5,
+      description: "No description available.",
+      original_price_ugx: null,
+      is_sale: false,
+      ...p,
+    }) as Product)
+  );
+}
+
+function getStaleCatalogue(): Product[] | null {
+  if (lastGoodCatalogue) {
+    console.warn(`[api] WooCommerce unreachable — serving last good catalogue (${lastGoodCatalogue.length} products).`);
+    return lastGoodCatalogue;
+  }
+  const snapshot = getSnapshotProducts();
+  if (snapshot.length > 0) {
+    console.warn(`[api] WooCommerce unreachable — serving bundled snapshot from ${catalogueSnapshot.takenAt} (${snapshot.length} products).`);
+    return snapshot;
+  }
+  if (USE_FALLBACK) {
+    console.warn("[api] WooCommerce unreachable — serving FALLBACK catalogue (dev only).");
+    return getFallbackProducts();
+  }
+  return null;
 }
 
 /**
@@ -299,7 +347,10 @@ export async function getCategories(): Promise<WPCategory[]> {
     "GET",
     undefined,
     { tags: ["categories"] }
-  );
+  ).catch((err): RawResult => {
+    console.error("[api] Categories fetch threw:", err);
+    return { ok: false, status: 0, data: null };
+  });
 
   if (!ok) {
     if (USE_FALLBACK) {
@@ -343,14 +394,17 @@ export async function getAllProducts(): Promise<Product[]> {
   let hasMorePages = true;
 
   while (hasMorePages) {
-    const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=100&page=${page}`);
+    // fetchWooRESTRaw throws (rather than returning !ok) when keys are missing.
+    const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=100&page=${page}`)
+      .catch((err): RawResult => {
+        console.error("[api] Products fetch threw:", err);
+        return { ok: false, status: 0, data: null };
+      });
 
     if (!ok) {
       if (page === 1) {
-        if (USE_FALLBACK) {
-          console.warn("[api] WooCommerce unreachable — serving FALLBACK catalogue (dev only).");
-          return getFallbackProducts();
-        }
+        const stale = getStaleCatalogue();
+        if (stale) return stale;
         throw new CatalogueUnavailableError();
       }
       // Partial success: keep what we fetched instead of failing the page.
@@ -375,20 +429,24 @@ export async function getAllProducts(): Promise<Product[]> {
   // A genuinely empty published catalogue is possible but should never
   // happen here — treat it as a failure rather than rendering an empty shop.
   if (allRawProducts.length === 0) {
-    if (USE_FALLBACK) return getFallbackProducts();
+    const stale = getStaleCatalogue();
+    if (stale) return stale;
     throw new CatalogueUnavailableError("The catalogue returned no products.");
   }
 
-  return inStockOnly(allRawProducts.map(mapProduct));
+  lastGoodCatalogue = inStockOnly(allRawProducts.map(mapProduct));
+  return lastGoodCatalogue;
 }
 
 // 3a. PREVIEW SET (smaller, avoids full pagination)
 // Used on the homepage. A failure here degrades gracefully (the section
 // just doesn't render) rather than taking down the whole landing page.
 export async function getProductsPreview(limit: number = 8): Promise<Product[]> {
-  const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=${limit}&page=1`);
+  const { ok, data } = await fetchWooRESTRaw(`products?status=publish&stock_status=instock&per_page=${limit}&page=1`)
+    .catch((): RawResult => ({ ok: false, status: 0, data: null }));
   if (!ok) {
-    if (USE_FALLBACK) return getFallbackProducts().slice(0, limit);
+    const stale = getStaleCatalogue();
+    if (stale) return stale.slice(0, limit);
     console.error("[api] Product preview fetch failed after retries — section will render empty.");
     return [];
   }
@@ -414,9 +472,19 @@ export async function getProductBySlug(idOrSlug: string): Promise<Product | null
     ? `products?include=${idOrSlug}&per_page=1`
     : `products?slug=${idOrSlug}`;
 
-  const { ok, status, data } = await fetchWooRESTRaw(endpoint);
+  const { ok, status, data } = await fetchWooRESTRaw(endpoint)
+    .catch((err): RawResult => {
+      console.error("[api] Product fetch threw:", err);
+      return { ok: false, status: 0, data: null };
+    });
 
   if (!ok) {
+    // Woo unreachable or blocked: serve the product from the stale catalogue
+    // if we have it (checkout re-verifies price/stock live).
+    if (isNumericId && status !== 404) {
+      const stale = getStaleCatalogue()?.find((p) => p.id === idOrSlug);
+      if (stale) return stale;
+    }
     // 404 / 400 from Woo means the product genuinely isn't there.
     if (status >= 400 && status < 500) return null;
     // Transport failure or 5xx after retries — don't lie and say "not found".

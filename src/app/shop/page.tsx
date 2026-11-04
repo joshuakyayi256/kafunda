@@ -41,8 +41,13 @@ export default async function ShopPage({
 
     const ITEMS_PER_PAGE = 24;
 
+    // getAllProducts() THROWS when Woo is unreachable — catch it so the shop
+    // renders empty instead of a 500 error page.
     const [allProducts, wpCategories] = await Promise.all([
-        getAllProducts(),
+        getAllProducts().catch((err) => {
+            console.error("[shop] Catalogue unavailable — rendering without products:", err);
+            return [] as Product[];
+        }),
         getCategories(),
     ]);
     const safeProducts   = allProducts  || [];
