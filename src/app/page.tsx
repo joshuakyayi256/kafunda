@@ -45,7 +45,12 @@ function discount(p: Product): number {
  * Outside a campaign window the normal photo hero returns automatically.
  */
 export default async function Home() {
-  const products = (await getAllProducts()) || [];
+  // getAllProducts() THROWS when Woo is unreachable. Catch it so a Woo/Cloudflare
+  // blip shows the "being restocked" notice below instead of a 500 page.
+  const products = await getAllProducts().catch((err) => {
+    console.error("[home] Catalogue unavailable — rendering without products:", err);
+    return [] as Product[];
+  });
   const catalogueEmpty = products.length === 0;
   const live = campaignLive();
 
