@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kafunda Marketing
  * Description: Push (OneSignal) incl. automatic daily pushes + matching emails, offer emails (wp_mail), customer export and abandoned-cart recovery. Dashboard at /marketing.
- * Version: 2.3.0
+ * Version: 2.5.0
  * Author: Kafunda Wines & Spirits
  */
 if (!defined('ABSPATH')) exit;
@@ -225,6 +225,102 @@ function kafunda_mkt_is_unsubscribed($email) {
     ));
 }
 
+/* ---- Wrong addresses: typos, fake/placeholder emails, dead domains, failed sends ---- */
+
+/** Common misspellings of the big providers. */
+function kafunda_mkt_typo_domains() {
+    return ['gmial.com', 'gamil.com', 'gmai.com', 'gmal.com', 'gmali.com', 'gmaill.com', 'gnail.com', 'gmil.com', 'gemail.com', 'gmaii.com',
+        'gmail.co', 'gmail.cm', 'gmail.om', 'gmail.co.ug', 'gmail.ug', 'gmail.comm', 'gmailcom.com', 'gmail.cim',
+        'yaho.com', 'yahooo.com', 'yhoo.com', 'yahoo.co', 'yahoo.cm', 'yahoo.om',
+        'hotmial.com', 'hotmal.com', 'hotmai.com', 'hotmil.com', 'hotmail.co', 'hotmail.cm',
+        'outlok.com', 'outllook.com', 'outlook.co', 'iclod.com', 'icoud.com', 'icloud.co'];
+}
+
+/** Throwaway inboxes and made-up domains people type to get past a form. */
+function kafunda_mkt_fake_domains() {
+    return ['example.com', 'example.org', 'example.net', 'test.com', 'domain.com', 'fake.com', 'none.com', 'no.com', 'noemail.com',
+        'no-email.com', 'nomail.com', 'abc.com', 'xyz.com', 'asd.com', 'mailinator.com', 'yopmail.com', 'guerrillamail.com',
+        'sharklasers.com', '10minutemail.com', 'tempmail.com', 'temp-mail.org', 'trashmail.com', 'throwawaymail.com',
+        'maildrop.cc', 'getnada.com', 'dispostable.com'];
+}
+
+/** Addresses that failed to send or were blocked by hand: [email => [why, fails, blocked, t]]. */
+function kafunda_mkt_bad_emails($save = null) {
+    static $list = null;
+    if ($save !== null) { $list = $save; update_option('kafunda_mkt_bad_emails', $save, false); return $save; }
+    if ($list === null) { $list = get_option('kafunda_mkt_bad_emails', []); if (!is_array($list)) $list = []; }
+    return $list;
+}
+
+function kafunda_mkt_flag_email($email, $why, $block_now = false) {
+    $email = strtolower(trim((string) $email));
+    if (!is_email($email)) return;
+    $bad = kafunda_mkt_bad_emails();
+    $x = $bad[$email] ?? ['fails' => 0];
+    $x['fails'] = (int) $x['fails'] + 1;
+    $x['why'] = $why;
+    $x['t'] = time();
+    // A hard "no such address", or two failed sends, and we stop trying.
+    $x['blocked'] = ($block_now || $x['fails'] >= 2) ? 1 : 0;
+    $bad[$email] = $x;
+    kafunda_mkt_bad_emails($bad);
+}
+
+/** Can mail be delivered to this domain (MX or A record)? Cached; at most 30 new lookups per page load. */
+function kafunda_mkt_domain_ok($domain) {
+    static $cache = null, $lookups = 0, $dns_works = null;
+    if (!function_exists('checkdnsrr')) return true;
+    if ($cache === null) { $cache = get_option('kafunda_mkt_domains', []); if (!is_array($cache)) $cache = []; }
+    $known = $cache[$domain] ?? null;
+    // Good domains are trusted for 30 days, dead ones re-checked after 3.
+    if ($known && $known['t'] > time() - ($known['ok'] ? 30 : 3) * DAY_IN_SECONDS) return (bool) $known['ok'];
+    if ($lookups >= 30) return $known ? (bool) $known['ok'] : true;
+    if ($dns_works === null) $dns_works = checkdnsrr('gmail.com.', 'MX'); // server can't do DNS → don't blame the address
+    if (!$dns_works) return true;
+    $lookups++;
+    $ok = checkdnsrr($domain . '.', 'MX') || checkdnsrr($domain . '.', 'A');
+    $cache[$domain] = ['ok' => $ok ? 1 : 0, 't' => time()];
+    update_option('kafunda_mkt_domains', $cache, false);
+    return $ok;
+}
+
+/** Why we shouldn't email this address, or '' if it looks fine. */
+function kafunda_mkt_email_problem($email) {
+    $email = strtolower(trim((string) $email));
+    if (!is_email($email)) return 'not a valid email address';
+    [$local, $domain] = explode('@', $email, 2);
+    $bad = kafunda_mkt_bad_emails()[$email] ?? null;
+    if ($bad && !empty($bad['blocked'])) return $bad['why'];
+    if (in_array($domain, kafunda_mkt_typo_domains(), true) || preg_match('/\.(con|cmo|cpm|vom|xom|comm|coom|cim|clm)$/', $domain)) return "typo in the domain ($domain)";
+    if (in_array($domain, kafunda_mkt_fake_domains(), true)) return 'fake / throwaway address';
+    if (preg_match('/^(no-?e?-?mails?|none|nil|null|na|n-a|nope|test\d*|testing|fake|x+|abc|asdf\w*|qwerty\w*|sample|dummy|guest|0+)$/', $local)) return 'placeholder address';
+    $own = preg_replace('/^www\./', '', (string) parse_url(home_url('/'), PHP_URL_HOST));
+    if ($domain === $own && preg_match('/^\+?\d+$/', $local)) return 'placeholder address';
+    if (!kafunda_mkt_domain_ok($domain)) return "domain $domain does not exist";
+    return '';
+}
+
+/** The mail server refused a recipient → remember it. Server-wide problems (SMTP down, login) are ignored. */
+add_action('wp_mail_failed', function ($err) {
+    if (!is_wp_error($err)) return;
+    $msg = $err->get_error_message();
+    if (preg_match('/connect|authenticat|timed? ?out|could not instantiate|password|login|quota|too many|tls|ssl/i', $msg)) return;
+    $hard = (bool) preg_match('/invalid address|does not exist|no such user|user unknown|mailbox unavailable|recipient.*(rejected|refused)|\b55[0-3]\b/i', $msg);
+    $data = $err->get_error_data();
+    foreach ((array) ($data['to'] ?? []) as $to) kafunda_mkt_flag_email($to, $hard ? 'rejected by the mail server' : 'failed to send twice', $hard);
+});
+
+/** A successful send clears earlier soft failures. */
+add_action('wp_mail_succeeded', function ($data) {
+    $bad = kafunda_mkt_bad_emails();
+    $changed = false;
+    foreach ((array) ($data['to'] ?? []) as $to) {
+        $to = strtolower(trim((string) $to));
+        if (isset($bad[$to]) && empty($bad[$to]['blocked'])) { unset($bad[$to]); $changed = true; }
+    }
+    if ($changed) kafunda_mkt_bad_emails($bad);
+});
+
 /* ------------------------------------------------------------------------ */
 /* Email                                                                     */
 /* ------------------------------------------------------------------------ */
@@ -272,7 +368,7 @@ function kafunda_mkt_render_email($p, $email) {
         . '<tr><td style="padding:22px 20px;text-align:center;border-bottom:4px solid ' . $green . '"><a href="' . esc_url(home_url('/')) . '"><img src="' . esc_url($logo) . '" alt="Kafunda Wines &amp; Spirits" height="44" style="height:44px;width:auto"></a></td></tr>'
         . '<tr><td style="padding:28px 24px 8px">'
         . '<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#141414">' . $e($p['heading'] ?? '') . '</h1>'
-        . $image . $paras . $items . $cta . kafunda_mkt_render_products($p['products'] ?? [])
+        . $image . $paras . $items . $cta . kafunda_mkt_render_products($p['products'] ?? [], $p['products_heading'] ?? 'More picks for you')
         . '</td></tr>'
         . '<tr><td style="padding:22px 24px 26px;font-size:12px;line-height:1.6;color:#888;text-align:center">'
         . '1–2 hour delivery across Kampala · Pay with Mobile Money, card or cash on delivery<br>'
@@ -283,7 +379,7 @@ function kafunda_mkt_render_email($p, $email) {
 }
 
 /** "More picks" grid for offer emails: [ [name, price, was, image, url], … ] → 2 cards per row. */
-function kafunda_mkt_render_products($products) {
+function kafunda_mkt_render_products($products, $heading = 'More picks for you') {
     if (empty($products) || !is_array($products)) return '';
     $e = function ($s) { return esc_html((string) $s); };
     $cells = [];
@@ -302,12 +398,12 @@ function kafunda_mkt_render_products($products) {
         if (count($pair) === 1) $pair[] = '<td width="50%"></td>';
         $rows .= '<tr>' . implode('', $pair) . '</tr>';
     }
-    return '<h2 style="margin:22px 0 6px;font-size:15px;color:#141414">More picks for you</h2>'
+    return '<h2 style="margin:22px 0 6px;font-size:15px;color:#141414">' . $e($heading) . '</h2>'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 -6px">' . $rows . '</table>';
 }
 
 function kafunda_mkt_send($email, $subject, $payload) {
-    if (!$email || kafunda_mkt_is_unsubscribed($email)) return false;
+    if (!$email || kafunda_mkt_is_unsubscribed($email) || kafunda_mkt_email_problem($email)) return false;
     $opts = kafunda_mkt_opts();
     $headers = ['Content-Type: text/html; charset=UTF-8'];
     if (!empty($opts['from_email']) && is_email($opts['from_email'])) {
@@ -339,7 +435,8 @@ function kafunda_mkt_customer_emails() {
     return $emails;
 }
 
-function kafunda_mkt_audience($audience) {
+/** Emails to send to. Wrong addresses are left out and returned in $skipped [email => why]. */
+function kafunda_mkt_audience($audience, &$skipped = null) {
     global $wpdb;
     $t = kafunda_mkt_tables();
     $list = [];
@@ -348,9 +445,15 @@ function kafunda_mkt_audience($audience) {
     }
     if ($audience === 'customers' || $audience === 'all') $list = array_merge($list, kafunda_mkt_customer_emails());
 
-    $list = array_values(array_unique(array_filter(array_map('kafunda_mkt_clean_email', $list))));
+    $list = array_unique(array_filter(array_map(function ($e) { return strtolower(trim((string) $e)); }, $list)));
     $unsub = array_flip((array) $wpdb->get_col("SELECT email FROM {$t['subs']} WHERE status = 'unsubscribed'"));
-    return array_values(array_filter($list, function ($e) use ($unsub) { return !isset($unsub[$e]); }));
+    $out = []; $skipped = [];
+    foreach ($list as $e) {
+        if (isset($unsub[$e])) continue;
+        $why = kafunda_mkt_email_problem($e);
+        if ($why) $skipped[$e] = $why; else $out[] = $e;
+    }
+    return $out;
 }
 
 function kafunda_mkt_add_subscriber($email, $name = '', $phone = '', $source = '', $explicit = true) {
@@ -719,7 +822,9 @@ function kafunda_mkt_send_push($f) {
     ];
     if ($f['audience'] === 'web') $body['isAnyWeb'] = true;
     if ($f['audience'] === 'app') { $body['isIos'] = true; $body['isAndroid'] = true; }
-    if ($f['url']) { $body['web_url'] = $f['url']; $body['app_url'] = $f['url']; }
+    // Website pushes open the link. On phones the push opens the app itself (no app_url —
+    // a web link there would open the browser); the link travels in data for the app to use.
+    if ($f['url']) { $body['web_url'] = $f['url']; $body['data'] = ['url' => $f['url']]; }
     if ($f['image']) {
         $body['big_picture'] = $f['image'];
         $body['chrome_web_image'] = $f['image'];
@@ -734,11 +839,15 @@ function kafunda_mkt_send_push($f) {
     return $r;
 }
 
-/* ---- Automatic daily pushes --------------------------------------------- */
+/* ---- Automatic daily pushes + emails ------------------------------------ */
 /*
- * Every day at the chosen times (default 09:00, 12:00, 16:00, 20:00 Kampala),
- * a push goes to app + web subscribers featuring a random in-stock product
- * (on-sale items preferred), with a message that fits the time of day.
+ * Every day at the chosen times (default 09:00, 12:00, 16:00, 20:00 Kampala) a push
+ * goes to app + web subscribers, and (once a day by default) a matching email.
+ * Every push sells one product: a random pick from each drink's best sellers (real
+ * price cuts first), with its photo and real price, a different drink each time.
+ * During a store-wide sale (Black November, Christmas Sale) the push carries its name.
+ *  - Ugandan holidays and special days keep their greeting and add a fitting product.
+ *  - Quiet days (Good Friday, Martyrs' Day, Eid) get one greeting and nothing to buy.
  * Today's and tomorrow's pushes are handed to OneSignal in advance with
  * send_after, so they go out on time even if nobody visits the site at 9am.
  */
@@ -762,104 +871,448 @@ function kafunda_mkt_auto_log($save = null) {
 
 function kafunda_mkt_tz() { return new DateTimeZone('Africa/Kampala'); }
 
-/** Random in-stock product with a photo, avoiding the last 40 featured. */
-function kafunda_mkt_auto_pick_product($prefer_sale) {
-    if (!function_exists('wc_get_products')) return null;
+/** Drinks we rotate through: key => [label, emoji, category-name regex, serving tip]. */
+function kafunda_mkt_themes() {
+    return [
+        'wine'      => ['Wine', '🍷', '/wine|vino/i', 'Tip: a good red with luwombo or nyama choma is hard to beat.'],
+        'whisky'    => ['Whisky', '🥃', '/whisk/i', 'Tip: one big ice cube melts slower than five small ones — your whisky stays strong.'],
+        'beer'      => ['Beer & cider', '🍺', '/beer|lager|cider|stout/i', 'Tip: a crate in the fridge before the match is the best kind of planning.'],
+        'gin'       => ['Gin', '🍸', '/\bgins?\b/i', 'Tip: gin, tonic, lots of ice and a slice of lemon — Kampala heat sorted.'],
+        'champagne' => ['Bubbly', '🍾', '/champagne|sparkling|prosecco|bubbl|cava/i', 'Tip: you don\'t need an occasion. Opening the bottle IS the occasion.'],
+        'vodka'     => ['Vodka', '🧊', '/vodka/i', 'Tip: keep the bottle in the freezer — it won\'t freeze, but it will impress.'],
+        'cognac'    => ['Cognac & brandy', '🥃', '/cognac|brandy/i', 'Tip: a cognac after dinner turns a normal evening into a "remember that night".'],
+        'rum'       => ['Rum', '🏝️', '/\brums?\b/i', 'Tip: rum, cola and fresh lime. Simple, and it never fails.'],
+        'tequila'   => ['Tequila', '🌵', '/tequila|mezcal/i', 'Tip: salt, lime, tequila — and someone to take the photo.'],
+        'liqueur'   => ['Liqueurs', '🍫', '/liqueur|cream/i', 'Tip: a cream liqueur over ice is dessert you don\'t have to cook.'],
+    ];
+}
+
+/** Product categories whose name matches a theme. */
+function kafunda_mkt_theme_cats($theme) {
+    static $terms = null;
+    if ($terms === null) $terms = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => true]);
+    $themes = kafunda_mkt_themes();
+    if (is_wp_error($terms) || !isset($themes[$theme])) return [];
+    $re = $themes[$theme][2];
+    return array_values(array_filter((array) $terms, function ($t) use ($re) { return preg_match($re, $t->name . ' ' . $t->slug); }));
+}
+
+/** Regular price if the product's price is really cut, else 0. */
+function kafunda_mkt_was_price($p) {
+    $now = (float) $p->get_price();
+    $reg = $p->is_type('variable') ? (float) $p->get_variation_regular_price('max') : (float) $p->get_regular_price();
+    return ($now > 0 && $reg > $now) ? $reg : 0;
+}
+
+/**
+ * The drink for each push of the day. Windows of 4 = one day at the default 4 slots:
+ * four different drinks; 5-day cycle. Fast movers (whisky, wine, beer) come round most often.
+ */
+function kafunda_mkt_offer_rotation() {
+    return ['whisky', 'wine', 'beer', 'gin',
+            'vodka', 'whisky', 'wine', 'champagne',
+            'beer', 'whisky', 'cognac', 'wine',
+            'gin', 'beer', 'rum', 'whisky',
+            'wine', 'liqueur', 'vodka', 'tequila'];
+}
+
+/**
+ * The store-wide sale running on a date, or null. Keep in step with src/lib/campaign.ts.
+ * Pushes carry the sale's name; only products with a real sale price claim a saving.
+ */
+function kafunda_mkt_campaign(DateTime $at) {
+    $sales = [
+        ['name' => 'Black November', 'emoji' => '🖤', 'from' => '11-01', 'to' => '11-30', 'ends' => '30 Nov'],
+        ['name' => 'Christmas Sale', 'emoji' => '🎄', 'from' => '12-01', 'to' => '12-25', 'ends' => '25 Dec'],
+    ];
+    $md = $at->format('m-d');
+    foreach ($sales as $s) if ($md >= $s['from'] && $md <= $s['to']) return $s;
+    return null;
+}
+
+/** Drinks to try for slot $i, best first. Special days stick to the drinks that fit the occasion. */
+function kafunda_mkt_slot_themes(array $plan, $i) {
+    $list = kafunda_mkt_offer_rotation();
+    $start = ($plan['n'] * 4 + $i) % count($list);
+    if (($plan['kind'] ?? '') === 'special') {
+        $list = kafunda_mkt_specials()[$plan['special'][0]]['themes'] ?? [];
+        if (!$list) return [];
+        $start = $i % count($list);
+    }
+    return array_values(array_unique(array_merge(array_slice($list, $start), array_slice($list, 0, $start))));
+}
+
+/** A theme's likely quick sales: in-stock, with a photo — every price cut plus its all-time best sellers. */
+function kafunda_mkt_fast_sellers($theme) {
+    static $cache = [];
+    if (isset($cache[$theme])) return $cache[$theme];
+    $cats = kafunda_mkt_theme_cats($theme);
+    if (!$cats) return $cache[$theme] = [];
+    $base = ['status' => 'publish', 'stock_status' => 'instock', 'category' => wp_list_pluck($cats, 'slug')];
+    $popular = wc_get_products($base + ['limit' => 24, 'meta_key' => 'total_sales', 'orderby' => 'meta_value_num', 'order' => 'DESC']);
+    $sale = function_exists('wc_get_product_ids_on_sale') ? wc_get_product_ids_on_sale() : [];
+    $cuts = $sale ? wc_get_products($base + ['limit' => 60, 'include' => array_slice($sale, 0, 1000)]) : [];
+    $found = [];
+    foreach (array_merge($cuts, $popular) as $p) {
+        // UGX 15k floor: single beers and miniatures aren't worth a push.
+        if ((float) $p->get_price() >= 15000 && $p->get_image_id() && $p->is_visible()) $found[$p->get_id()] = $p;
+    }
+    return $cache[$theme] = array_values($found);
+}
+
+/**
+ * Random pick for a push: [theme, product]. Takes the first theme with something not
+ * featured lately, price cuts ahead of everything else; ['', null] if nothing can be sold.
+ */
+function kafunda_mkt_pick_offer(array $themes) {
+    $recent = get_option('kafunda_mkt_auto_recent', []);
+    $recent = array_flip(is_array($recent) ? $recent : []);
+    $fallback = ['', null];
+    foreach ($themes as $th) {
+        $pool = kafunda_mkt_fast_sellers($th);
+        if (!$pool) continue;
+        if (!$fallback[1]) $fallback = [$th, $pool[array_rand($pool)]];
+        $fresh = array_filter($pool, function ($p) use ($recent) { return !isset($recent[$p->get_id()]); });
+        if (!$fresh) continue;
+        $from = array_values(array_filter($fresh, 'kafunda_mkt_was_price') ?: $fresh);
+        return [$th, $from[array_rand($from)]];
+    }
+    return $fallback;
+}
+
+function kafunda_mkt_mark_featured($product_id) {
     $recent = get_option('kafunda_mkt_auto_recent', []);
     if (!is_array($recent)) $recent = [];
-
-    $args = ['status' => 'publish', 'stock_status' => 'instock', 'limit' => 60, 'orderby' => 'rand'];
-    if ($prefer_sale) {
-        $sale = wc_get_product_ids_on_sale();
-        if (!$sale) return kafunda_mkt_auto_pick_product(false);
-        shuffle($sale);
-        $args['include'] = array_slice($sale, 0, 200);
-    }
-    $fallback = null;
-    foreach (wc_get_products($args) as $p) {
-        if ((float) $p->get_price() <= 0 || !$p->get_image_id() || !$p->is_visible()) continue;
-        if (!$fallback) $fallback = $p;
-        if (in_array($p->get_id(), $recent, true)) continue;
-        $pick = $p;
-        break;
-    }
-    $pick = $pick ?? $fallback;
-    if (!$pick && $prefer_sale) return kafunda_mkt_auto_pick_product(false);
-    if ($pick) {
-        $recent[] = $pick->get_id();
-        update_option('kafunda_mkt_auto_recent', array_slice(array_values(array_unique($recent)), -40), false);
-    }
-    return $pick;
+    $recent[] = (int) $product_id;
+    update_option('kafunda_mkt_auto_recent', array_slice(array_values(array_unique($recent)), -40), false);
 }
 
-/** Title + message that fit the hour and the day. */
-function kafunda_mkt_auto_message($product, DateTime $at) {
-    $name = wp_strip_all_tags($product->get_name());
-    $short = mb_strlen($name) > 38 ? rtrim(mb_substr($name, 0, 36)) . '…' : $name;
-    $price = kafunda_mkt_ugx(wc_get_price_to_display($product));
-    $reg = (float) $product->get_regular_price();
-    $was = ($product->is_on_sale() && $reg > (float) $product->get_price()) ? ' (was ' . kafunda_mkt_ugx($reg) . ')' : '';
-    $hour = (int) $at->format('G');
-    $weekend = in_array($at->format('N'), ['5', '6'], true); // Fri, Sat
+/** Easter Sunday (Gregorian), without needing the PHP calendar extension. */
+function kafunda_mkt_easter($y) {
+    $a = $y % 19; $b = intdiv($y, 100); $c = $y % 100; $d = intdiv($b, 4); $e = $b % 4;
+    $f = intdiv($b + 8, 25); $g = intdiv($b - $f + 1, 3); $h = (19 * $a + $b - $d - $g + 15) % 30;
+    $i = intdiv($c, 4); $k = $c % 4; $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7; $m = intdiv($a + 11 * $h + 22 * $l, 451);
+    $month = intdiv($h + $l - 7 * $m + 114, 31); $day = (($h + $l - 7 * $m + 114) % 31) + 1;
+    return sprintf('%04d-%02d-%02d', $y, $month, $day);
+}
 
+/**
+ * Ugandan holidays + days worth promoting.
+ * tone: party (promote it), holiday (relaxed day off), quiet (religious/memorial: one respectful
+ * greeting, no products, no email). lead: days before it we already start talking about it.
+ * {when} in lead lines becomes "tomorrow" / "in 2 days" / "in 3 days".
+ */
+function kafunda_mkt_specials() {
+    return [
+        'newyear' => ['name' => "New Year's Day", 'tone' => 'party', 'themes' => ['champagne', 'wine'], 'lines' => [
+            ['Happy New Year from Kafunda 🎆', 'Thank you for drinking with us this year. Here\'s to a better one — and yes, we\'re delivering today.'],
+            ['New year, same fast delivery 🛵', 'Friends still around? Keep the celebration going — delivered in 1–2 hours.'],
+            ['Resolution idea 💡', '"Never run out of drinks when visitors come." Easy to keep — we deliver.'],
+        ], 'email' => ['Happy New Year from all of us at Kafunda 🎆', "Thank you for every order this year — from birthday bottles to Friday night beers, we loved bringing them to you.\n\nWe're open today, so if the party isn't over yet, we've got you."]],
+        'liberation' => ['name' => 'Liberation Day', 'tone' => 'holiday', 'themes' => ['beer', 'wine'], 'lines' => [
+            ['Public holiday — enjoy the day off 🇺🇬', 'No office today. Relax at home, we bring the drinks in 1–2 hours.'],
+            ['Holiday plans? Keep it simple 🛋️', 'Stay in, call friends over, we deliver.'],
+        ], 'email' => ['Enjoy the public holiday 🇺🇬', "No alarm, no office, no traffic — enjoy the day off.\n\nIf friends drop by, we'll make sure the drinks are cold and on time."]],
+        'valentine' => ['name' => "Valentine's Day", 'tone' => 'party', 'lead' => 2, 'themes' => ['wine', 'champagne', 'liqueur'],
+            'lead_line' => ["Valentine's Day is {when} ❤️", 'Flowers fade, a good bottle gets remembered. Order early — delivered in 1–2 hours.'],
+            'lead_email' => ["Valentine's is {when} — sorted yet? ❤️", "Valentine's Day is {when}. Skip the last-minute panic: a bottle of wine or bubbly says it better than a card.\n\nOrder now, choose a delivery time that suits you, pay on delivery."],
+            'lines' => [
+                ["Happy Valentine's Day ❤️", 'Dinner at home, candles, a good bottle. We deliver the last part in 1–2 hours.'],
+                ['Forgot it\'s Valentine\'s? 😬', 'We won\'t tell. Order now and look like you planned it all week.'],
+                ['Tonight is for two 🍷', 'Red, rosé or bubbly — delivered before dinner is ready.'],
+            ], 'email' => ["Happy Valentine's Day ❤️", "Tonight is for the people you love. Make dinner at home special with a bottle of wine or bubbly — we'll have it at your door in 1–2 hours.\n\nAnd if you forgot it was today… we won't tell anyone."]],
+        'janani' => ['name' => 'Archbishop Janani Luwum Day', 'tone' => 'holiday', 'themes' => [], 'lines' => [
+            ['Enjoy the public holiday 🙏', 'A day to remember and to rest. If you\'re staying home, we deliver.'],
+        ], 'email' => ['A day to remember and rest', "Today we remember Archbishop Janani Luwum. Enjoy the public holiday with family and friends.\n\nIf you're staying home, we're delivering as usual."]],
+        'women' => ['name' => "International Women's Day", 'tone' => 'party', 'themes' => ['champagne', 'wine', 'liqueur'], 'lines' => [
+            ["Happy Women's Day 💐", 'To the women who run homes, offices and Kampala — raise a glass, you deserve it.'],
+            ['Celebrate her today 🥂', 'Mum, wife, sister, boss — surprise her with a bottle, delivered in 1–2 hours.'],
+        ], 'email' => ["Happy International Women's Day 💐", "To every woman who keeps Kampala running — today is yours.\n\nCelebrating someone special? Send her a bottle of wine or bubbly — we deliver in 1–2 hours."]],
+        'goodfriday' => ['name' => 'Good Friday', 'tone' => 'quiet', 'lines' => [
+            ['Blessed Easter weekend 🙏', 'Wishing you and your family a peaceful Easter from all of us at Kafunda.'],
+        ]],
+        'easter' => ['name' => 'Easter Sunday', 'tone' => 'party', 'themes' => ['wine', 'champagne'], 'lines' => [
+            ['Happy Easter! 🐣', 'Family lunch today? A good bottle on the table makes it complete. Delivered in 1–2 hours.'],
+            ['Easter lunch sorted? 🍗🍷', 'You cook, we bring the wine.'],
+        ], 'email' => ['Happy Easter from Kafunda 🐣', "Wishing you a joyful Easter with family and friends.\n\nHosting lunch? Let us bring the wine and drinks — delivered in 1–2 hours, pay on delivery."]],
+        'eastermonday' => ['name' => 'Easter Monday', 'tone' => 'holiday', 'themes' => ['beer', 'wine'], 'lines' => [
+            ['One more day off 😌', 'Easter Monday = a lazy day at home. We deliver.'],
+        ], 'email' => ['One more day off 😌', "Easter Monday — no work, no rush. Relax.\n\nIf the fridge emptied out yesterday, we can fix that in 1–2 hours."]],
+        'labour' => ['name' => 'Labour Day', 'tone' => 'holiday', 'themes' => ['beer', 'whisky'], 'lines' => [
+            ['Happy Labour Day — you\'ve earned it 💪', 'A whole year of hard work. Today, put your feet up. We deliver.'],
+            ['Hard worker spotted 👀', 'Reward yourself tonight — delivered in 1–2 hours.'],
+        ], 'email' => ['Happy Labour Day — you\'ve earned it 💪', "All year you've worked hard. Today, rest.\n\nYour reward is one tap away — we deliver across Kampala in 1–2 hours."]],
+        'mothers' => ['name' => "Mother's Day", 'tone' => 'party', 'lead' => 2, 'themes' => ['wine', 'champagne', 'liqueur'],
+            'lead_line' => ["Mother's Day is {when} 💐", 'She did a lot for you. A nice bottle is the least — order early, delivered in 1–2 hours.'],
+            'lead_email' => ["Mother's Day is {when} 💐", "Mother's Day is {when}. A bottle of her favourite wine (or something sweet like a cream liqueur) says thank you better than words.\n\nOrder now — we deliver to her door or yours."],
+            'lines' => [
+                ["Happy Mother's Day 💐", 'Call mum. Then send her something nice — we deliver in 1–2 hours.'],
+                ['Still need a gift for mum? 🎁', 'Wine, bubbly or a cream liqueur — at her door this afternoon.'],
+            ], 'email' => ["Happy Mother's Day 💐", "Today is for mum. If you can't be there, send a bottle — we deliver anywhere in Kampala in 1–2 hours."]],
+        'whiskyday' => ['name' => 'World Whisky Day', 'tone' => 'party', 'themes' => ['whisky'], 'lines' => [
+            ['It\'s World Whisky Day 🥃', 'An official excuse. Pick a bottle, we deliver in 1–2 hours.'],
+            ['Whisky Day plans? 🥃', 'Neat, on the rocks or with ginger ale — you choose, we deliver.'],
+        ], 'email' => ['Happy World Whisky Day 🥃', "Yes, it's a real day. And the best way to celebrate is with a good bottle and good company.\n\nNeat, on the rocks or in a cocktail — we deliver in 1–2 hours."]],
+        'martyrs' => ['name' => "Uganda Martyrs' Day", 'tone' => 'quiet', 'lines' => [
+            ["Uganda Martyrs' Day 🙏", 'Wishing all pilgrims a safe journey to Namugongo and back home.'],
+        ]],
+        'heroes' => ['name' => 'Heroes Day', 'tone' => 'holiday', 'themes' => ['beer', 'whisky'], 'lines' => [
+            ['Happy Heroes Day 🇺🇬', 'Public holiday — enjoy it with the everyday heroes in your life. We deliver.'],
+        ], 'email' => ['Happy Heroes Day 🇺🇬', "Today we honour Uganda's heroes. Enjoy the public holiday with family and friends — the everyday heroes.\n\nWe're delivering as usual."]],
+        'fathers' => ['name' => "Father's Day", 'tone' => 'party', 'lead' => 2, 'themes' => ['whisky', 'cognac'],
+            'lead_line' => ["Father's Day is {when} 👔", 'Socks again? Get dad a bottle he\'ll actually enjoy. Order early.'],
+            'lead_email' => ["Father's Day is {when} — skip the socks 👔", "Father's Day is {when}. This year, give dad something he'll actually open: a good whisky or cognac.\n\nOrder now — delivered in 1–2 hours anywhere in Kampala."],
+            'lines' => [
+                ["Happy Father's Day 👔", 'Raise a glass to dad today. Whisky or cognac delivered in 1–2 hours.'],
+                ['Dad deserves better than a tie 🥃', 'A good bottle, delivered to his door this afternoon.'],
+            ], 'email' => ["Happy Father's Day 👔", "Today is for dad. Show him some love with a bottle he'll enjoy — we deliver across Kampala in 1–2 hours."]],
+        'ginday' => ['name' => 'World Gin Day', 'tone' => 'party', 'themes' => ['gin'], 'lines' => [
+            ['Happy World Gin Day 🍸', 'Gin, tonic, ice, lemon. We bring the first two.'],
+        ], 'email' => ['Happy World Gin Day 🍸', "Today the whole world drinks gin — join in.\n\nGrab a bottle and some tonic, we deliver in 1–2 hours."]],
+        'beerday' => ['name' => 'International Beer Day', 'tone' => 'party', 'themes' => ['beer'], 'lines' => [
+            ['It\'s International Beer Day 🍺', 'And it\'s a Friday. Coincidence? Order a crate, we deliver.'],
+        ], 'email' => ['Cheers to International Beer Day 🍺', "It's International Beer Day — and it falls on a Friday. We think that's a sign.\n\nCold beer, delivered in 1–2 hours."]],
+        'independence' => ['name' => 'Independence Day', 'tone' => 'party', 'lead' => 1, 'themes' => ['beer', 'whisky', 'champagne'],
+            'lead_line' => ['Independence Day is {when} 🇺🇬', 'Public holiday + friends = drinks. Stock up today, beat the rush.'],
+            'lead_email' => ['Independence Day is {when} 🇺🇬', "Tomorrow Uganda celebrates — and it's a public holiday. Stock up today so you're not stuck in the queue tomorrow.\n\nDelivered in 1–2 hours, pay on delivery."],
+            'lines' => [
+                ['Happy Independence Day, Uganda! 🇺🇬', 'Celebrate the Pearl of Africa — drinks delivered in 1–2 hours.'],
+                ['For God and my country — and my friends 🇺🇬', 'Celebrating today? We deliver across Kampala.'],
+                ['Black, yellow, red… and cold drinks 🇺🇬', 'Keep the celebration going, order now.'],
+            ], 'email' => ['Happy Independence Day, Uganda! 🇺🇬', "Happy Independence Day! Today we celebrate the Pearl of Africa.\n\nWhether it's a family lunch or a party with friends, we'll bring the drinks — delivered in 1–2 hours."]],
+        'champagneday' => ['name' => 'Champagne Day', 'tone' => 'party', 'themes' => ['champagne'], 'lines' => [
+            ['It\'s Champagne Day 🍾', 'Pop something tonight — you don\'t need another reason.'],
+        ], 'email' => ['Pop! It\'s Champagne Day 🍾', "Today is Champagne Day. Celebrate the small wins: it's Friday, you made it through the week.\n\nBubbly delivered in 1–2 hours."]],
+        'xmaseve' => ['name' => 'Christmas Eve', 'tone' => 'party', 'themes' => ['wine', 'champagne', 'whisky'], 'lines' => [
+            ['Christmas Eve! Last chance to stock up 🎄', 'Shops are packed — we deliver in 1–2 hours. Skip the queue.'],
+            ['Visitors arriving tonight? 🎄', 'Don\'t be the house with no drinks. Order now.'],
+        ], 'email' => ['Christmas Eve — skip the queues 🎄', "The supermarkets are packed and the traffic is worse. Stay home — we'll bring everything for tomorrow in 1–2 hours.\n\nWine for lunch, bubbly for the toast, whisky for the uncles."]],
+        'christmas' => ['name' => 'Christmas', 'tone' => 'party', 'lead' => 3, 'themes' => ['wine', 'champagne', 'whisky'],
+            'lead_line' => ['Christmas is {when} 🎄', 'Beat the rush — order your Christmas drinks today, delivered in 1–2 hours.'],
+            'lead_email' => ['Christmas is {when} — get your drinks sorted 🎄', "Christmas is {when}. Order the drinks now and avoid the last-minute queues.\n\nWine for lunch, bubbly for the toast, whisky for the uncles — all delivered in 1–2 hours."],
+            'lines' => [
+                ['Merry Christmas from Kafunda 🎄', 'Thank you for a wonderful year. Yes — we\'re delivering today.'],
+                ['Ran out already? 🎅', 'Visitors finished the drinks? We deliver on Christmas too.'],
+            ], 'email' => ['Merry Christmas from all of us at Kafunda 🎄', "Merry Christmas! Thank you for shopping with us this year.\n\nIf the visitors are many and the drinks are few, we're delivering today."]],
+        'boxing' => ['name' => 'Boxing Day', 'tone' => 'holiday', 'themes' => ['beer', 'wine'], 'lines' => [
+            ['Boxing Day: still celebrating? 🎁', 'The leftovers need drinks. We deliver.'],
+        ], 'email' => ['Boxing Day — the party continues 🎁', "Christmas isn't over until the leftovers are finished.\n\nWe're delivering today, as always."]],
+        'nye' => ['name' => "New Year's Eve", 'tone' => 'party', 'themes' => ['champagne', 'whisky', 'wine'], 'lines' => [
+            ['New Year\'s Eve! Got the bubbly? 🍾', 'Midnight is coming — order before the rush, delivered in 1–2 hours.'],
+            ['Countdown checklist ✅', 'Friends ✅ Music ✅ Bubbly for midnight? We\'ve got you.'],
+            ['Last orders of the year 🎆', 'Order now so the drinks arrive before the fireworks.'],
+        ], 'email' => ["New Year's Eve — bubbly for midnight? 🍾", "Tonight we say goodbye to the year. Make sure there's something to pop at midnight.\n\nOrder early — tonight is our busiest night."]],
+        'eid' => ['name' => 'Eid', 'tone' => 'quiet', 'lines' => [
+            ['Eid Mubarak 🌙', 'Wishing all our Muslim customers and their families a blessed Eid.'],
+        ]],
+    ];
+}
+
+/** date (Y-m-d) => special key for a year. Eid follows the moon: approximate dates. */
+function kafunda_mkt_special_dates($year) {
+    $out = [];
+    $fixed = ['01-01' => 'newyear', '01-26' => 'liberation', '02-14' => 'valentine', '02-16' => 'janani', '03-08' => 'women',
+        '05-01' => 'labour', '06-03' => 'martyrs', '06-09' => 'heroes', '10-09' => 'independence',
+        '12-24' => 'xmaseve', '12-25' => 'christmas', '12-26' => 'boxing', '12-31' => 'nye'];
+    foreach ($fixed as $md => $k) $out["$year-$md"] = $k;
+    $rel = ['second sunday of may' => 'mothers', 'third saturday of may' => 'whiskyday', 'third sunday of june' => 'fathers',
+        'second saturday of june' => 'ginday', 'first friday of august' => 'beerday', 'fourth friday of october' => 'champagneday'];
+    foreach ($rel as $when => $k) $out[(new DateTime("$when $year"))->format('Y-m-d')] = $k;
+    $easter = new DateTime(kafunda_mkt_easter($year));
+    $out[(clone $easter)->modify('-2 days')->format('Y-m-d')] = 'goodfriday';
+    $out[$easter->format('Y-m-d')] = 'easter';
+    $out[(clone $easter)->modify('+1 day')->format('Y-m-d')] = 'eastermonday';
+    $eid = ['2026' => ['03-20', '05-27'], '2027' => ['03-10', '05-17'], '2028' => ['02-27', '05-05'], '2029' => ['02-14', '04-24'], '2030' => ['02-05', '04-13']];
+    foreach ($eid[(string) $year] ?? [] as $md) $out["$year-$md"] = 'eid';
+    return $out;
+}
+
+/** [key, lead] if $day is a special day (lead 0) or within its lead-up, else null. */
+function kafunda_mkt_special_day(DateTime $day) {
+    $specials = kafunda_mkt_specials();
+    for ($lead = 0; $lead <= 3; $lead++) {
+        $d = (clone $day)->modify("+$lead day");
+        $key = kafunda_mkt_special_dates((int) $d->format('Y'))[$d->format('Y-m-d')] ?? '';
+        if ($key && ($lead === 0 || ($specials[$key]['lead'] ?? 0) >= $lead)) return [$key, $lead];
+    }
+    return null;
+}
+
+/**
+ * The story of one day, decided once and remembered (so all pushes + the email agree).
+ * kind: special (holiday or its lead-up) | offer (every other day)
+ */
+function kafunda_mkt_day_plan(DateTime $day) {
+    $key = $day->format('Y-m-d');
+    $plans = get_option('kafunda_mkt_day_plans', []);
+    if (!is_array($plans)) $plans = [];
+    if (isset($plans[$key])) return $plans[$key];
+
+    $n = (int) floor(strtotime($key . ' 12:00 UTC') / DAY_IN_SECONDS); // day number, drives the rotation
+    $plan = ['date' => $key, 'n' => $n, 'kind' => 'offer'];
+    if ($special = kafunda_mkt_special_day($day)) {
+        $plan['kind'] = 'special';
+        $plan['special'] = $special;
+    }
+    $plans[$key] = $plan;
+    ksort($plans);
+    update_option('kafunda_mkt_day_plans', array_slice($plans, -21, null, true), false);
+    return $plan;
+}
+
+/** Short label for the dashboard: "Product pushes…", "Valentine's Day (in 2 days)"… */
+function kafunda_mkt_plan_label($plan) {
+    if (($plan['kind'] ?? '') !== 'special') return 'Product pushes — a different bottle with every push';
+    [$key, $lead] = $plan['special'];
+    $sp = kafunda_mkt_specials()[$key];
+    $label = $lead ? "Lead-up to {$sp['name']} (" . ($lead === 1 ? 'tomorrow' : "in $lead days") . ')' : $sp['name'];
+    return $label . ($sp['tone'] === 'quiet' ? ' — one greeting, no products' : (empty($sp['themes']) ? '' : ' + a fitting bottle'));
+}
+
+function kafunda_mkt_product_url($product) {
+    return kafunda_mkt_auto_opts()['link'] === 'wp' ? get_permalink($product->get_id()) : kafunda_mkt_shop_url('/product/' . $product->get_id());
+}
+
+/** Shop page for a theme (or the whole shop). */
+function kafunda_mkt_theme_url($theme) {
+    $wp = kafunda_mkt_auto_opts()['link'] === 'wp';
+    $cats = $theme ? kafunda_mkt_theme_cats($theme) : [];
+    if (!$cats) return $wp ? (function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/shop/')) : kafunda_mkt_shop_url('/shop');
+    // Biggest match: "Wines", not whichever small wine category sorts first.
+    usort($cats, function ($a, $b) { return $b->count <=> $a->count; });
+    if ($wp) { $link = get_term_link($cats[0]); return is_wp_error($link) ? home_url('/shop/') : $link; }
+    return kafunda_mkt_shop_url('/shop?' . http_build_query(['category' => $cats[0]->name]));
+}
+
+function kafunda_mkt_utm($url, $medium, $campaign) {
+    return add_query_arg(['utm_source' => $medium === 'push' ? 'onesignal' : 'newsletter', 'utm_medium' => $medium, 'utm_campaign' => $campaign], $url);
+}
+
+/** Push wording for a product: [title, message] templates. Only real price cuts talk about savings. */
+function kafunda_mkt_offer_templates($was, DateTime $at, $sold) {
+    $hour = (int) $at->format('G');
+    if ($was) {
+        if ($hour < 11) {
+            return [['{emoji} Save {save} on {short}', '{name}: now {price}, was {was}. Delivered in 1–2 hours.'],
+                    ['{emoji} Morning deal: {short}', '{name} for {price} instead of {was}. Order now, pay on delivery.']];
+        }
+        if ($hour < 15) {
+            return [['Lunch-break deal {emoji}', '{name}: {price}, down from {was}. At your door in 1–2 hours.'],
+                    ['{emoji} Save {save} on {short}', 'Now {price} instead of {was}. Order in two taps.']];
+        }
+        if ($hour < 18) {
+            return [['Beat the evening rush {emoji}', 'Order {name} now for {price} (was {was}) and it arrives before you\'re home.'],
+                    ['{emoji} Save {save} on {short}', '{name} for {price}, was {was}. Delivered in 1–2 hours.']];
+        }
+        return [['Tonight\'s deal {emoji}', 'Unwind with {name}: {price} instead of {was}. Delivered in 1–2 hours.'],
+                ['{emoji} Save {save} on {short}', '{name} for {price}, was {was}. Order now.']];
+    }
     if ($hour < 11) {
-        $t = [
-            ['☀️ Today\'s deal: {short}', '{name} now {price}{was}. Order now — delivered in 1–2 hours across Kampala.'],
-            ['🔥 Morning offer just dropped', '{name} for {price}{was}. Tap to grab it before it\'s gone.'],
-            ['Good morning from Kafunda 🍾', 'Today\'s pick: {name} at {price}{was}. Pay with Mobile Money or cash on delivery.'],
-        ];
+        $t = [['{emoji} Today\'s pick: {short}', '{name} for {price}. Order now, delivered in 1–2 hours.'],
+              ['{emoji} {theme} for today: {short}', '{name}, {price}. Pay with Mobile Money, card or cash.']];
     } elseif ($hour < 15) {
-        $t = [
-            ['🍽️ Lunch break? We deliver', '{name} for {price}{was} — at your door in 1–2 hours.'],
-            ['Midday treat: {short}', 'Just {price}{was}. Order in two taps, pay on delivery.'],
-            ['⏰ Order now, relax tonight', '{name} — {price}{was}. Delivered across Kampala this afternoon.'],
-        ];
+        $t = [['Lunch-break order? {emoji}', '{name}, {price}. At your door in 1–2 hours.'],
+              ['{emoji} {short} for {price}', 'Order in two taps, delivered in 1–2 hours.']];
     } elseif ($hour < 18) {
-        $t = [
-            ['🚚 Beat the evening rush', 'Order {name} now and it arrives before you\'re home. {price}{was}.'],
-            ['After-work plans? 🥂', '{name} for {price}{was}, delivered in 1–2 hours.'],
-            ['Stock up before tonight', '{name} — {price}{was}. Mobile Money, card or cash on delivery.'],
-        ];
+        $t = [['Beat the evening rush {emoji}', 'Order {name} now for {price} and it arrives before you\'re home.'],
+              ['{emoji} {short} for {price}', 'Order now and it\'s there this evening.']];
     } else {
-        $t = [
-            ['🍷 Tonight\'s pick: {short}', 'Unwind with {name} — {price}{was}. Delivered fast across Kampala.'],
-            ['Evening sorted 🥃', '{name} at {price}{was}. Tap to order, we bring it to you.'],
-            ['Still up? We\'re still delivering', '{name} for {price}{was}. Order now.'],
-        ];
+        $t = [['Tonight\'s pick {emoji}', 'Unwind with {name}: {price}. Delivered in 1–2 hours.'],
+              ['{emoji} {short} for {price}', 'Order now, delivered in 1–2 hours.']];
     }
-    if ($weekend && $hour >= 15) {
-        $t[] = ['🎉 Weekend plans? We\'ve got the drinks', '{name} for {price}{was}. Delivered in 1–2 hours — party sorted.'];
-        $t[] = ['🥳 It\'s the weekend!', 'Celebrate with {name} — {price}{was}. Order now, pay on delivery.'];
-    }
-    [$title, $msg] = $t[array_rand($t)];
-    $map = ['{name}' => $name, '{short}' => $short, '{price}' => $price, '{was}' => $was];
-    $title = strtr($title, $map);
-    // Black November: every automatic push/email in November carries the campaign name.
-    if ($at->format('n') === '11') {
-        // Drop a leading emoji (keep the words) so the title doesn't start with two.
-        $title = '🖤 Black November · ' . preg_replace('/^[^\p{L}\p{N}]+/u', '', $title, 1);
-        $msg .= ' Black November deals end 30 Nov.';
-    }
-    return [mb_substr($title, 0, 65), mb_substr(strtr($msg, $map), 0, 240)];
+    if ($at->format('N') === '5' && $hour >= 15) $t[] = ['🎉 Weekend starts now {emoji}', '{name} for {price}. Delivered in 1–2 hours.'];
+    if ($sold >= 10) $t[] = ['{emoji} Customer favourite: {short}', '{name} for {price}. Delivered in 1–2 hours.'];
+    return $t;
 }
 
-function kafunda_mkt_auto_url($product, $campaign) {
-    $a = kafunda_mkt_auto_opts();
-    $url = $a['link'] === 'wp' ? get_permalink($product->get_id()) : kafunda_mkt_shop_url('/product/' . $product->get_id());
-    return add_query_arg(['utm_source' => 'onesignal', 'utm_medium' => 'push', 'utm_campaign' => $campaign], $url);
+/**
+ * Push + email content for slot $i (0 = first of the day).
+ * Returns title, message (push), subject, heading, body (email), theme, products (ids), link, cta, products_heading, no_email, skip.
+ */
+function kafunda_mkt_auto_content(array $plan, DateTime $at, $i) {
+    $themes = kafunda_mkt_themes();
+    $close = "Delivered across Kampala in 1–2 hours. Pay with Mobile Money, card or cash on delivery.";
+    $c = ['theme' => '', 'products' => [], 'link' => kafunda_mkt_theme_url(''), 'cta' => 'Order now',
+        'products_heading' => 'Today\'s picks', 'no_email' => false, 'skip' => false];
+
+    $sp = null;
+    $lead = 0;
+    if (($plan['kind'] ?? '') === 'special') {
+        [$key, $lead] = $plan['special'];
+        $sp = kafunda_mkt_specials()[$key];
+        if ($sp['tone'] === 'quiet') {
+            // One respectful message, nothing to buy, no email.
+            if ($i > 0) return ['skip' => true, 'title' => $sp['name'] . ' — one message only'];
+            [$c['title'], $c['message']] = $sp['lines'][0];
+            return ['no_email' => true] + $c;
+        }
+    }
+
+    [$th, $p] = kafunda_mkt_pick_offer(kafunda_mkt_slot_themes($plan, $i));
+    if (!$p && !$sp) return ['skip' => true, 'title' => 'Nothing in stock to offer'];
+
+    if ($p) {
+        [$label, $emoji, , $tip] = $themes[$th];
+        $now = (float) $p->get_price();
+        $was = kafunda_mkt_was_price($p);
+        $name = html_entity_decode(wp_strip_all_tags($p->get_name()), ENT_QUOTES, 'UTF-8');
+        $map = ['{theme}' => $label, '{emoji}' => $emoji, '{name}' => $name,
+            '{short}' => mb_strlen($name) > 30 ? rtrim(mb_substr($name, 0, 28)) . '…' : $name,
+            '{price}' => kafunda_mkt_ugx($now), '{was}' => kafunda_mkt_ugx($was), '{save}' => kafunda_mkt_ugx($was - $now)];
+        $t = kafunda_mkt_offer_templates($was, $at, (int) $p->get_total_sales());
+        [$title, $msg] = $t[($plan['n'] + $i) % count($t)];
+        // Holidays replace the title, so the message alone has to name the bottle.
+        if ($sp) $msg = $was ? '{name} for {price}, was {was}. Delivered in 1–2 hours.' : '{name} for {price}. Delivered in 1–2 hours.';
+        // Up to 3 more from the same shelf for the email.
+        $more = array_filter(kafunda_mkt_fast_sellers($th), function ($x) use ($p) { return $x->get_id() !== $p->get_id(); });
+        shuffle($more);
+        $c['theme'] = $th;
+        $c['title'] = strtr($title, $map);
+        $c['message'] = strtr($msg, $map);
+        $c['subject'] = strtr('{emoji} {short} for {price}', $map);
+        $c['heading'] = strtr('Today\'s {theme} picks {emoji}', $map);
+        $sale = kafunda_mkt_campaign($at);
+        $c['body'] = ($sale ? "{$sale['name']} is on. " : '') . "Here's what we picked for you today.\n\n$tip\n\n$close";
+        $c['products'] = array_merge([$p->get_id()], array_map(function ($x) { return $x->get_id(); }, array_slice($more, 0, 3)));
+        $c['products_heading'] = 'Today\'s ' . strtolower($label) . ' picks';
+        $c['link'] = kafunda_mkt_product_url($p);
+        $c['cta'] = 'Shop all ' . strtolower($label);
+        $c['email_link'] = kafunda_mkt_theme_url($th);
+        $c['image'] = (string) wp_get_attachment_image_url($p->get_image_id(), 'large');
+        kafunda_mkt_mark_featured($p->get_id());
+        // The running sale goes on every product push; holidays keep their own title.
+        if ($sale) {
+            if (!$sp) $c['title'] = $sale['emoji'] . ' ' . $sale['name'] . ' · ' . preg_replace('/^[^\p{L}\p{N}]+/u', '', $c['title'], 1);
+            $c['message'] .= " {$sale['name']} ends {$sale['ends']}.";
+        }
+    }
+
+    if ($sp) {
+        // Holidays keep their greeting as the title; the message sells the product when there is one.
+        $when = ['', 'tomorrow', 'in 2 days', 'in 3 days'][$lead];
+        $line = $lead ? $sp['lead_line'] : $sp['lines'][$i % count($sp['lines'])];
+        $mail = $lead ? $sp['lead_email'] : $sp['email'];
+        $c['title'] = str_replace('{when}', $when, $line[0]);
+        if (!$p) $c['message'] = str_replace('{when}', $when, $line[1]);
+        $c['subject'] = $c['heading'] = str_replace('{when}', $when, $mail[0]);
+        $c['body'] = str_replace('{when}', $when, $mail[1]) . "\n\n" . $close;
+    }
+    $c['title'] = mb_substr($c['title'], 0, 65);
+    $c['message'] = mb_substr($c['message'], 0, 240);
+    return $c;
 }
 
-/** Builds + sends (or schedules) one automatic push. Returns a log entry. */
-function kafunda_mkt_auto_send(DateTime $at, $schedule) {
-    $hour = (int) $at->format('G');
-    $product = kafunda_mkt_auto_pick_product($hour < 11 || mt_rand(0, 1) === 1);
-    if (!$product) return ['status' => 'error', 'error' => 'No in-stock products with photos found.', 'at' => $at->getTimestamp()];
-    [$title, $message] = kafunda_mkt_auto_message($product, $at);
+/** Builds + sends (or schedules) one automatic push for slot $i. Returns a log entry. */
+function kafunda_mkt_auto_send(DateTime $at, $schedule, $i = 0) {
+    $plan = kafunda_mkt_day_plan($at);
+    $c = kafunda_mkt_auto_content($plan, $at, $i);
+    if (!empty($c['skip'])) return ['status' => 'skipped', 'title' => $c['title'], 'at' => $at->getTimestamp()];
+    $campaign = 'auto_' . $plan['kind'] . ($c['theme'] ? '_' . $c['theme'] : '') . '_' . $at->format('Hi');
     $r = kafunda_mkt_send_push([
-        'title' => $title,
-        'message' => $message,
-        'url' => kafunda_mkt_auto_url($product, 'auto_' . $at->format('Hi')),
-        'image' => (string) wp_get_attachment_image_url($product->get_image_id(), 'large'),
+        'title' => $c['title'],
+        'message' => $c['message'],
+        'url' => kafunda_mkt_utm($c['link'], 'push', $campaign),
+        'image' => $c['image'] ?? '',
         'audience' => kafunda_mkt_auto_opts()['audience'],
         'send_after' => $schedule ? $at->format(DATE_ATOM) : '',
     ]);
@@ -867,49 +1320,56 @@ function kafunda_mkt_auto_send(DateTime $at, $schedule) {
         'status' => is_wp_error($r) ? 'error' : ($schedule ? 'scheduled' : 'sent'),
         'error' => is_wp_error($r) ? $r->get_error_message() : '',
         'id' => is_wp_error($r) ? '' : $r['id'],
-        'title' => $title,
-        'message' => $message,
-        'product' => $product->get_id(),
+        'title' => $c['title'],
+        'message' => $c['message'],
+        'kind' => $plan['kind'],
+        'subject' => $c['subject'] ?? $c['title'],
+        'heading' => $c['heading'] ?? $c['title'],
+        'body' => $c['body'] ?? $c['message'],
+        'products' => $c['products'],
+        'products_heading' => $c['products_heading'],
+        'link' => $c['email_link'] ?? $c['link'],
+        'cta' => $c['cta'],
+        'no_email' => !empty($c['no_email']),
+        'campaign' => $campaign,
         'at' => $at->getTimestamp(),
     ];
 }
 
 /** Product as an email card. */
 function kafunda_mkt_product_card($product, $campaign) {
-    $reg = (float) $product->get_regular_price();
+    $was = kafunda_mkt_was_price($product);
     return [
         'name'  => wp_strip_all_tags($product->get_name()),
         'price' => kafunda_mkt_ugx(wc_get_price_to_display($product)),
-        'was'   => ($product->is_on_sale() && $reg > (float) $product->get_price()) ? kafunda_mkt_ugx($reg) : '',
+        'was'   => $was ? kafunda_mkt_ugx($was) : '',
         'image' => (string) wp_get_attachment_image_url($product->get_image_id(), 'medium'),
-        'url'   => str_replace('utm_source=onesignal&utm_medium=push', 'utm_source=newsletter&utm_medium=email', kafunda_mkt_auto_url($product, $campaign)),
+        'url'   => kafunda_mkt_utm(kafunda_mkt_product_url($product), 'email', $campaign),
     ];
 }
 
-/** The offer email that goes with an automatic push: same product + 3 more picks. */
-function kafunda_mkt_auto_email_payload($product_id, $title, $message, $campaign) {
-    $product = function_exists('wc_get_product') ? wc_get_product((int) $product_id) : null;
-    if (!$product || !$product->is_in_stock()) return null;
-    $card = kafunda_mkt_product_card($product, $campaign);
-
-    $more = [];
-    $sale = wc_get_product_ids_on_sale();
-    $args = ['status' => 'publish', 'stock_status' => 'instock', 'limit' => 12, 'orderby' => 'rand', 'exclude' => [$product->get_id()]];
-    if ($sale && mt_rand(0, 1)) $args['include'] = array_slice(array_diff($sale, [$product->get_id()]), 0, 200);
-    foreach (wc_get_products($args) as $p) {
-        if ((float) $p->get_price() <= 0 || !$p->get_image_id() || !$p->is_visible()) continue;
-        $more[] = kafunda_mkt_product_card($p, $campaign);
-        if (count($more) >= 3) break;
+/** The email that goes with an automatic push. Products are re-checked: still in stock. */
+function kafunda_mkt_auto_email_payload($x, $campaign) {
+    if (!empty($x['no_email'])) return null;
+    $ids = isset($x['kind']) ? (array) ($x['products'] ?? []) : [(int) ($x['product'] ?? 0)]; // entries from before v2.4: one product
+    $cards = [];
+    foreach ($ids as $id) {
+        $p = function_exists('wc_get_product') ? wc_get_product((int) $id) : null;
+        if (!$p || !$p->is_in_stock()) continue;
+        $cards[] = kafunda_mkt_product_card($p, $campaign);
+        if (count($cards) >= 4) break;
     }
-
+    $kind = $x['kind'] ?? 'sale';
+    if ($kind !== 'special' && !$cards) return null; // sold out before the email went out
+    $close = "Delivered across Kampala in 1–2 hours. Pay with Mobile Money, card or cash on delivery.";
     return [
-        'preheader' => $message,
-        'heading'   => $title,
-        'body'      => "$message\n\nOrder in a few taps — pay with Mobile Money, card or cash on delivery.",
-        'image_url' => (string) wp_get_attachment_image_url($product->get_image_id(), 'large'),
-        'cta_text'  => 'Order ' . (mb_strlen($card['name']) > 28 ? 'now' : $card['name']),
-        'cta_url'   => $card['url'],
-        'products'  => $more,
+        'preheader' => $x['message'] ?? '',
+        'heading'   => $x['heading'] ?? ($x['title'] ?? ''),
+        'body'      => $x['body'] ?? (($x['message'] ?? '') . "\n\n" . $close),
+        'cta_text'  => $x['cta'] ?? 'Order now',
+        'cta_url'   => kafunda_mkt_utm($x['link'] ?? kafunda_mkt_theme_url(''), 'email', $campaign),
+        'products'  => $cards,
+        'products_heading' => $x['products_heading'] ?? 'Today\'s picks',
     ];
 }
 
@@ -937,12 +1397,12 @@ function kafunda_mkt_auto_emails() {
         if (($x['email'] ?? '') !== 'pending' || ($x['at'] ?? PHP_INT_MAX) > time()) continue;
         $changed = true;
         if ($x['at'] < time() - 3 * HOUR_IN_SECONDS) { $log[$key]['email'] = 'skipped (too late)'; continue; }
-        $campaign = 'auto_' . (new DateTime('@' . (int) $x['at']))->setTimezone(kafunda_mkt_tz())->format('Hi');
-        $payload = kafunda_mkt_auto_email_payload($x['product'] ?? 0, $x['title'] ?? '', $x['message'] ?? '', $campaign);
+        $campaign = $x['campaign'] ?? 'auto_' . (new DateTime('@' . (int) $x['at']))->setTimezone(kafunda_mkt_tz())->format('Hi');
+        $payload = kafunda_mkt_auto_email_payload($x, $campaign);
         $recipients = $payload ? kafunda_mkt_audience('all') : [];
-        if (!$payload || !$recipients) { $log[$key]['email'] = $payload ? 'skipped (no recipients)' : 'skipped (product sold out)'; continue; }
+        if (!$payload || !$recipients) { $log[$key]['email'] = $payload ? 'skipped (no recipients)' : 'skipped (offers ended)'; continue; }
         $wpdb->insert($t['campaigns'], [
-            'subject' => $x['title'], 'payload' => wp_json_encode($payload), 'audience' => 'auto',
+            'subject' => $x['subject'] ?? $x['title'], 'payload' => wp_json_encode($payload), 'audience' => 'auto',
             'status' => 'queued', 'recipients' => wp_json_encode($recipients),
             'total' => count($recipients), 'created_at' => kafunda_mkt_now(),
         ]);
@@ -956,22 +1416,31 @@ function kafunda_mkt_auto_plan($force = false) {
     $a = kafunda_mkt_auto_opts();
     $o = kafunda_mkt_opts();
     if (empty($a['on']) || !$o['onesignal_rest_key']) return;
+    // Pushes queued by an older version of this code are rebuilt once with the new messages.
+    if (get_option('kafunda_mkt_auto_ver') !== '2.5') {
+        kafunda_mkt_auto_cancel_future();
+        delete_option('kafunda_mkt_day_plans'); // plans made by older code can still say "funny day"
+        update_option('kafunda_mkt_auto_ver', '2.5', false);
+        $force = true;
+    }
     if (!$force && get_transient('kafunda_mkt_auto_plan_lock')) return;
     set_transient('kafunda_mkt_auto_plan_lock', 1, 5 * MINUTE_IN_SECONDS);
 
     $tz = kafunda_mkt_tz();
     $log = kafunda_mkt_auto_log();
     $changed = false;
+    $slots = (array) $a['slots'];
+    sort($slots);
     foreach ([0, 1] as $add) {
         $day = (new DateTime('now', $tz))->modify("+$add day")->format('Y-m-d');
-        foreach ((array) $a['slots'] as $slot) {
+        foreach ($slots as $i => $slot) {
             $at = DateTime::createFromFormat('Y-m-d H:i', "$day $slot", $tz);
             if (!$at || $at->getTimestamp() < time() + 5 * MINUTE_IN_SECONDS) continue;
             $key = $at->format('Y-m-d H:i');
             // Already scheduled → skip. A failed attempt is retried on the next run (every ~5 min).
             if (isset($log[$key]) && ($log[$key]['status'] ?? '') !== 'error') continue;
-            $log[$key] = kafunda_mkt_auto_send($at, true);
-            if ($log[$key]['status'] === 'scheduled' && kafunda_mkt_auto_slot_emails($slot)) $log[$key]['email'] = 'pending';
+            $log[$key] = kafunda_mkt_auto_send($at, true, $i);
+            if ($log[$key]['status'] === 'scheduled' && empty($log[$key]['no_email']) && kafunda_mkt_auto_slot_emails($slot)) $log[$key]['email'] = 'pending';
             $changed = true;
         }
     }
@@ -1127,6 +1596,7 @@ function kafunda_mkt_stats() {
     $since = gmdate('Y-m-d H:i:s', time() - 30 * DAY_IN_SECONDS);
     $hourAgo = gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS);
     $v = function ($sql) use ($wpdb) { return (int) $wpdb->get_var($sql); };
+    $all = kafunda_mkt_audience('all', $skipped);
     return [
         'abandoned'   => $v($wpdb->prepare("SELECT COUNT(*) FROM {$t['carts']} WHERE created_at > %s AND status IN ('open','lost','recovered') AND (status <> 'open' OR updated_at < %s)", $since, $hourAgo)),
         'open_value'  => $v($wpdb->prepare("SELECT COALESCE(SUM(subtotal),0) FROM {$t['carts']} WHERE created_at > %s AND status = 'open' AND updated_at < %s", $since, $hourAgo)),
@@ -1137,7 +1607,8 @@ function kafunda_mkt_stats() {
         'subscribers' => $v("SELECT COUNT(*) FROM {$t['subs']} WHERE status = 'subscribed'"),
         'aud_subscribers' => count(kafunda_mkt_audience('subscribers')),
         'aud_customers'   => count(kafunda_mkt_audience('customers')),
-        'aud_all'         => count(kafunda_mkt_audience('all')),
+        'aud_all'         => count($all),
+        'skipped'         => $skipped,
     ];
 }
 
@@ -1264,6 +1735,7 @@ function kafunda_mkt_handle_post() {
         } elseif (($p['mode'] ?? '') === 'test') {
             $to = kafunda_mkt_clean_email($p['test_email'] ?? '');
             if (!$to) kafunda_mkt_flash('error', 'Enter a valid address for the test.');
+            elseif ($why = kafunda_mkt_email_problem($to)) kafunda_mkt_flash('error', "$to is skipped as a wrong address: $why.");
             elseif (kafunda_mkt_send($to, '[TEST] ' . $subject, $payload)) kafunda_mkt_flash('ok', "Test sent to $to — check the inbox and spam folder.");
             else kafunda_mkt_flash('error', 'WordPress could not send the email. Check your SMTP / email plugin (WP Mail SMTP).');
         } else {
@@ -1323,10 +1795,31 @@ function kafunda_mkt_handle_post() {
         } else {
             // Show the matching email too — sent only to you, not to customers.
             $me = wp_get_current_user()->user_email;
-            $payload = kafunda_mkt_auto_email_payload($entry['product'], $entry['title'], $entry['message'], 'auto_sample');
-            $mailed = $payload && $me && kafunda_mkt_send($me, '[SAMPLE] ' . $entry['title'], $payload);
+            $payload = kafunda_mkt_auto_email_payload($entry, 'auto_sample');
+            $mailed = $payload && $me && kafunda_mkt_send($me, '[SAMPLE] ' . ($entry['subject'] ?? $entry['title']), $payload);
             kafunda_mkt_flash('ok', 'Sample push sent: "' . $entry['title'] . '"' . ($mailed ? " — the matching email went to $me (only you)." : ''));
         }
+    }
+
+    if ($action === 'block_emails') {
+        $tab = 'email';
+        $bad = kafunda_mkt_bad_emails();
+        $n = 0;
+        foreach (preg_split('/[\s,;]+/', strtolower((string) ($p['emails'] ?? ''))) as $em) {
+            if (!is_email($em)) continue;
+            $bad[$em] = ['why' => 'blocked by hand', 'fails' => 0, 'blocked' => 1, 't' => time()];
+            $n++;
+        }
+        kafunda_mkt_bad_emails($bad);
+        kafunda_mkt_flash('ok', "$n address" . ($n === 1 ? '' : 'es') . ' will never be emailed.');
+    }
+
+    if ($action === 'unblock_email') {
+        $tab = 'email';
+        $bad = kafunda_mkt_bad_emails();
+        unset($bad[strtolower(trim((string) ($p['email'] ?? '')))]);
+        kafunda_mkt_bad_emails($bad);
+        kafunda_mkt_flash('ok', 'Address allowed again.');
     }
 
     if ($action === 'cancel_campaign') {
@@ -1515,7 +2008,7 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
         sort($rows);
 
         echo '<div class="card" style="margin-bottom:16px"><h2>Automatic daily pushes ' . ($auto['on'] ? '<span style="color:var(--g)">● ON</span>' : '<span style="color:#a1a1aa">● OFF</span>') . '</h2><div class="in">'
-            . '<p class="muted" style="margin-top:0">Each time below, a push goes out on its own with a random in-stock product (sale items first), its photo, price and a link to buy. The wording fits the time of day — morning deals, lunch delivery, beat the evening rush, tonight\'s pick — with party messages on Friday and Saturday evenings. Products don\'t repeat until about 40 others have been featured.</p>'
+            . '<p class="muted" style="margin-top:0">Each time below, a push goes out on its own with a random product, its photo, real price and a link to buy. Picks come from each drink\'s best sellers, a different drink each time, and carry the name of the running sale (Black November, Christmas Sale). Only products with a real sale price mention a saving. The wording fits the time of day. Products don\'t repeat until about 40 others have been featured.</p>'
             . '<form method="post">' . $nonce . '<input type="hidden" name="kmk_action" value="save_auto">'
             . '<div class="check"><input type="checkbox" id="aon" name="auto_on" value="1" ' . ($auto['on'] ? 'checked' : '') . '><label for="aon" style="margin:0"><b>Send automatic pushes every day</b> (Kampala time)</label></div>'
             . '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 14px">';
@@ -1537,7 +2030,10 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
             . '<option value="first"' . selected($auto['email'], 'first', false) . '>Once a day — with the first push (recommended)</option>'
             . '<option value="all"' . selected($auto['email'], 'all', false) . '>With every push</option>'
             . '<option value="off"' . selected($auto['email'], 'off', false) . '>No emails — push only</option></select>'
-            . '<em class="hint">Goes to everyone who has ordered (' . (int) $s['aud_customers'] . ' emails, new customers added automatically) plus offer subscribers — ' . (int) $s['aud_all'] . ' people now. Same product as the push, plus 3 more picks. More than one email a day gets you marked as spam quickly.</em></label>'
+            . '<em class="hint">Goes to everyone who has ordered (' . (int) $s['aud_customers'] . ' emails, new customers added automatically) plus offer subscribers — ' . (int) $s['aud_all'] . ' people now; wrong addresses are skipped. More than one email a day gets you marked as spam quickly.</em></label>'
+            . '<p class="tiny">Every push sells a product. Ugandan holidays and special days (Valentine\'s, Independence, Christmas…) keep their greeting and add a fitting bottle. Good Friday, Martyrs\' Day and Eid get one greeting only.<br>'
+            . '<b>Today:</b> ' . $e(kafunda_mkt_plan_label(kafunda_mkt_day_plan(new DateTime('now', $tz)))) . '<br>'
+            . '<b>Tomorrow:</b> ' . $e(kafunda_mkt_plan_label(kafunda_mkt_day_plan((new DateTime('now', $tz))->modify('+1 day')))) . '</p>'
             . '<button class="btn btn-g">Save automatic pushes</button></form>'
             . '<form method="post" style="margin-top:10px" onsubmit="return confirm(\'Send one automatic-style push to subscribers right now?\')">' . $nonce . '<input type="hidden" name="kmk_action" value="auto_sample"><button class="btn btn-o" style="width:100%" ' . ($pushReady ? '' : 'disabled') . '>Send a sample now</button></form>';
 
@@ -1619,7 +2115,7 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
             . '<option value="all" data-n="' . $s['aud_all'] . '"' . selected($aud, 'all', false) . '>Everyone — subscribers + past customers (' . $s['aud_all'] . ')</option>'
             . '<option value="subscribers" data-n="' . $s['aud_subscribers'] . '"' . selected($aud, 'subscribers', false) . '>Offer subscribers only (' . $s['aud_subscribers'] . ')</option>'
             . '<option value="customers" data-n="' . $s['aud_customers'] . '"' . selected($aud, 'customers', false) . '>Past customers only (' . $s['aud_customers'] . ')</option>'
-            . '</select><em class="hint">Unsubscribed addresses are skipped automatically.</em></label>'
+            . '</select><em class="hint">Unsubscribed and wrong addresses are skipped automatically.</em></label>'
             . '<div class="row2" style="background:#fafafa;padding:10px;border-radius:12px;margin-bottom:12px"><input type="email" name="test_email" value="' . $dv('test_email', wp_get_current_user()->user_email) . '" placeholder="you@example.com">'
             . '<button class="btn btn-o" type="submit" onclick="document.getElementById(\'emode\').value=\'test\'">Send test to me</button></div>'
             . '<button class="btn btn-g" type="submit" onclick="document.getElementById(\'emode\').value=\'send\';var o=document.getElementById(\'eaud\').selectedOptions[0];return confirm(\'Send this email to \'+o.dataset.n+\' people? This cannot be undone.\')">Send to everyone selected</button>'
@@ -1630,6 +2126,22 @@ ul.list{list-style:none;margin:0;padding:0}ul.list li{padding:12px 0;border-bott
             . '<p class="muted" style="margin-top:0">Every customer in your WooCommerce orders — website, shop and app, old and new. <b>' . (int) $s['aud_customers'] . '</b> have an email and get offer emails automatically (new customers are added the moment they order). Many only gave a phone number — the export includes them too, for WhatsApp broadcasts.</p>'
             . '<a class="btn btn-o" style="width:100%" href="' . esc_url($export) . '">Download customer list (CSV)</a>'
             . '<p class="tiny" style="margin-bottom:0">Name, email, phone, paid orders, total spent, last order, email status. Opens in Excel or Google Sheets.</p></div></div>';
+
+        $bad = kafunda_mkt_bad_emails();
+        echo '<div class="card" style="margin-bottom:16px"><h2>Wrong emails — skipped (' . count($s['skipped']) . ')</h2><div class="in">'
+            . '<p class="muted" style="margin-top:0">Never emailed: typos (gmial.com, gmail.con…), fake or placeholder addresses, domains that don\'t exist, and addresses the mail server refused.</p>';
+        if ($s['skipped']) {
+            echo '<ul class="list" style="max-height:260px;overflow:auto">';
+            foreach (array_slice($s['skipped'], 0, 200, true) as $em => $why) {
+                echo '<li><b>' . $e($em) . '</b> <span class="tiny">· ' . $e($why) . '</span>'
+                    . (!empty($bad[$em]['blocked']) ? '<form method="post" style="display:inline">' . $nonce . '<input type="hidden" name="kmk_action" value="unblock_email"><input type="hidden" name="email" value="' . $a($em) . '"> <button class="btn btn-o" style="padding:2px 10px;font-size:11px">Allow</button></form>' : '')
+                    . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '<form method="post">' . $nonce . '<input type="hidden" name="kmk_action" value="block_emails">'
+            . '<label><span>Never email these</span><textarea name="emails" rows="2" placeholder="wrong@address.com, another@one.com"></textarea></label>'
+            . '<button class="btn btn-o" style="width:100%">Block</button></form></div></div>';
 
         $camps = $wpdb->get_results("SELECT id, subject, audience, status, total, sent, failed, created_at FROM {$t['campaigns']} ORDER BY id DESC LIMIT 20");
         $sending = false;

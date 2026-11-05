@@ -7,7 +7,7 @@ import { CONTACT } from "@/lib/constants";
  */
 export default function WhatsAppBand({ campaign }: { campaign?: string }) {
   const text = encodeURIComponent(
-    campaign ? `Hi Kafunda! I'd like to order from the ${campaign} deals.` : "Hi Kafunda! I'd like to place an order."
+    campaign ? `Hi Kafunda! I saw ${campaign} and I'd like to order.` : "Hi Kafunda! I'd like to place an order."
   );
   return (
     <section className="mx-auto max-w-7xl px-3 py-6 sm:px-6 md:py-10 lg:px-8">

@@ -10,13 +10,14 @@ import BrandMarquee from "@/components/shared/BrandMarquee";
 import CategoryShelf from "@/components/shared/CategoryShelf";
 import RecentlyViewed from "@/components/shared/RecentlyViewed";
 import RecommendedForYou from "@/components/shared/RecommendedForYou";
-import BlackNovemberHero from "@/components/home/BlackNovemberHero";
+import DailyPicksHero from "@/components/home/DailyPicksHero";
 import QuickCategories from "@/components/home/QuickCategories";
 import DealsGrid from "@/components/home/DealsGrid";
 import TrustStrip from "@/components/home/TrustStrip";
 import WhatsAppBand from "@/components/home/WhatsAppBand";
 import { getAllProducts } from "@/lib/api";
-import { CAMPAIGN, campaignLive } from "@/lib/campaign";
+import { currentCampaign } from "@/lib/campaign";
+import { kampalaDay, pickDailyProducts } from "@/lib/dailyPicks";
 import { Product } from "@/types";
 
 /** Case-insensitive: does the product's category string contain any keyword? */
@@ -25,24 +26,19 @@ function inCategory(p: Product, keywords: string[]): boolean {
   return keywords.some((kw) => cat.includes(kw));
 }
 
-/** Day number since 1970 — changes the rotating picks once a day. (The page is ISR-cached, so this runs per regeneration, not per visitor.) */
-function dayIndex(): number {
-  return Math.floor(Date.now() / 86_400_000);
-}
-
 function discount(p: Product): number {
   return p.original_price_ugx ? 1 - p.price_ugx / p.original_price_ugx : 0;
 }
 
 /**
  * Homepage, built for paid traffic (Nov 2026 redesign):
- *  1. Campaign hero (Black November) — one offer, countdown, real bottles
+ *  1. Daily picks hero — four real bottles with Add to cart, new every day
  *  2. One-tap category tiles
  *  3. Trust strip — delivery time, pay on delivery, stores, free delivery
  *  4. Deals GRID (biggest discounts first) — visible without swiping
  *  5. Price-led shelf (Under UGX 50k) + best-selling categories
  *  6. WhatsApp ordering band, then the rest of the catalogue
- * Outside a campaign window the normal photo hero returns automatically.
+ * The photo hero only shows if the catalogue is too thin for the picks hero.
  */
 export default async function Home() {
   // getAllProducts() THROWS when Woo is unreachable. Catch it so a Woo/Cloudflare
@@ -52,29 +48,24 @@ export default async function Home() {
     return [] as Product[];
   });
   const catalogueEmpty = products.length === 0;
-  const live = campaignLive();
+  const campaign = currentCampaign();
 
   const sellable = products.filter((p) => p.in_stock && p.price_ugx > 0 && p.image_url);
 
-  // ── Deals: real sale prices from WooCommerce, biggest % off first ─────────
-  const deals = sellable
-    .filter((p) => p.is_sale || p.is_today_offer || discount(p) > 0)
-    .sort((a, b) => discount(b) - discount(a));
-  const hasDeals = deals.length > 0;
+  // Hero: the same four for everyone today; new ones at Kampala midnight.
+  const day = kampalaDay();
+  const dailyPicks = pickDailyProducts(sellable, 4, day);
+  const dailyIds = new Set(dailyPicks.map((p) => p.id));
 
-  // Pools change daily; each visitor's browser then picks at random from them,
-  // so the hero and the picks grid look different on every visit.
-  const day = dayIndex();
+  // The picks grid changes daily, then each visitor's browser picks at random.
   const rotate = <T,>(arr: T[]) => {
     if (!arr.length) return arr;
     const start = (day * 7) % arr.length;
     return [...arr.slice(start), ...arr.slice(0, start)];
   };
 
-  // Hero: good-looking bottles (UGX 50k+, in stock, with a photo) → 3 random.
-  const heroPool = rotate(sellable.filter((p) => p.price_ugx >= 50_000)).slice(0, 24);
   // Picks grid: any in-stock bottle from UGX 20k (skips water/mixers) → 8 random.
-  const gridPool = rotate(sellable.filter((p) => p.price_ugx >= 20_000)).slice(0, 60);
+  const gridPool = rotate(sellable.filter((p) => p.price_ugx >= 20_000 && !dailyIds.has(p.id))).slice(0, 60);
 
   const under50k = sellable
     .filter((p) => p.price_ugx <= 50_000)
@@ -98,7 +89,11 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-kafunda-bone">
-      {live ? <BlackNovemberHero pool={heroPool.length >= 3 ? heroPool : sellable.slice(0, 24)} hasDeals={hasDeals} /> : <Hero />}
+      {dailyPicks.length === 4 ? (
+        <DailyPicksHero picks={dailyPicks} saleName={campaign?.name} saleEnds={campaign?.endsLabel} />
+      ) : (
+        <Hero />
+      )}
 
       <QuickCategories />
 
@@ -133,10 +128,10 @@ export default async function Home() {
       <DealsGrid
         pool={gridPool}
         count={8}
-        eyebrow={live ? CAMPAIGN.name : "Top picks"}
+        eyebrow={campaign ? campaign.name : "Top picks"}
         title={
-          live ? (
-            <>Black November <span className="text-primary-red">Picks</span></>
+          campaign ? (
+            <>{campaign.name} <span className="text-primary-red">Picks</span></>
           ) : (
             <>Today&apos;s <span className="text-primary-red">Picks</span></>
           )
@@ -157,7 +152,7 @@ export default async function Home() {
       <CategoryShelf title="Whiskies & Bourbons" accentWord="Whiskies" products={whiskies} viewAllHref="/shop?category=Whiskys" />
       <CategoryShelf title="Beers & Ciders" accentWord="Beers" products={beers} viewAllHref="/shop?category=Beers" />
 
-      <WhatsAppBand campaign={live ? CAMPAIGN.name : undefined} />
+      <WhatsAppBand campaign={campaign?.name} />
 
       <CategoryShelf title="Fine Wines" accentWord="Wines" products={wines} viewAllHref="/shop?category=Wines" />
       <CategoryShelf title="Champagnes & Sparkling" accentWord="Champagnes" products={champagnes} viewAllHref="/shop?category=Champagnes" />

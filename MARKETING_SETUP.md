@@ -35,6 +35,15 @@ The site sets the tag on add-to-cart and removes it on the order-received page.
 - Any processing/completed order with the same phone/email marks the cart recovered/converted.
 - Past customers who gave an email join the offers list; every email has one-click unsubscribe.
 - Email campaigns send 25 per minute (faster while the Email tab is open).
+- Wrong emails are skipped: typos (gmial.com, gmail.con…), fake/placeholder addresses, domains that
+  don't exist, and addresses the mail server refused. List + manual block in the Email tab.
+- Every automatic push sells one product: a random pick from each drink's best sellers, with its
+  photo and real price, a different drink each time. During Black November (1–30 Nov) and the
+  Christmas Sale (1–25 Dec) the push carries the sale's name. Only products with a real sale price
+  in WooCommerce mention a saving.
+- Ugandan holidays and special days keep their greeting and add a fitting bottle. Quiet days
+  (Good Friday, Martyrs' Day, Eid) get one greeting, no products and no email.
+- App pushes open the app (no web link on phones); website pushes open the link.
 
 ## shop.kafundawines.com (only if it gets redeployed)
 
